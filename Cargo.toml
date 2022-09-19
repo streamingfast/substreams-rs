@@ -1,0 +1,10 @@
+[workspace]
+members = [
+"substreams-core",
+"substreams-macro",
+]
+
+[profile.release]
+lto = true
+opt-level = 's'
+strip = "debuginfo"
