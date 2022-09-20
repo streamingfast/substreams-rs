@@ -76,9 +76,9 @@ main() {
     args="--dry-run $args"
   fi
 
-  # We need to publish one crate at a time, one after the one
-  cargo publish $args --target wasm32-unknown-unknown -p substreams-macro
+  # We need to publish one crate at a time...
 
+  cargo publish $args --target wasm32-unknown-unknown -p substreams-macro
   maybe_wait_publish
   cargo publish $args --target wasm32-unknown-unknown -p substreams
 }
