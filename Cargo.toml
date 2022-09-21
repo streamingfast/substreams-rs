@@ -2,7 +2,6 @@
 members = [
     "substreams",
     "substreams-macro",
-    "test"
 ]
 
 [profile.release]

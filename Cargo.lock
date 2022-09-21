@@ -407,20 +407,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test"
-version = "0.0.20"
-dependencies = [
- "bigdecimal",
- "hex",
- "hex-literal",
- "num-bigint",
- "prost 0.11.0",
- "prost-build",
- "prost-types 0.11.1",
- "substreams",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"

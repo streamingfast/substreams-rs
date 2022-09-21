@@ -1,0 +1,25 @@
+name: Build and Test
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - "**"
+jobs:
+  build:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build target
+        uses: actions-rs/cargo@v1
+        env:
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '1'
+          CARGO_PROFILE_RELEASE_LTO: 'fat'
+          CARGO_BUILD_RUSTFLAGS: '-D warnings'
+          NEAR_RELEASE_BUILD: 'release'
+        with:
+          command: build
+          args: --release
