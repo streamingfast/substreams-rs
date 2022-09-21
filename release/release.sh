@@ -19,7 +19,6 @@ main() {
   done
   shift $((OPTIND-1))
 
-  verify_github_token
   verify_keybase
 
   if [[ "$dry_run" == "true" && "$force" == "true" ]]; then
@@ -28,7 +27,7 @@ main() {
 
   version="$1"; shift
   if [[ "$version" == "" ]]; then
-    printf "What version do you want to release (current latest is `git describe --tags --abbrev=0`)? "
+    printf "Which version would you like to release (current latest is `git describe --tags --abbrev=0`)? "
     read version
   fi
 
@@ -69,7 +68,6 @@ main() {
     trap cleanup_tag EXIT
   fi
 
-  goreleaser release $args
 
   args="${CARGO_PUBISH_ARGS:-}"
   if [[ "$force" == "false" ]]; then
@@ -86,17 +84,6 @@ main() {
 cleanup_tag() {
   if [[ "$tag" != "" ]]; then
     git tag -d "$tag"
-  fi
-}
-
-verify_github_token() {
-  if [[ ! -f "$HOME/.config/goreleaser/github_token" && "$GITHUB_TOKEN" = "" ]]; then
-    echo "No GitHub token could be found in enviornment variable GITHUB_TOKEN"
-    echo "nor at ~/.config/goreleaser/github_token."
-    echo ""
-    echo "You will need to create one on GitHub website and make it available through"
-    echo "one of the accept way mentionned above."
-    exit 1
   fi
 }
 
