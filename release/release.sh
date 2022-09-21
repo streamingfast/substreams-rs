@@ -19,6 +19,7 @@ main() {
   done
   shift $((OPTIND-1))
 
+  verify_github_token
   verify_keybase
 
   if [[ "$dry_run" == "true" && "$force" == "true" ]]; then
@@ -68,6 +69,7 @@ main() {
     trap cleanup_tag EXIT
   fi
 
+  goreleaser release $args
 
   args="${CARGO_PUBISH_ARGS:-}"
   if [[ "$force" == "false" ]]; then
@@ -84,6 +86,17 @@ main() {
 cleanup_tag() {
   if [[ "$tag" != "" ]]; then
     git tag -d "$tag"
+  fi
+}
+
+verify_github_token() {
+  if [[ ! -f "$HOME/.config/goreleaser/github_token" && "$GITHUB_TOKEN" = "" ]]; then
+    echo "No GitHub token could be found in environment variable GITHUB_TOKEN"
+    echo "nor at ~/.config/goreleaser/github_token."
+    echo ""
+    echo "You will need to create one on the GitHub website and make it available through"
+    echo "one of the accept way mentioned above."
+    exit 1
   fi
 }
 
