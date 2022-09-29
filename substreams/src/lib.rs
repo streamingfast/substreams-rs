@@ -82,6 +82,8 @@ pub mod pb;
 pub mod proto;
 mod state;
 pub mod store;
+pub mod scalar;
+
 pub use crate::hex::Hex;
 pub use hex_literal::hex;
 
