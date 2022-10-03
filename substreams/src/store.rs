@@ -496,29 +496,107 @@ where
     }
 }
 
+pub trait Delta {
+    fn new(d: &StoreDelta) -> Self;
+}
+
 pub struct Deltas<T> {
     pub deltas: Vec<T>,
 }
 
-impl<T: Default + prost::Message> Deltas<T> {
+impl<T: Delta> Deltas<T> {
     pub fn new(store_deltas: &pb::substreams::StoreDeltas) -> Self {
         let mut deltas = Deltas { deltas: vec![] };
 
         for d in store_deltas.deltas.iter() {
-            deltas.deltas.push(ProtoDelta::new(d))
+            deltas.deltas.push(T::new(d))
         }
 
         deltas
     }
 }
 
-pub trait Delta {
-    fn new(d: &pb::substreams::StoreDelta) -> Self;
+pub struct BigDecimalDelta {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: BigDecimal,
+    pub new_value: BigDecimal,
+}
+impl Delta for BigDecimalDelta {
+    fn new(d: &StoreDelta) -> Self {
+        let nv = BigDecimal::parse_bytes(&d.new_value[..]).unwrap();
+        let ov = BigDecimal::parse_bytes(&d.old_value[..]).unwrap();
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
+}
+pub struct BigIntDelta {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: BigInt,
+    pub new_value: BigInt,
+}
+impl Delta for BigIntDelta {
+    fn new(d: &StoreDelta) -> Self {
+        let nv = BigInt::from_signed_bytes_be(&d.new_value[..]);
+        let ov = BigInt::from_signed_bytes_be(&d.old_value[..]);
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
 }
 
-pub struct BigDecimalDelta {}
-impl Delta for BigDecimalDelta {
-    fn new(d: &StoreDelta) -> Self {}
+pub struct I64Delta {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: i64,
+    pub new_value: i64,
+}
+
+impl Delta for I64Delta {
+    fn new(d: &StoreDelta) -> I64Delta {
+        let ov_string = String::from_utf8(d.old_value.clone()).unwrap();
+        let nv_string = String::from_utf8(d.new_value.clone()).unwrap();
+
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov_string.parse::<i64>().unwrap(),
+            new_value: nv_string.parse::<i64>().unwrap(),
+        }
+    }
+}
+pub struct StringDelta {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: String,
+    pub new_value: String,
+}
+
+impl Delta for StringDelta {
+    fn new(d: &StoreDelta) -> StringDelta {
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: String::from_utf8(d.old_value.clone()).unwrap(),
+            new_value: String::from_utf8(d.new_value.clone()).unwrap(),
+        }
+    }
 }
 
 pub struct ProtoDelta<T> {
@@ -533,7 +611,7 @@ impl<T> Delta for ProtoDelta<T>
 where
     T: Default + prost::Message,
 {
-    fn new(d: &pb::substreams::StoreDelta) -> Self {
+    fn new(d: &StoreDelta) -> Self {
         let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
         let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
         Self {
