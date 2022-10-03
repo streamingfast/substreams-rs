@@ -4,7 +4,6 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
-use syn::Type;
 
 pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
     let original = item.clone();
@@ -126,10 +125,13 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     }
 }
 
-const WRITABLE_STORE: [&'static str; 16] = [
+const WRITABLE_STORE: [&'static str; 19] = [
     "RawStoreSet",
+    "BigIntStoreSet",
+    "BigDecimalStoreSet",
     "ProtoStoreSet",
-    "StoreSetIfNotExists",
+    "RawStoreSetIfNotExists",
+    "ProtoStoreSetIfNotExists",
     "StoreAddInt64",
     "StoreAddFloat64",
     "StoreAddBigFloat",

@@ -22,29 +22,57 @@ pub trait StoreSet<T> {
 /// RawStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
 #[derive(StoreWriter)]
 pub struct RawStoreSet {}
-impl RawStoreSet {
+impl StoreSet<&Vec<u8>> for RawStoreSet {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    pub fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
         state::set(ord as i64, key, value);
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    pub fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
         for key in keys {
             state::set(ord as i64, key, value);
         }
     }
 }
 
+/// BigIntStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
+///     on a `valueType` equal to `bigint`
+#[derive(StoreWriter)]
+pub struct BigIntStoreSet {}
+impl StoreSet<BigInt> for RawStoreSet {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigInt) {
+        state::set(ord as i64, key, &Vec::from(value.to_string()));
+    }
+
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: BigInt) {
+        for key in keys {
+            state::set(ord as i64, key, &Vec::from(value.to_string()));
+        }
+    }
+}
+
+#[derive(StoreWriter)]
+pub struct BigDecimalStoreSet {}
+impl StoreSet<BigDecimal> for RawStoreSet {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigDecimal) {
+        state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
+    }
+
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: BigDecimal) {
+        for key in keys {
+            state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
+        }
+    }
+}
+
+#[allow(dead_code)]
 pub struct ProtoStoreSet<T> {
     store: RawStoreSet,
     hack: Option<T>,
 }
 
-impl<T> StoreSet<T> for ProtoStoreSet<T>
-where
-    T: Default + prost::Message,
-{
+impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
         match proto::encode(&value) {
             Ok(bytes) => self.store.set(ord, key, &bytes),
@@ -62,22 +90,52 @@ where
     }
 }
 
-//todo: add a generic StoreSetIfNotExists<T> which respects the Message trait
-// for protobuf stuff
+/// StoreSetIfNotExists is a struct for which other structs
+pub trait StoreSetIfNotExists<T> {
+    /// Set a given key to a given value, if the key existed before, it will be ignored and not set.  
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+    /// Set given keys to given values, if the key existed before, it will be ignored and not set.
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T);
+}
+
 /// StoreSetIfNotExists is a struct representing a `store` module with
 /// `updatePolicy` equal to `set_if_not_exists`
 #[derive(StoreWriter)]
-pub struct StoreSetIfNotExists {}
-impl StoreSetIfNotExists {
+pub struct RawStoreSetIfNotExists {}
+impl StoreSetIfNotExists<&Vec<u8>> for RawStoreSetIfNotExists {
     /// Set a given key to a given value, if the key existed before, it will be ignored and not set.
-    pub fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
         state::set_if_not_exists(ord as i64, key, value);
     }
 
     /// Set given keys to given values, if the key existed before, it will be ignored and not set.
-    pub fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
         for key in keys {
             state::set_if_not_exists(ord as i64, key, value);
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub struct ProtoStoreSetIfNotExists<T> {
+    store: RawStoreSetIfNotExists,
+    hack: Option<T>,
+}
+
+impl<T: Default + prost::Message> StoreSetIfNotExists<T> for ProtoStoreSetIfNotExists<T> {
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
+        match proto::encode(&value) {
+            Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
+            Err(_) => panic!("failed to encode message"),
+        }
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T) {
+        for key in keys {
+            match proto::encode(&value) {
+                Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
+                Err(_) => panic!("failed to encode message"),
+            }
         }
     }
 }
@@ -425,15 +483,13 @@ impl StoreGet<Vec<u8>> for RawStoreGet {
     }
 }
 
+#[allow(dead_code)]
 pub struct ProtoStoreGet<T> {
     store: RawStoreGet,
     hack: Option<T>,
 }
 
-impl<T> ProtoStoreGet<T>
-where
-    T: Default + prost::Message,
-{
+impl<T: Default + prost::Message> ProtoStoreGet<T> {
     pub fn must_get_last<K: AsRef<str>>(&self, key: K) -> T {
         match self.get_last(key.as_ref().clone()) {
             None => {
@@ -514,6 +570,10 @@ impl<T: Delta> Deltas<T> {
 
         deltas
     }
+}
+
+pub trait DeltaDecoder<T> {
+    fn decode(d: &pb::substreams::StoreDelta) -> T;
 }
 
 pub struct BigDecimalDelta {
