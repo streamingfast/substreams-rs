@@ -7,11 +7,8 @@
 use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
 use crate::{pb, proto};
-use prost::DecodeError;
+use prost;
 use substreams_macro::StoreWriter;
-
-/// Delta is a struct that defined StoreDeltas
-pub type Deltas = Vec<pb::substreams::StoreDelta>;
 
 /// StoreSet is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<T> {
@@ -462,7 +459,7 @@ where
         match self.store.get_at(ord, key) {
             None => None,
             Some(bytes) => {
-                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
                 match value {
                     Ok(_) => Some(value.unwrap()),
                     Err(_) => None,
@@ -475,7 +472,7 @@ where
         match self.store.get_last(key) {
             None => None,
             Some(bytes) => {
-                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
                 match value {
                     Ok(_) => Some(value.unwrap()),
                     Err(_) => None,
@@ -488,12 +485,66 @@ where
         match self.store.get_first(key) {
             None => None,
             Some(bytes) => {
-                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
                 match value {
                     Ok(_) => Some(value.unwrap()),
                     Err(_) => None,
                 }
             }
         }
+    }
+}
+
+pub struct Deltas<T> {
+    pub deltas: Vec<Delta<T>>,
+}
+
+impl<T: Default + prost::Message> Deltas<T> {
+    pub fn new(store_deltas: &pb::substreams::StoreDeltas) -> Self {
+        let mut deltas = Deltas { deltas: vec![] };
+
+        for d in store_deltas.deltas.iter() {
+            deltas.deltas.push(Delta::new(d))
+        }
+
+        deltas
+    }
+}
+
+pub struct Delta<T> {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: T,
+    pub new_value: T,
+}
+impl<T: Default + prost::Message> Delta<T> {
+    pub fn new(d: &pb::substreams::StoreDelta) -> Self {
+        let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
+        let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
+        Self {
+            operation: Self::convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
+    pub fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
+        return match operation {
+            x if x == pb::substreams::store_delta::Operation::Unset as i32 => {
+                pb::substreams::store_delta::Operation::Unset
+            }
+            x if x == pb::substreams::store_delta::Operation::Create as i32 => {
+                pb::substreams::store_delta::Operation::Create
+            }
+            x if x == pb::substreams::store_delta::Operation::Update as i32 => {
+                pb::substreams::store_delta::Operation::Update
+            }
+            x if x == pb::substreams::store_delta::Operation::Delete as i32 => {
+                pb::substreams::store_delta::Operation::Delete
+            }
+            _ => panic!("unhandled operation: {}", operation),
+        };
     }
 }

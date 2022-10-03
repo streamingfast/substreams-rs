@@ -89,7 +89,10 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         args.push(quote! { #var_len: usize });
 
                         if input_obj.is_deltas {
-                            proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas; })
+                            proto_decodings.push(quote! {
+                                let raw_#var_name = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas;
+                                let #var_name: #argument_type = substreams::store::Deltas::new(raw_#var_name);
+                            })
                         } else {
                             proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
                         }
