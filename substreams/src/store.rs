@@ -4,6 +4,7 @@
 //! handlers.
 //!
 
+use crate::pb::substreams::StoreDelta;
 use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
 use crate::{pb, proto};
@@ -496,7 +497,7 @@ where
 }
 
 pub struct Deltas<T> {
-    pub deltas: Vec<Delta<T>>,
+    pub deltas: Vec<T>,
 }
 
 impl<T: Default + prost::Message> Deltas<T> {
@@ -504,47 +505,61 @@ impl<T: Default + prost::Message> Deltas<T> {
         let mut deltas = Deltas { deltas: vec![] };
 
         for d in store_deltas.deltas.iter() {
-            deltas.deltas.push(Delta::new(d))
+            deltas.deltas.push(ProtoDelta::new(d))
         }
 
         deltas
     }
 }
 
-pub struct Delta<T> {
+pub trait Delta {
+    fn new(d: &pb::substreams::StoreDelta) -> Self;
+}
+
+pub struct BigDecimalDelta {}
+impl Delta for BigDecimalDelta {
+    fn new(d: &StoreDelta) -> Self {}
+}
+
+pub struct ProtoDelta<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: T,
     pub new_value: T,
 }
-impl<T: Default + prost::Message> Delta<T> {
-    pub fn new(d: &pb::substreams::StoreDelta) -> Self {
+
+impl<T> Delta for ProtoDelta<T>
+where
+    T: Default + prost::Message,
+{
+    fn new(d: &pb::substreams::StoreDelta) -> Self {
         let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
         let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
         Self {
-            operation: Self::convert_i32_to_operation(d.operation),
+            operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
             old_value: ov,
             new_value: nv,
         }
     }
-    pub fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
-        return match operation {
-            x if x == pb::substreams::store_delta::Operation::Unset as i32 => {
-                pb::substreams::store_delta::Operation::Unset
-            }
-            x if x == pb::substreams::store_delta::Operation::Create as i32 => {
-                pb::substreams::store_delta::Operation::Create
-            }
-            x if x == pb::substreams::store_delta::Operation::Update as i32 => {
-                pb::substreams::store_delta::Operation::Update
-            }
-            x if x == pb::substreams::store_delta::Operation::Delete as i32 => {
-                pb::substreams::store_delta::Operation::Delete
-            }
-            _ => panic!("unhandled operation: {}", operation),
-        };
-    }
+}
+
+fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
+    return match operation {
+        x if x == pb::substreams::store_delta::Operation::Unset as i32 => {
+            pb::substreams::store_delta::Operation::Unset
+        }
+        x if x == pb::substreams::store_delta::Operation::Create as i32 => {
+            pb::substreams::store_delta::Operation::Create
+        }
+        x if x == pb::substreams::store_delta::Operation::Update as i32 => {
+            pb::substreams::store_delta::Operation::Update
+        }
+        x if x == pb::substreams::store_delta::Operation::Delete as i32 => {
+            pb::substreams::store_delta::Operation::Delete
+        }
+        _ => panic!("unhandled operation: {}", operation),
+    };
 }
