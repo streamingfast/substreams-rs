@@ -80,9 +80,9 @@ pub mod memory;
 /// Protobuf generated Substream models
 pub mod pb;
 pub mod proto;
+pub mod scalar;
 mod state;
 pub mod store;
-pub mod scalar;
 
 pub use crate::hex::Hex;
 pub use hex_literal::hex;

@@ -4,20 +4,27 @@
 //! handlers.
 //!
 
-use crate::pb;
+use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
-use bigdecimal::BigDecimal;
-use num_bigint::BigInt;
+use crate::{pb, proto};
+use prost::DecodeError;
 use substreams_macro::StoreWriter;
 
 /// Delta is a struct that defined StoreDeltas
 pub type Deltas = Vec<pb::substreams::StoreDelta>;
 
-/// StoreSet is a struct representing a `store` with
-/// `updatePolicy` equal to `set`
+/// StoreSet is a trait which is implemented on any type of typed StoreSet
+pub trait StoreSet<T> {
+    /// Set a given key to a given value, if the key existed before, it will be replaced.  
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+    /// Set many keys to a given values, if the key existed before, it will be replaced.
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T);
+}
+
+/// RawStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
 #[derive(StoreWriter)]
-pub struct StoreSet {}
-impl StoreSet {
+pub struct RawStoreSet {}
+impl RawStoreSet {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     pub fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
         state::set(ord as i64, key, value);
@@ -31,6 +38,34 @@ impl StoreSet {
     }
 }
 
+pub struct ProtoStoreSet<T> {
+    store: RawStoreSet,
+    hack: Option<T>,
+}
+
+impl<T> StoreSet<T> for ProtoStoreSet<T>
+where
+    T: Default + prost::Message,
+{
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
+        match proto::encode(&value) {
+            Ok(bytes) => self.store.set(ord, key, &bytes),
+            Err(_) => panic!("failed to encode message"),
+        }
+    }
+
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T) {
+        for key in keys {
+            match proto::encode(&value) {
+                Ok(bytes) => self.store.set(ord, key, &bytes),
+                Err(_) => panic!("failed to encode message"),
+            }
+        }
+    }
+}
+
+//todo: add a generic StoreSetIfNotExists<T> which respects the Message trait
+// for protobuf stuff
 /// StoreSetIfNotExists is a struct representing a `store` module with
 /// `updatePolicy` equal to `set_if_not_exists`
 #[derive(StoreWriter)]
@@ -96,13 +131,21 @@ pub struct StoreAddBigFloat {}
 impl StoreAddBigFloat {
     /// Will add the value to the already present value at the key (or default to
     /// zero if the key was not set)
-    pub fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
+    pub fn add<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigDecimal>,
+    {
         state::add_bigfloat(ord as i64, key, value);
     }
 
     /// Will add the value to the already present value of the keys (or default to
     /// zero if the key was not set)
-    pub fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
+    pub fn add_many<K, V>(&self, ord: u64, keys: &Vec<K>, value: &V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigDecimal>,
+    {
         for key in keys {
             state::add_bigfloat(ord as i64, key, value);
         }
@@ -116,13 +159,21 @@ pub struct StoreAddBigInt {}
 impl StoreAddBigInt {
     /// Will add the value to the already present value of the keys (or default to
     /// zero if the key was not set)
-    pub fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
+    pub fn add<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigInt>,
+    {
         state::add_bigint(ord as i64, key, value);
     }
 
     /// Will add the value to the already present value of the keys (or default to
     /// zero if the key was not set)
-    pub fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
+    pub fn add_many<K, V>(&self, ord: u64, keys: &Vec<K>, value: &V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigInt>,
+    {
         for key in keys {
             state::add_bigint(ord as i64, key, value);
         }
@@ -150,7 +201,11 @@ impl StoreMaxBigInt {
     /// Will set the provided key in the store only if the value received in
     /// parameter is bigger than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
+    pub fn max<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigInt>,
+    {
         state::set_max_bigint(ord as i64, key, value);
     }
 }
@@ -176,7 +231,11 @@ impl StoreMaxBigFloat {
     /// Will set the provided key in the store only if the value received in
     /// parameter is bigger than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
+    pub fn max<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigDecimal>,
+    {
         state::set_max_bigfloat(ord as i64, key, value);
     }
 }
@@ -202,7 +261,11 @@ impl StoreMinBigInt {
     /// Will set the provided key in the store only if the value received in
     /// parameter is smaller than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
+    pub fn min<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigInt>,
+    {
         state::set_min_bigint(ord as i64, key, value);
     }
 }
@@ -228,7 +291,11 @@ impl StoreMinBigFloat {
     /// Will set the provided key in the store only if the value received in
     /// parameter is smaller than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
+    pub fn min<K, V>(&self, ord: u64, key: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<BigDecimal>,
+    {
         state::set_min_bigfloat(ord as i64, key, value);
     }
 }
@@ -249,15 +316,89 @@ impl StoreAppend {
     }
 }
 
-/// StoreGet is a struct representing a read only store `store`
-pub struct StoreGet {
+pub struct BigDecimalStoreGet(RawStoreGet);
+impl StoreGet<BigDecimal> for BigDecimalStoreGet {
+    fn new(idx: u32) -> BigDecimalStoreGet {
+        BigDecimalStoreGet {
+            0: RawStoreGet { idx },
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+}
+
+pub struct BigIntStoreGet(RawStoreGet);
+impl BigIntStoreGet {
+    pub fn new(idx: u32) -> BigIntStoreGet {
+        BigIntStoreGet {
+            0: RawStoreGet { idx },
+        }
+    }
+
+    pub fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+
+    pub fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_last(self.0.idx, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+
+    pub fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_first(self.0.idx, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+}
+
+/// StoreGet is a trait which is implemented on any type of typed StoreGet
+pub trait StoreGet<T> {
+    fn new(idx: u32) -> Self;
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<T>;
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<T>;
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<T>;
+}
+
+/// RawStoreGet is a struct representing a read only store `store`
+pub struct RawStoreGet {
     idx: u32,
 }
 
-impl StoreGet {
+impl StoreGet<Vec<u8>> for RawStoreGet {
     /// Return a StoreGet object with a store index set
-    pub fn new(idx: u32) -> StoreGet {
-        StoreGet { idx }
+    fn new(idx: u32) -> RawStoreGet {
+        RawStoreGet { idx }
     }
 
     /// Allows you to read a single key from the store. The type
@@ -265,7 +406,7 @@ impl StoreGet {
     /// the output section of the manifest. The ordinal is used here
     /// to go query a key that might have changed mid-block by
     /// the store module that built it.
-    pub fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<Vec<u8>> {
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<Vec<u8>> {
         return state::get_at(self.idx, ord as i64, key);
     }
 
@@ -273,7 +414,7 @@ impl StoreGet {
     /// the store as of the beginning of the block being processed, before any changes
     /// were applied within the current block. Tt does not need to rewind any changes
     /// in the middle of the block.
-    pub fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         return state::get_last(self.idx, key);
     }
 
@@ -281,7 +422,78 @@ impl StoreGet {
     /// the store as of the beginning of the block being processed, before any changes
     /// were applied within the current block. However, it needs to unwind any keys that
     /// would have changed mid-block, so will be slightly less performant.
-    pub fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         return state::get_first(self.idx, key);
+    }
+}
+
+pub struct ProtoStoreGet<T> {
+    store: RawStoreGet,
+    hack: Option<T>,
+}
+
+impl<T> ProtoStoreGet<T>
+where
+    T: Default + prost::Message,
+{
+    pub fn must_get_last<K: AsRef<str>>(&self, key: K) -> T {
+        match self.get_last(key.as_ref().clone()) {
+            None => {
+                panic!("pool does not exist skipping pool {:?}", &key.as_ref());
+            }
+            Some(value) => value,
+        }
+    }
+}
+
+impl<T> StoreGet<T> for ProtoStoreGet<T>
+where
+    T: Default + prost::Message,
+{
+    /// Return a StoreGet object with a store index set
+    fn new(idx: u32) -> ProtoStoreGet<T> {
+        ProtoStoreGet {
+            store: RawStoreGet { idx },
+            hack: None,
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<T> {
+        match self.store.get_at(ord, key) {
+            None => None,
+            Some(bytes) => {
+                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                match value {
+                    Ok(_) => Some(value.unwrap()),
+                    Err(_) => None,
+                }
+            }
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<T> {
+        match self.store.get_last(key) {
+            None => None,
+            Some(bytes) => {
+                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                match value {
+                    Ok(_) => Some(value.unwrap()),
+                    Err(_) => None,
+                }
+            }
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<T> {
+        match self.store.get_first(key) {
+            None => None,
+            Some(bytes) => {
+                let value: Result<T, DecodeError> = proto::decode(&bytes);
+                match value {
+                    Ok(_) => Some(value.unwrap()),
+                    Err(_) => None,
+                }
+            }
+        }
     }
 }

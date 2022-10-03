@@ -1,10 +1,10 @@
-
-use proc_macro::TokenStream;
-use proc_macro2::{Span};
-use quote::{quote, ToTokens, format_ident};
-use syn::{spanned::Spanned};
+use crate::config::{FinalConfiguration, ModuleType};
 use crate::errors;
-use crate::config::{ModuleType, FinalConfiguration};
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use quote::{format_ident, quote, ToTokens};
+use syn::spanned::Spanned;
+use syn::Type;
 
 pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
     let original = item.clone();
@@ -15,21 +15,27 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     let output_result = parse_func_output(&final_config, input.sig.output.clone());
     match output_result {
         Ok(_) => {}
-        Err(e) => {
-            return token_stream_with_error(original, e)
-        }
+        Err(e) => return token_stream_with_error(original, e),
     }
     let mut has_seen_writable_store = false;
-    let mut args : Vec<proc_macro2::TokenStream> = Vec::with_capacity(input.sig.inputs.len() * 2);
-    let mut proto_decodings: Vec<proc_macro2::TokenStream> = Vec::with_capacity(input.sig.inputs.len());
-    let mut read_only_stores: Vec<proc_macro2::TokenStream> = Vec::with_capacity(input.sig.inputs.len());
+    let mut args: Vec<proc_macro2::TokenStream> = Vec::with_capacity(input.sig.inputs.len() * 2);
+    let mut proto_decodings: Vec<proc_macro2::TokenStream> =
+        Vec::with_capacity(input.sig.inputs.len());
+    let mut read_only_stores: Vec<proc_macro2::TokenStream> =
+        Vec::with_capacity(input.sig.inputs.len());
     let mut writable_store: proc_macro2::TokenStream = quote! {};
 
     for i in (&input.sig.inputs).into_iter() {
         match i {
             syn::FnArg::Receiver(_) => {
-                return token_stream_with_error(original, syn::Error::new(i.span(), format!("handler function does not support 'self' receiver")));
-            },
+                return token_stream_with_error(
+                    original,
+                    syn::Error::new(
+                        i.span(),
+                        format!("handler function does not support 'self' receiver"),
+                    ),
+                );
+            }
             syn::FnArg::Typed(pat_type) => {
                 match &*pat_type.pat {
                     syn::Pat::Ident(v) => {
@@ -38,30 +44,44 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         let argument_type = &*pat_type.ty;
                         let input_res = parse_input_type(argument_type);
                         if input_res.is_err() {
-                            return token_stream_with_error(original, syn::Error::new(pat_type.span(), format!("failed to parse input {:?}",input_res.err())));
+                            return token_stream_with_error(
+                                original,
+                                syn::Error::new(
+                                    pat_type.span(),
+                                    format!("failed to parse input {:?}", input_res.err()),
+                                ),
+                            );
                         }
                         let input_obj = input_res.unwrap();
 
                         if input_obj.is_writable_store {
                             if has_seen_writable_store {
-                                return token_stream_with_error(original, syn::Error::new(pat_type.span(), format!("handler cannot have more then one writable store as an input")));
+                                return token_stream_with_error(
+                                original,
+                                syn::Error::new(pat_type.span(), format!("handler cannot have more then one writable store as an input"))
+                            );
                             }
                             has_seen_writable_store = true;
-                            writable_store = quote! { let #var_name: #argument_type = #argument_type::new(); };
-                            continue
+                            let store_type = format_ident!("{}", input_obj.store_type);
+                            writable_store =
+                                quote! { let #var_name: #argument_type = #store_type::new(); };
+                            continue;
                         }
 
                         if input_obj.is_readable_store {
-                            let var_idx = format_ident!("{}_idx",var_name);
+                            let var_idx = format_ident!("{}_idx", var_name);
+                            let store_type = format_ident!("{}", input_obj.store_type);
                             args.push(quote! { #var_idx: u32 });
-                            read_only_stores.push(quote! { let #var_name: #argument_type = #argument_type::new(#var_idx); });
-                            continue
+                            read_only_stores.push(quote! { let #var_name: #argument_type = #store_type::new(#var_idx); });
+                            // let pools_store: ProtoStoreGet<Pool> = ProtoStoreGet:: ();
+                            continue;
                         }
 
-
-                        if final_config.module_type == ModuleType::Store && var_name.to_string().ends_with("_idx") {
+                        if final_config.module_type == ModuleType::Store
+                            && var_name.to_string().ends_with("_idx")
+                        {
                             args.push(quote! { #pat_type });
-                            continue
+                            continue;
                         }
                         let var_ptr = format_ident!("{}_ptr", var_name);
                         let var_len = format_ident!("{}_len", var_name);
@@ -73,24 +93,39 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         } else {
                             proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
                         }
-                    },
+                    }
                     _ => {
-                        return token_stream_with_error(original, syn::Error::new(pat_type.span(), format!("unknown argument type")));
+                        return token_stream_with_error(
+                            original,
+                            syn::Error::new(pat_type.span(), format!("unknown argument type")),
+                        );
                     }
                 }
-            },
+            }
         }
     }
 
-
     match final_config.module_type {
-        ModuleType::Store => build_store_handler(input, args, proto_decodings, read_only_stores, writable_store),
-        ModuleType::Map => build_map_handler(input, args, proto_decodings, read_only_stores, writable_store)
+        ModuleType::Store => build_store_handler(
+            input,
+            args,
+            proto_decodings,
+            read_only_stores,
+            writable_store,
+        ),
+        ModuleType::Map => build_map_handler(
+            input,
+            args,
+            proto_decodings,
+            read_only_stores,
+            writable_store,
+        ),
     }
 }
 
-const WRITABLE_STORE: [&'static str; 15] = [
-    "StoreSet",
+const WRITABLE_STORE: [&'static str; 16] = [
+    "RawStoreSet",
+    "ProtoStoreSet",
     "StoreSetIfNotExists",
     "StoreAddInt64",
     "StoreAddFloat64",
@@ -104,41 +139,50 @@ const WRITABLE_STORE: [&'static str; 15] = [
     "StoreMinBigInt",
     "StoreMinFloat64",
     "StoreMinBigFloat",
-    "StoreAppend"
+    "StoreAppend",
 ];
-const READABLE_STORE: [&'static str; 1] = ["StoreGet"];
+
+const READABLE_STORE: [&'static str; 4] = [
+    "BigDecimalStoreGet",
+    "BigIntStoreGet",
+    "ProtoStoreGet",
+    "RawStoreGet",
+];
 
 #[derive(Debug)]
 struct Input {
     is_writable_store: bool,
     is_readable_store: bool,
     is_deltas: bool,
-    resolved_ty: String
+    resolved_ty: String,
+    store_type: String,
 }
-
 
 fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError> {
     match ty {
         syn::Type::Path(p) => {
-            let mut input = Input{
+            let mut input = Input {
                 is_writable_store: false,
                 is_readable_store: false,
                 is_deltas: false,
-                resolved_ty: "".to_owned()
+                resolved_ty: "".to_owned(),
+                store_type: "".to_string(),
             };
             let mut last_type = "".to_owned();
             for segment in p.path.segments.iter() {
-                    last_type = segment.ident.to_string();
+                last_type = segment.ident.to_string();
             }
             input.resolved_ty = last_type.clone();
             for t in WRITABLE_STORE {
                 if last_type == t.to_owned() {
                     input.is_writable_store = true;
+                    input.store_type = last_type.clone();
                 }
             }
             for t in READABLE_STORE {
                 if last_type == t.to_owned() {
                     input.is_readable_store = true;
+                    input.store_type = last_type.clone();
                 }
             }
             if last_type == "Deltas".to_owned() {
@@ -147,14 +191,16 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             }
             Ok(input)
         }
-        _ => {
-            Err(errors::SubstreamMacroError::UnknownInputType("unable to parse input type".to_owned()))
-        }
+        _ => Err(errors::SubstreamMacroError::UnknownInputType(
+            "unable to parse input type".to_owned(),
+        )),
     }
 }
 
-
-fn parse_func_output(final_config: &FinalConfiguration, output: syn::ReturnType) -> Result<(), syn::Error> {
+fn parse_func_output(
+    final_config: &FinalConfiguration,
+    output: syn::ReturnType,
+) -> Result<(), syn::Error> {
     match final_config.module_type {
         ModuleType::Map => {
             if output == syn::ReturnType::Default {
@@ -167,9 +213,12 @@ fn parse_func_output(final_config: &FinalConfiguration, output: syn::ReturnType)
             for i in output.into_token_stream().into_iter() {
                 if index == expected.len() {
                     if valid {
-                        return Ok(())
+                        return Ok(());
                     } else {
-                        return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<>"));
+                        return Err(syn::Error::new(
+                            Span::call_site(),
+                            "Module of type Map should return a Result<>",
+                        ));
                     }
                 }
                 if i.to_string() != expected[index] {
@@ -177,18 +226,27 @@ fn parse_func_output(final_config: &FinalConfiguration, output: syn::ReturnType)
                 }
                 index += 1;
             }
-            return Ok(())
-        },
+            return Ok(());
+        }
         ModuleType::Store => {
             if output != syn::ReturnType::Default {
-                return Err(syn::Error::new(Span::call_site(), "Module of type Store should not have a return statement"));
+                return Err(syn::Error::new(
+                    Span::call_site(),
+                    "Module of type Store should not have a return statement",
+                ));
             }
-            return Ok(())
+            return Ok(());
         }
     }
 }
 
-fn build_map_handler(input: syn::ItemFn, collected_args: Vec<proc_macro2::TokenStream>, decodings: Vec<proc_macro2::TokenStream>, read_only_stores: Vec<proc_macro2::TokenStream>, writable_store: proc_macro2::TokenStream) -> TokenStream {
+fn build_map_handler(
+    input: syn::ItemFn,
+    collected_args: Vec<proc_macro2::TokenStream>,
+    decodings: Vec<proc_macro2::TokenStream>,
+    read_only_stores: Vec<proc_macro2::TokenStream>,
+    writable_store: proc_macro2::TokenStream,
+) -> TokenStream {
     let body = &input.block;
     let header = quote! {
         #[no_mangle]
@@ -218,7 +276,13 @@ fn build_map_handler(input: syn::ItemFn, collected_args: Vec<proc_macro2::TokenS
     result.into()
 }
 
-fn build_store_handler(input: syn::ItemFn, collected_args: Vec<proc_macro2::TokenStream>, decodings: Vec<proc_macro2::TokenStream>, read_only_stores: Vec<proc_macro2::TokenStream>, writable_store: proc_macro2::TokenStream) -> TokenStream {
+fn build_store_handler(
+    input: syn::ItemFn,
+    collected_args: Vec<proc_macro2::TokenStream>,
+    decodings: Vec<proc_macro2::TokenStream>,
+    read_only_stores: Vec<proc_macro2::TokenStream>,
+    writable_store: proc_macro2::TokenStream,
+) -> TokenStream {
     let body = &input.block;
     let header = quote! {
         #[no_mangle]
@@ -236,7 +300,6 @@ fn build_store_handler(input: syn::ItemFn, collected_args: Vec<proc_macro2::Toke
     };
     result.into()
 }
-
 
 fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenStream {
     tokens.extend(TokenStream::from(error.into_compile_error()));
