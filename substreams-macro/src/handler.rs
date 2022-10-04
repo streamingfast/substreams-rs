@@ -72,7 +72,6 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                             let store_type = format_ident!("{}", input_obj.store_type);
                             args.push(quote! { #var_idx: u32 });
                             read_only_stores.push(quote! { let #var_name: #argument_type = #store_type::new(#var_idx); });
-                            // let pools_store: ProtoStoreGet<Pool> = ProtoStoreGet:: ();
                             continue;
                         }
 
@@ -88,9 +87,10 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         args.push(quote! { #var_len: usize });
 
                         if input_obj.is_deltas {
+                            let raw = format_ident!("raw_{}", var_name);
                             proto_decodings.push(quote! {
-                                let raw_#var_name = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas;
-                                let #var_name: #argument_type = substreams::store::Deltas::new(raw_#var_name);
+                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas;
+                                let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
                         } else {
                             proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
