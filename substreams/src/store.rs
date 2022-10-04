@@ -13,16 +13,22 @@ use substreams_macro::StoreWriter;
 
 /// StoreSet is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<T> {
+    /// Initializes a new StoreSet
+    fn new() -> Self;
     /// Set a given key to a given value, if the key existed before, it will be replaced.  
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T);
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T);
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T);
 }
 
 /// RawStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
 #[derive(StoreWriter)]
 pub struct RawStoreSet {}
-impl StoreSet<&Vec<u8>> for RawStoreSet {
+impl StoreSet<Vec<u8>> for RawStoreSet {
+    fn new() -> Self {
+        RawStoreSet {}
+    }
+
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
         state::set(ord as i64, key, value);
@@ -40,12 +46,16 @@ impl StoreSet<&Vec<u8>> for RawStoreSet {
 ///     on a `valueType` equal to `bigint`
 #[derive(StoreWriter)]
 pub struct BigIntStoreSet {}
-impl StoreSet<BigInt> for RawStoreSet {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigInt) {
+impl StoreSet<BigInt> for BigIntStoreSet {
+    fn new() -> Self {
+        BigIntStoreSet {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
         state::set(ord as i64, key, &Vec::from(value.to_string()));
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: BigInt) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
         for key in keys {
             state::set(ord as i64, key, &Vec::from(value.to_string()));
         }
@@ -54,12 +64,16 @@ impl StoreSet<BigInt> for RawStoreSet {
 
 #[derive(StoreWriter)]
 pub struct BigDecimalStoreSet {}
-impl StoreSet<BigDecimal> for RawStoreSet {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigDecimal) {
+impl StoreSet<BigDecimal> for BigDecimalStoreSet {
+    fn new() -> Self {
+        BigDecimalStoreSet {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
         state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: BigDecimal) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
         for key in keys {
             state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
         }
@@ -73,16 +87,23 @@ pub struct ProtoStoreSet<T> {
 }
 
 impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
-        match proto::encode(&value) {
+    fn new() -> Self {
+        ProtoStoreSet {
+            store: RawStoreSet {},
+            hack: None,
+        }
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T) {
+        match proto::encode(value) {
             Ok(bytes) => self.store.set(ord, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T) {
         for key in keys {
-            match proto::encode(&value) {
+            match proto::encode(value) {
                 Ok(bytes) => self.store.set(ord, key, &bytes),
                 Err(_) => panic!("failed to encode message"),
             }
@@ -92,6 +113,8 @@ impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
 
 /// StoreSetIfNotExists is a struct for which other structs
 pub trait StoreSetIfNotExists<T> {
+    /// Initializes a new StoreSetIfNotExists
+    fn new() -> Self;
     /// Set a given key to a given value, if the key existed before, it will be ignored and not set.  
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
     /// Set given keys to given values, if the key existed before, it will be ignored and not set.
@@ -103,6 +126,10 @@ pub trait StoreSetIfNotExists<T> {
 #[derive(StoreWriter)]
 pub struct RawStoreSetIfNotExists {}
 impl StoreSetIfNotExists<&Vec<u8>> for RawStoreSetIfNotExists {
+    fn new() -> Self {
+        RawStoreSetIfNotExists {}
+    }
+
     /// Set a given key to a given value, if the key existed before, it will be ignored and not set.
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
         state::set_if_not_exists(ord as i64, key, value);
@@ -123,6 +150,13 @@ pub struct ProtoStoreSetIfNotExists<T> {
 }
 
 impl<T: Default + prost::Message> StoreSetIfNotExists<T> for ProtoStoreSetIfNotExists<T> {
+    fn new() -> Self {
+        ProtoStoreSetIfNotExists {
+            store: RawStoreSetIfNotExists {},
+            hack: None,
+        }
+    }
+
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
         match proto::encode(&value) {
             Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
@@ -561,10 +595,10 @@ pub struct Deltas<T> {
 }
 
 impl<T: Delta> Deltas<T> {
-    pub fn new(store_deltas: &pb::substreams::StoreDeltas) -> Self {
+    pub fn new(store_deltas: Vec<StoreDelta>) -> Self {
         let mut deltas = Deltas { deltas: vec![] };
 
-        for d in store_deltas.deltas.iter() {
+        for d in store_deltas.iter() {
             deltas.deltas.push(T::new(d))
         }
 
@@ -585,17 +619,16 @@ pub struct BigDecimalDelta {
 }
 impl Delta for BigDecimalDelta {
     fn new(d: &StoreDelta) -> Self {
-        let nv = BigDecimal::parse_bytes(&d.new_value[..]).unwrap();
-        let ov = BigDecimal::parse_bytes(&d.old_value[..]).unwrap();
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
+            old_value: BigDecimal::from_store_bytes(d.old_value.clone()),
+            new_value: BigDecimal::from_store_bytes(d.new_value.clone()),
         }
     }
 }
+
 pub struct BigIntDelta {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -603,16 +636,15 @@ pub struct BigIntDelta {
     pub old_value: BigInt,
     pub new_value: BigInt,
 }
+
 impl Delta for BigIntDelta {
     fn new(d: &StoreDelta) -> Self {
-        let nv = BigInt::from_signed_bytes_be(&d.new_value[..]);
-        let ov = BigInt::from_signed_bytes_be(&d.old_value[..]);
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
+            old_value: BigInt::from_store_bytes(d.old_value.clone()),
+            new_value: BigInt::from_store_bytes(d.new_value.clone()),
         }
     }
 }
