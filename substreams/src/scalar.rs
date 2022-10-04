@@ -415,6 +415,14 @@ impl From<Vec<u8>> for BigInt {
     }
 }
 
+impl TryFrom<String> for BigInt {
+    type Error = ParseBigIntError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        BigInt::from_str(value.as_str())
+    }
+}
+
 impl TryFrom<&String> for BigInt {
     type Error = ParseBigIntError;
 
