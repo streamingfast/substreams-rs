@@ -9,11 +9,11 @@ use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
 use crate::{pb, proto};
 use prost;
+use std::marker::PhantomData;
 use substreams_macro::StoreWriter;
 
 /// StoreSet is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<T> {
-    /// Initializes a new StoreSet
     fn new() -> Self;
     /// Set a given key to a given value, if the key existed before, it will be replaced.  
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T);
@@ -26,7 +26,7 @@ pub trait StoreSet<T> {
 pub struct RawStoreSet {}
 impl StoreSet<Vec<u8>> for RawStoreSet {
     fn new() -> Self {
-        RawStoreSet {}
+        Self {}
     }
 
     /// Set a given key to a given value, if the key existed before, it will be replaced.
@@ -48,7 +48,7 @@ impl StoreSet<Vec<u8>> for RawStoreSet {
 pub struct BigIntStoreSet {}
 impl StoreSet<BigInt> for BigIntStoreSet {
     fn new() -> Self {
-        BigIntStoreSet {}
+        Self {}
     }
 
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
@@ -66,9 +66,8 @@ impl StoreSet<BigInt> for BigIntStoreSet {
 pub struct BigDecimalStoreSet {}
 impl StoreSet<BigDecimal> for BigDecimalStoreSet {
     fn new() -> Self {
-        BigDecimalStoreSet {}
+        Self {}
     }
-
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
         state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
     }
@@ -81,22 +80,22 @@ impl StoreSet<BigDecimal> for BigDecimalStoreSet {
 }
 
 #[allow(dead_code)]
-pub struct ProtoStoreSet<T> {
-    store: RawStoreSet,
-    hack: Option<T>,
+pub struct ProtoStoreSet<T: Default + prost::Message> {
+    resource_type: PhantomData<T>,
 }
 
 impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
     fn new() -> Self {
-        ProtoStoreSet {
-            store: RawStoreSet {},
-            hack: None,
+        Self {
+            //Adding a PhantomData<T> field to your type tells the compiler that your type acts as though it stores a value of type T, even though it doesn't really. This information is used when computing certain safety properties.
+            // For a more in-depth explanation of how to use PhantomData<T>
+            resource_type: PhantomData,
         }
     }
 
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T) {
         match proto::encode(value) {
-            Ok(bytes) => self.store.set(ord, key, &bytes),
+            Ok(bytes) => state::set(ord as i64, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
@@ -104,7 +103,7 @@ impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T) {
         for key in keys {
             match proto::encode(value) {
-                Ok(bytes) => self.store.set(ord, key, &bytes),
+                Ok(bytes) => state::set(ord as i64, key, &bytes),
                 Err(_) => panic!("failed to encode message"),
             }
         }
