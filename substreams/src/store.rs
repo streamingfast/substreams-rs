@@ -81,7 +81,7 @@ impl StoreSet<BigDecimal> for BigDecimalStoreSet {
 
 #[allow(dead_code)]
 pub struct ProtoStoreSet<T: Default + prost::Message> {
-    gasper: PhantomData<T>,
+    casper: PhantomData<T>,
 }
 
 impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
@@ -89,7 +89,7 @@ impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
         Self {
             //Adding a PhantomData<T> field to your type tells the compiler that your type acts as though it stores a value of type T, even though it doesn't really. This information is used when computing certain safety properties.
             // For a more in-depth explanation of how to use PhantomData<T>
-            gasper: PhantomData,
+            casper: PhantomData,
         }
     }
 

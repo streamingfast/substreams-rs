@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero};
 
-use num_bigint::{ParseBigIntError, Sign};
+use num_bigint::{BigUint, ParseBigIntError, Sign};
 use pad::PadStr;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Display, Formatter};
@@ -175,6 +175,12 @@ impl From<u64> for BigDecimal {
 impl From<BigInt> for BigDecimal {
     fn from(n: BigInt) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n.0))
+    }
+}
+
+impl From<BigUint> for BigDecimal {
+    fn from(val: BigUint) -> Self {
+        BigInt(num_bigint::BigInt::from(val)).into()
     }
 }
 
