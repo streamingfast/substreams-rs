@@ -24,6 +24,7 @@
 /// ```rust
 /// # mod eth { pub type Block = (); }
 /// # mod proto {
+/// #  use std::todo;
 /// #  #[derive(Debug)]
 /// #  pub struct Custom(u8);
 /// #    impl prost::Message for Custom {
@@ -58,10 +59,17 @@ pub use substreams_macro::map;
 ///
 /// ```rust
 /// use substreams::{log, store};
-/// # mod proto { pub type Custom = (); }
+/// use substreams::store::{ProtoStoreGet, StoreAddInt64, StoreGet};
+/// # mod proto {
+/// #   pub type Custom = ();
+/// #   #[derive(Clone, PartialEq, ::prost::Message)]
+/// #   pub struct Pairs {}
+/// #   #[derive(Clone, PartialEq, ::prost::Message)]
+/// #   pub struct Tokens {}
+/// # }
 ///
 /// #[substreams::handlers::store]
-/// fn build_nft_state(data: proto::Custom, s: store::StoreAddInt64, pairs: store::StoreGet, tokens: store::StoreGet) {
+/// fn build_nft_state(data: proto::Custom, s: StoreAddInt64, pairs: ProtoStoreGet<proto::Pairs>, tokens: ProtoStoreGet<proto::Tokens>) {
 ///     unimplemented!("do something");
 /// }
 /// ```
@@ -70,14 +78,21 @@ pub use substreams_macro::map;
 ///
 /// ```rust
 /// use substreams::{log, store};
-/// # mod proto { pub type Custom = (); }
+/// use substreams::store::ProtoStoreGet;
+/// # mod proto {
+/// #   pub type Custom = ();
+/// #   #[derive(Clone, PartialEq, ::prost::Message)]
+/// #   pub struct Pairs {}
+/// #   #[derive(Clone, PartialEq, ::prost::Message)]
+/// #   pub struct Tokens {}
+/// # }
 ///
 /// #[no_mangle]
 /// pub extern "C" fn build_nft_state(data_ptr: *mut u8, data_len: usize, pairs_idx: u32, tokens_idx: u32) {
 ///    substreams::register_panic_hook();
 ///    let data: proto::Custom = substreams::proto::decode_ptr(data_ptr, data_len).unwrap();
-///    let pairs: store::StoreGet = store::StoreGet::new(pairs_idx);
-///    let tokens: store::StoreGet = store::StoreGet::new(tokens_idx);
+///    let pairs: ProtoStoreGet<proto::Pairs> = store::StoreGet::new(pairs_idx);
+///    let tokens: ProtoStoreGet<proto::Tokens> = store::StoreGet::new(tokens_idx);
 ///    let s: store::StoreAddInt64 = store::StoreAddInt64::new();
 ///    {
 ///        unimplemented!("do something");
