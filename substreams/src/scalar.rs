@@ -1,17 +1,16 @@
-use num_bigint;
-use thiserror::Error;
-
-use bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero};
-
-use num_bigint::{BigUint, ParseBigIntError, Sign};
-use pad::PadStr;
-use std::convert::{TryFrom, TryInto};
-use std::fmt::{self, Display, Formatter};
-use std::ops::{Add, Div, Mul, Neg, Sub};
-use std::str;
-use std::str::FromStr;
-
-pub use num_bigint::Sign as BigIntSign;
+use {
+    std:: {
+        convert::{TryFrom, TryInto},
+        fmt::{self, Display, Formatter},
+        ops::{Add, Div, Mul, Neg, Sub},
+        str,
+        str::FromStr,
+    },
+    thiserror::Error,
+    bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
+    num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
+    pad::PadStr
+};
 
 // ---------- BigDecimal ---------- //
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -317,7 +316,7 @@ impl BigInt {
         BigInt(num_bigint::BigInt::from_signed_bytes_be(bytes))
     }
 
-    pub fn from_bytes_le(sign: Sign, bytes: &[u8]) -> Self {
+    pub fn from_bytes_le(sign: BigIntSign, bytes: &[u8]) -> Self {
         BigInt(num_bigint::BigInt::from_bytes_le(sign, bytes))
     }
 

@@ -1,6 +1,10 @@
-use crate::externs;
-use crate::memory;
-use crate::scalar::{BigDecimal, BigInt};
+use {
+    crate::{
+        externs,
+        memory,
+        scalar::{BigDecimal, BigInt},
+    },
+};
 
 pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>> {
     let key = key.as_ref();

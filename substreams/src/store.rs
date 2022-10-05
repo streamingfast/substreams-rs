@@ -4,13 +4,17 @@
 //! handlers.
 //!
 
-use crate::pb::substreams::StoreDelta;
-use crate::scalar::{BigDecimal, BigInt};
-use crate::state;
-use crate::{pb, proto};
-use prost;
-use std::marker::PhantomData;
-use substreams_macro::StoreWriter;
+use {
+    crate::{
+        pb::substreams::StoreDelta,
+        scalar::{BigDecimal, BigInt},
+        state,
+        {pb, proto},
+    },
+    prost,
+    std::marker::PhantomData,
+    substreams_macro::StoreWriter
+};
 
 /// StoreSet is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<T> {

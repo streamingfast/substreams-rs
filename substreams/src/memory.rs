@@ -1,6 +1,11 @@
 extern crate wee_alloc;
-use std::convert::TryInto;
-use std::slice;
+
+use {
+    std::{
+        convert::TryInto,
+        slice
+    }
+};
 
 /// Set the global allocator to the WebAssembly optimized one.
 // #[global_allocator]
