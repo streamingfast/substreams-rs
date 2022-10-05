@@ -4,6 +4,7 @@
 //! handlers.
 //!
 
+use std::marker::PhantomData;
 use crate::pb::substreams::StoreDelta;
 use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
@@ -389,19 +390,38 @@ impl StoreMinBigFloat {
     }
 }
 
+
+pub trait Appender<T> {
+    fn new() -> Self;
+    fn append<K: AsRef<str>>(&self, ord: u64, key: K, item: T);
+    fn append_all<K: AsRef<str>>(&self, ord: u64, key: K, items: Vec<T>);
+}
+
+
+
 /// StoreAppend is a struct representing a `store` with
 /// `updatePolicy` equal to `append`
-#[derive(StoreWriter)]
-pub struct StoreAppend {}
-impl StoreAppend {
-    /// Concatenates a given value at the end of the key's current value
-    pub fn append<K: AsRef<str>>(&self, ord: u64, key: K, value: &String) {
-        state::append(ord as i64, key, &value.as_bytes().to_vec());
+pub struct StoreAppend<T> {
+    casper: PhantomData<T>,
+}
+
+impl<T> Appender<T> for StoreAppend<T>  where T: Into<String> {
+    fn new() -> Self {
+        StoreAppend{
+            casper: PhantomData
+        }
     }
 
     /// Concatenates a given value at the end of the key's current value
-    pub fn append_bytes<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
-        state::append(ord as i64, key, value);
+    fn append<K: AsRef<str>>(&self, ord: u64, key: K, item: T) {
+        let item: String = item.into();
+        state::append(ord as i64, &key, &format!("{};", &item).as_bytes().to_vec());
+    }
+
+    fn append_all<K: AsRef<str>>(&self, ord: u64, key: K, items: Vec<T>) {
+        for item in items {
+            self.append(ord, &key, item);
+        }
     }
 }
 
@@ -616,6 +636,7 @@ pub struct BigDecimalDelta {
     pub old_value: BigDecimal,
     pub new_value: BigDecimal,
 }
+
 impl Delta for BigDecimalDelta {
     fn new(d: &StoreDelta) -> Self {
         Self {
@@ -670,6 +691,7 @@ impl Delta for I64Delta {
         }
     }
 }
+
 pub struct StringDelta {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -696,6 +718,44 @@ pub struct ProtoDelta<T> {
     pub key: String,
     pub old_value: T,
     pub new_value: T,
+}
+
+pub struct ArrayDelta<T> {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: Vec<T>,
+    pub new_value: Vec<T>,
+}
+
+impl<T> Delta for ArrayDelta<T> where T: Into<String> + From<String> {
+    fn new(d: &StoreDelta) -> Self {
+        let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
+        let mut old_values : Vec<T>  = old_chunks
+            .split(";")
+            .map(|v| v.to_string())
+            .map(|v| v.into())
+            .collect();
+
+        let new_string = String::from_utf8(d.new_value.clone()).unwrap();
+        let mut new_values : Vec<T> = new_string
+            .split(";")
+            .map(|v| v.to_string())
+            .map(|v| v.into())
+            .collect();
+
+        // remove last element which is a blank one, since there is always a ;
+        old_values.pop();
+        new_values.pop();
+
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: old_values,
+            new_value: new_values,
+        }
+    }
 }
 
 impl<T> Delta for ProtoDelta<T>
