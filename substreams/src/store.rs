@@ -149,14 +149,14 @@ impl StoreSetIfNotExists<&Vec<u8>> for RawStoreSetIfNotExists {
 #[allow(dead_code)]
 pub struct ProtoStoreSetIfNotExists<T> {
     store: RawStoreSetIfNotExists,
-    hack: Option<T>,
+    casper: PhantomData<T>,
 }
 
 impl<T: Default + prost::Message> StoreSetIfNotExists<T> for ProtoStoreSetIfNotExists<T> {
     fn new() -> Self {
         ProtoStoreSetIfNotExists {
             store: RawStoreSetIfNotExists {},
-            hack: None,
+            casper: PhantomData,
         }
     }
 
@@ -542,7 +542,7 @@ impl StoreGet<Vec<u8>> for RawStoreGet {
 #[allow(dead_code)]
 pub struct ProtoStoreGet<T> {
     store: RawStoreGet,
-    hack: Option<T>,
+    casper: PhantomData<T>,
 }
 
 impl<T: Default + prost::Message> ProtoStoreGet<T> {
@@ -564,7 +564,7 @@ where
     fn new(idx: u32) -> ProtoStoreGet<T> {
         ProtoStoreGet {
             store: RawStoreGet { idx },
-            hack: None,
+            casper: PhantomData,
         }
     }
 
