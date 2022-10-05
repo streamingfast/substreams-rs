@@ -11,7 +11,7 @@
 - Ensure that Keybase is running and you are logged in
 - Ensure that `cargo login` has been done in your terminal
 - Commit everything with message `Preparing release of ${version}`.
-- `./bin/release.sh -f v${version}`
+- `./release/release.sh -f v${version}`
 - If everything goes well, `crates.io` will be update and Git should be in a synced state (the release script does a `git push` of the branch and the tag).
 - Go to https://github.com/streamingfast/substreams-rs/releases/tag/v${version} and update the release notes, use content of section `## [v${version}]` in [docs/release-notes/change-log.md](../docs/release-notes/change-log.md), edit GitHub release and paste content before commits listing, keep both:
 
