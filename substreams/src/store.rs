@@ -4,7 +4,6 @@
 //! handlers.
 //!
 
-use std::marker::PhantomData;
 use crate::pb::substreams::StoreDelta;
 use crate::scalar::{BigDecimal, BigInt};
 use crate::state;
@@ -390,14 +389,11 @@ impl StoreMinBigFloat {
     }
 }
 
-
 pub trait Appender<T> {
     fn new() -> Self;
     fn append<K: AsRef<str>>(&self, ord: u64, key: K, item: T);
     fn append_all<K: AsRef<str>>(&self, ord: u64, key: K, items: Vec<T>);
 }
-
-
 
 /// StoreAppend is a struct representing a `store` with
 /// `updatePolicy` equal to `append`
@@ -405,10 +401,13 @@ pub struct StoreAppend<T> {
     casper: PhantomData<T>,
 }
 
-impl<T> Appender<T> for StoreAppend<T>  where T: Into<String> {
+impl<T> Appender<T> for StoreAppend<T>
+where
+    T: Into<String>,
+{
     fn new() -> Self {
-        StoreAppend{
-            casper: PhantomData
+        StoreAppend {
+            casper: PhantomData,
         }
     }
 
@@ -728,17 +727,20 @@ pub struct ArrayDelta<T> {
     pub new_value: Vec<T>,
 }
 
-impl<T> Delta for ArrayDelta<T> where T: Into<String> + From<String> {
+impl<T> Delta for ArrayDelta<T>
+where
+    T: Into<String> + From<String>,
+{
     fn new(d: &StoreDelta) -> Self {
         let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
-        let mut old_values : Vec<T>  = old_chunks
+        let mut old_values: Vec<T> = old_chunks
             .split(";")
             .map(|v| v.to_string())
             .map(|v| v.into())
             .collect();
 
         let new_string = String::from_utf8(d.new_value.clone()).unwrap();
-        let mut new_values : Vec<T> = new_string
+        let mut new_values: Vec<T> = new_string
             .split(";")
             .map(|v| v.to_string())
             .map(|v| v.into())
