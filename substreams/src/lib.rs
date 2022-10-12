@@ -62,7 +62,7 @@
 //! #   use substreams::pb::substreams::StoreDelta;
 //! #   use substreams::store::Delta;
 //! #   pub type Custom = ();
-//! #   
+//! #
 //! #   #[derive(Clone, PartialEq, ::prost::Message)]
 //! #   pub struct Pairs {}
 //! #   #[derive(Clone, PartialEq, ::prost::Message)]
@@ -89,6 +89,7 @@
 extern crate core;
 
 pub mod errors;
+#[cfg(target_arch = "wasm32")]
 mod externs;
 pub mod handlers;
 mod hex;
@@ -99,12 +100,15 @@ pub mod memory;
 pub mod pb;
 pub mod proto;
 pub mod scalar;
+#[cfg(target_arch = "wasm32")]
 mod state;
+#[cfg(target_arch = "wasm32")]
 pub mod store;
 
 pub use crate::hex::Hex;
 pub use hex_literal::hex;
 
+#[cfg(target_arch = "wasm32")]
 pub fn output<M: prost::Message>(msg: M) {
     // Need to return the buffer and forget about it issue occurred when trying to write large data
     // wasm was "dropping" the data before we could write to it, which causes us to have garbage
@@ -116,11 +120,13 @@ pub fn output<M: prost::Message>(msg: M) {
 }
 
 ///
+#[cfg(target_arch = "wasm32")]
 pub fn output_raw(data: Vec<u8>) {
     unsafe { externs::output(data.as_ptr(), data.len() as u32) }
 }
 
 /// Registers a Substreams custom panic hook. The panic hook is invoked when then handler panics
+#[cfg(target_arch = "wasm32")]
 pub fn register_panic_hook() {
     use std::sync::Once;
     static SET_HOOK: Once = Once::new();
@@ -129,6 +135,7 @@ pub fn register_panic_hook() {
     });
 }
 
+#[cfg(target_arch = "wasm32")]
 fn hook(info: &std::panic::PanicInfo<'_>) {
     let error_msg = info
         .payload()
