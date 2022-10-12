@@ -4,16 +4,17 @@
 //! handlers.
 //!
 
+use std::i64;
+use std::str::FromStr;
 use {
     crate::{
         pb::substreams::StoreDelta,
         scalar::{BigDecimal, BigInt},
-        state,
-        {pb, proto},
+        state, {pb, proto},
     },
     prost,
     std::marker::PhantomData,
-    substreams_macro::StoreWriter
+    substreams_macro::StoreWriter,
 };
 
 /// StoreSet is a trait which is implemented on any type of typed StoreSet
@@ -27,8 +28,8 @@ pub trait StoreSet<T> {
 
 /// RawStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
 #[derive(StoreWriter)]
-pub struct RawStoreSet {}
-impl StoreSet<Vec<u8>> for RawStoreSet {
+pub struct StoreSetRaw {}
+impl StoreSet<Vec<u8>> for StoreSetRaw {
     fn new() -> Self {
         Self {}
     }
@@ -46,11 +47,32 @@ impl StoreSet<Vec<u8>> for RawStoreSet {
     }
 }
 
+/// I64StoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
+#[derive(StoreWriter)]
+pub struct StoreSetI64 {}
+impl StoreSet<i64> for StoreSetI64 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    /// Set a given key to a given value, if the key existed before, it will be replaced.
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &i64) {
+        state::set(ord as i64, key, Vec::from(value.to_string()));
+    }
+
+    /// Set many keys to a given values, if the key existed before, it will be replaced.
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &i64) {
+        for key in keys {
+            state::set(ord as i64, key, Vec::from(value.to_string()));
+        }
+    }
+}
+
 /// BigIntStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
 ///     on a `valueType` equal to `bigint`
 #[derive(StoreWriter)]
-pub struct BigIntStoreSet {}
-impl StoreSet<BigInt> for BigIntStoreSet {
+pub struct StoreSetBigInt {}
+impl StoreSet<BigInt> for StoreSetBigInt {
     fn new() -> Self {
         Self {}
     }
@@ -67,8 +89,8 @@ impl StoreSet<BigInt> for BigIntStoreSet {
 }
 
 #[derive(StoreWriter)]
-pub struct BigDecimalStoreSet {}
-impl StoreSet<BigDecimal> for BigDecimalStoreSet {
+pub struct StoreSetBigDecimal {}
+impl StoreSet<BigDecimal> for StoreSetBigDecimal {
     fn new() -> Self {
         Self {}
     }
@@ -84,11 +106,11 @@ impl StoreSet<BigDecimal> for BigDecimalStoreSet {
 }
 
 #[allow(dead_code)]
-pub struct ProtoStoreSet<T: Default + prost::Message> {
+pub struct StoreSetProto<T: Default + prost::Message> {
     casper: PhantomData<T>,
 }
 
-impl<T: Default + prost::Message> StoreSet<T> for ProtoStoreSet<T> {
+impl<T: Default + prost::Message> StoreSet<T> for StoreSetProto<T> {
     fn new() -> Self {
         Self {
             //Adding a PhantomData<T> field to your type tells the compiler that your type acts as though it stores a value of type T, even though it doesn't really. This information is used when computing certain safety properties.
@@ -127,10 +149,10 @@ pub trait StoreSetIfNotExists<T> {
 /// StoreSetIfNotExists is a struct representing a `store` module with
 /// `updatePolicy` equal to `set_if_not_exists`
 #[derive(StoreWriter)]
-pub struct RawStoreSetIfNotExists {}
-impl StoreSetIfNotExists<&Vec<u8>> for RawStoreSetIfNotExists {
+pub struct StoreSetIfNotExistsRaw {}
+impl StoreSetIfNotExists<&Vec<u8>> for StoreSetIfNotExistsRaw {
     fn new() -> Self {
-        RawStoreSetIfNotExists {}
+        StoreSetIfNotExistsRaw {}
     }
 
     /// Set a given key to a given value, if the key existed before, it will be ignored and not set.
@@ -147,15 +169,15 @@ impl StoreSetIfNotExists<&Vec<u8>> for RawStoreSetIfNotExists {
 }
 
 #[allow(dead_code)]
-pub struct ProtoStoreSetIfNotExists<T> {
-    store: RawStoreSetIfNotExists,
+pub struct StoreSetIfNotExistsProto<T> {
+    store: StoreSetIfNotExistsRaw,
     casper: PhantomData<T>,
 }
 
-impl<T: Default + prost::Message> StoreSetIfNotExists<T> for ProtoStoreSetIfNotExists<T> {
+impl<T: Default + prost::Message> StoreSetIfNotExists<T> for StoreSetIfNotExistsProto<T> {
     fn new() -> Self {
-        ProtoStoreSetIfNotExists {
-            store: RawStoreSetIfNotExists {},
+        StoreSetIfNotExistsProto {
+            store: StoreSetIfNotExistsRaw {},
             casper: PhantomData,
         }
     }
@@ -393,6 +415,7 @@ impl StoreMinBigFloat {
     }
 }
 
+// -------------------- Appender -------------------- //
 pub trait Appender<T> {
     fn new() -> Self;
     fn append<K: AsRef<str>>(&self, ord: u64, key: K, item: T);
@@ -428,72 +451,7 @@ where
     }
 }
 
-pub struct BigDecimalStoreGet(RawStoreGet);
-impl StoreGet<BigDecimal> for BigDecimalStoreGet {
-    fn new(idx: u32) -> BigDecimalStoreGet {
-        BigDecimalStoreGet {
-            0: RawStoreGet { idx },
-        }
-    }
-
-    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-
-    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-
-    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-}
-
-pub struct BigIntStoreGet(RawStoreGet);
-impl BigIntStoreGet {
-    pub fn new(idx: u32) -> BigIntStoreGet {
-        BigIntStoreGet {
-            0: RawStoreGet { idx },
-        }
-    }
-
-    pub fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
-    }
-
-    pub fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_last(self.0.idx, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
-    }
-
-    pub fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_first(self.0.idx, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
-    }
-}
-
+// -------------------- StoreGet -------------------- //
 /// StoreGet is a trait which is implemented on any type of typed StoreGet
 pub trait StoreGet<T> {
     fn new(idx: u32) -> Self;
@@ -503,14 +461,14 @@ pub trait StoreGet<T> {
 }
 
 /// RawStoreGet is a struct representing a read only store `store`
-pub struct RawStoreGet {
+pub struct StoreGetRaw {
     idx: u32,
 }
 
-impl StoreGet<Vec<u8>> for RawStoreGet {
+impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// Return a StoreGet object with a store index set
-    fn new(idx: u32) -> RawStoreGet {
-        RawStoreGet { idx }
+    fn new(idx: u32) -> StoreGetRaw {
+        StoreGetRaw { idx }
     }
 
     /// Allows you to read a single key from the store. The type
@@ -539,13 +497,112 @@ impl StoreGet<Vec<u8>> for RawStoreGet {
     }
 }
 
+pub struct StoreGetI64(StoreGetRaw);
+impl StoreGet<i64> for StoreGetI64 {
+    fn new(idx: u32) -> Self {
+        Self {
+            0: StoreGetRaw { idx },
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<i64> {
+        let value = state::get_at(self.0.idx, ord as i64, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_i64(bytes),
+        };
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<i64> {
+        let value = state::get_last(self.0.idx, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_i64(bytes),
+        };
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<i64> {
+        let value = state::get_first(self.0.idx, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_i64(bytes),
+        };
+    }
+}
+
+pub struct StoreGetBigDecimal(StoreGetRaw);
+impl StoreGet<BigDecimal> for StoreGetBigDecimal {
+    fn new(idx: u32) -> StoreGetBigDecimal {
+        StoreGetBigDecimal {
+            0: StoreGetRaw { idx },
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
+        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
+        }
+    }
+}
+
+pub struct StoreGetBigInt(StoreGetRaw);
+impl StoreGetBigInt {
+    pub fn new(idx: u32) -> Self {
+        Self {
+            0: StoreGetRaw { idx },
+        }
+    }
+
+    pub fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+
+    pub fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_last(self.0.idx, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+
+    pub fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+        let store_bytes: Option<Vec<u8>> = state::get_first(self.0.idx, key);
+        match store_bytes {
+            None => None,
+            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
+        }
+    }
+}
+
 #[allow(dead_code)]
-pub struct ProtoStoreGet<T> {
-    store: RawStoreGet,
+pub struct StoreGetProto<T> {
+    store: StoreGetRaw,
     casper: PhantomData<T>,
 }
 
-impl<T: Default + prost::Message> ProtoStoreGet<T> {
+impl<T: Default + prost::Message> StoreGetProto<T> {
     pub fn must_get_last<K: AsRef<str>>(&self, key: K) -> T {
         match self.get_last(key.as_ref().clone()) {
             None => {
@@ -556,14 +613,14 @@ impl<T: Default + prost::Message> ProtoStoreGet<T> {
     }
 }
 
-impl<T> StoreGet<T> for ProtoStoreGet<T>
+impl<T> StoreGet<T> for StoreGetProto<T>
 where
     T: Default + prost::Message,
 {
     /// Return a StoreGet object with a store index set
-    fn new(idx: u32) -> ProtoStoreGet<T> {
-        ProtoStoreGet {
-            store: RawStoreGet { idx },
+    fn new(idx: u32) -> StoreGetProto<T> {
+        StoreGetProto {
+            store: StoreGetRaw { idx },
             casper: PhantomData,
         }
     }
@@ -632,7 +689,7 @@ pub trait DeltaDecoder<T> {
     fn decode(d: &pb::substreams::StoreDelta) -> T;
 }
 
-pub struct BigDecimalDelta {
+pub struct DeltaBigDecimal {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -640,7 +697,7 @@ pub struct BigDecimalDelta {
     pub new_value: BigDecimal,
 }
 
-impl Delta for BigDecimalDelta {
+impl Delta for DeltaBigDecimal {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
@@ -652,7 +709,7 @@ impl Delta for BigDecimalDelta {
     }
 }
 
-pub struct BigIntDelta {
+pub struct DeltaBigInt {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -660,7 +717,7 @@ pub struct BigIntDelta {
     pub new_value: BigInt,
 }
 
-impl Delta for BigIntDelta {
+impl Delta for DeltaBigInt {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
@@ -672,7 +729,7 @@ impl Delta for BigIntDelta {
     }
 }
 
-pub struct I64Delta {
+pub struct DeltaI64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -680,8 +737,8 @@ pub struct I64Delta {
     pub new_value: i64,
 }
 
-impl Delta for I64Delta {
-    fn new(d: &StoreDelta) -> I64Delta {
+impl Delta for DeltaI64 {
+    fn new(d: &StoreDelta) -> DeltaI64 {
         let ov_string = String::from_utf8(d.old_value.clone()).unwrap();
         let nv_string = String::from_utf8(d.new_value.clone()).unwrap();
 
@@ -695,7 +752,7 @@ impl Delta for I64Delta {
     }
 }
 
-pub struct StringDelta {
+pub struct DeltaString {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -703,8 +760,8 @@ pub struct StringDelta {
     pub new_value: String,
 }
 
-impl Delta for StringDelta {
-    fn new(d: &StoreDelta) -> StringDelta {
+impl Delta for DeltaString {
+    fn new(d: &StoreDelta) -> DeltaString {
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
@@ -715,7 +772,7 @@ impl Delta for StringDelta {
     }
 }
 
-pub struct ProtoDelta<T> {
+pub struct DeltaProto<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -723,7 +780,24 @@ pub struct ProtoDelta<T> {
     pub new_value: T,
 }
 
-pub struct ArrayDelta<T> {
+impl<T> Delta for DeltaProto<T>
+where
+    T: Default + prost::Message,
+{
+    fn new(d: &StoreDelta) -> Self {
+        let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
+        let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
+}
+
+pub struct DeltaArray<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -731,7 +805,7 @@ pub struct ArrayDelta<T> {
     pub new_value: Vec<T>,
 }
 
-impl<T> Delta for ArrayDelta<T>
+impl<T> Delta for DeltaArray<T>
 where
     T: Into<String> + From<String>,
 {
@@ -764,23 +838,6 @@ where
     }
 }
 
-impl<T> Delta for ProtoDelta<T>
-where
-    T: Default + prost::Message,
-{
-    fn new(d: &StoreDelta) -> Self {
-        let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
-        let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
-        Self {
-            operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
-            key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
-        }
-    }
-}
-
 fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
     return match operation {
         x if x == pb::substreams::store_delta::Operation::Unset as i32 => {
@@ -797,4 +854,39 @@ fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Oper
         }
         _ => panic!("unhandled operation: {}", operation),
     };
+}
+
+fn decode_bytes_to_i64(bytes: Vec<u8>) -> Option<i64> {
+    let int_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
+    return match i64::from_str(int_as_string.as_str()) {
+        Ok(value) => Some(value),
+        Err(_) => panic!(
+            "value {} is not a value representation of an i64",
+            int_as_string
+        ),
+    };
+}
+
+#[cfg(test)]
+mod test {
+    use crate::store::decode_bytes_to_i64;
+
+    #[test]
+    fn valid_int64_1_decode_bytes_to_i64() {
+        let bytes: Vec<u8> = Vec::from("1".to_string());
+        assert_eq!(1, decode_bytes_to_i64(bytes).unwrap())
+    }
+
+    #[test]
+    fn valid_int64_max_value_decode_bytes_to_i64() {
+        let bytes: Vec<u8> = Vec::from("9223372036854775807".to_string());
+        assert_eq!(9223372036854775807, decode_bytes_to_i64(bytes).unwrap())
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_bytes_decode_bytes_to_i64() {
+        let bytes: Vec<u8> = Vec::from("invalid".to_string());
+        decode_bytes_to_i64(bytes);
+    }
 }

@@ -15,7 +15,7 @@
 //!
 //!```no_run
 //! use substreams::{errors::Error, store};
-//! use substreams::store::{BigDecimalDelta, ProtoStoreGet, StoreGet};
+//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreGet};
 //! # mod eth { pub type Block = (); }
 //! # mod pb { // holding all codegen'd protobuf structs
 //! #   pub type Custom = ();
@@ -31,19 +31,19 @@
 //!
 //! /// Map handler which takes a source, and a store in get mode as inputs
 //! #[substreams::handlers::map]
-//! fn map_ownerships(blk: eth::Block, my_things: ProtoStoreGet<pb::Pairs>) -> Result<pb::Custom, Error> {
+//! fn map_ownerships(blk: eth::Block, my_things: StoreGetProto<pb::Pairs>) -> Result<pb::Custom, Error> {
 //!     unimplemented!("do something");
 //! }
 //!
 //! /// Map handler which takes a source, another map, and a store in get mode as inputs
 //! #[substreams::handlers::map]
-//! fn map_mints(blk: eth::Block, mints: pb::Custom, myt_things: ProtoStoreGet<pb::Pairs>) -> Result<pb::Custom, Error> {
+//! fn map_mints(blk: eth::Block, mints: pb::Custom, myt_things: StoreGetProto<pb::Pairs>) -> Result<pb::Custom, Error> {
 //!     unimplemented!("do something");
 //! }
 //!
 //! /// Map handler which takes a source, another map, and a store in delta mode as inputs
 //! #[substreams::handlers::map]
-//! fn map_db(blk: eth::Block, mints: pb::Custom, store_deltas: store::Deltas<BigDecimalDelta>) -> Result<pb::Custom, Error> {
+//! fn map_db(blk: eth::Block, mints: pb::Custom, store_deltas: store::Deltas<DeltaBigDecimal>) -> Result<pb::Custom, Error> {
 //!     unimplemented!("do something");
 //! }
 //! ```
@@ -56,7 +56,7 @@
 //!
 //! ```no_run
 //! use substreams::store;
-//! use substreams::store::{BigDecimalDelta, ProtoStoreGet, StoreAddInt64, StoreGet};
+//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreAddInt64, StoreGet};
 //! # mod pb {
 //! #   use std::todo;
 //! #   use substreams::pb::substreams::StoreDelta;
@@ -77,12 +77,12 @@
 //! }
 //!
 //! #[substreams::handlers::store]
-//! fn store_ownerships(objects: pb::Custom, store: ProtoStoreGet<pb::Pairs>, output: StoreAddInt64) {
+//! fn store_ownerships(objects: pb::Custom, store: StoreGetProto<pb::Pairs>, output: StoreAddInt64) {
 //!     // to something
 //! }
 //!
 //! #[substreams::handlers::store]
-//! fn store_mints(objects: pb::Custom, store: ProtoStoreGet<pb::Pairs>, another_store: ProtoStoreGet<pb::Tokens>, store_deltas: store::Deltas<BigDecimalDelta>, output: StoreAddInt64) {
+//! fn store_mints(objects: pb::Custom, store: StoreGetProto<pb::Pairs>, another_store: StoreGetProto<pb::Tokens>, store_deltas: store::Deltas<DeltaBigDecimal>, output: StoreAddInt64) {
 //!     // to something
 //! }
 //!```

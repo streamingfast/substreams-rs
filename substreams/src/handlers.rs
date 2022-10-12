@@ -59,7 +59,7 @@ pub use substreams_macro::map;
 ///
 /// ```rust
 /// use substreams::{log, store};
-/// use substreams::store::{ProtoStoreGet, StoreAddInt64, StoreGet};
+/// use substreams::store::{StoreGetProto, StoreAddInt64, StoreGet};
 /// # mod proto {
 /// #   pub type Custom = ();
 /// #   #[derive(Clone, PartialEq, ::prost::Message)]
@@ -69,7 +69,7 @@ pub use substreams_macro::map;
 /// # }
 ///
 /// #[substreams::handlers::store]
-/// fn build_nft_state(data: proto::Custom, s: StoreAddInt64, pairs: ProtoStoreGet<proto::Pairs>, tokens: ProtoStoreGet<proto::Tokens>) {
+/// fn build_nft_state(data: proto::Custom, s: StoreAddInt64, pairs: StoreGetProto<proto::Pairs>, tokens: StoreGetProto<proto::Tokens>) {
 ///     unimplemented!("do something");
 /// }
 /// ```
@@ -78,7 +78,7 @@ pub use substreams_macro::map;
 ///
 /// ```rust
 /// use substreams::{log, store};
-/// use substreams::store::ProtoStoreGet;
+/// use substreams::store::StoreGetProto;
 /// # mod proto {
 /// #   pub type Custom = ();
 /// #   #[derive(Clone, PartialEq, ::prost::Message)]
@@ -91,8 +91,8 @@ pub use substreams_macro::map;
 /// pub extern "C" fn build_nft_state(data_ptr: *mut u8, data_len: usize, pairs_idx: u32, tokens_idx: u32) {
 ///    substreams::register_panic_hook();
 ///    let data: proto::Custom = substreams::proto::decode_ptr(data_ptr, data_len).unwrap();
-///    let pairs: ProtoStoreGet<proto::Pairs> = store::StoreGet::new(pairs_idx);
-///    let tokens: ProtoStoreGet<proto::Tokens> = store::StoreGet::new(tokens_idx);
+///    let pairs: StoreGetProto<proto::Pairs> = store::StoreGet::new(pairs_idx);
+///    let tokens: StoreGetProto<proto::Tokens> = store::StoreGet::new(tokens_idx);
 ///    let s: store::StoreAddInt64 = store::StoreAddInt64::new();
 ///    {
 ///        unimplemented!("do something");

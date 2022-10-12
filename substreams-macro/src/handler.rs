@@ -125,13 +125,14 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     }
 }
 
-const WRITABLE_STORE: [&'static str; 19] = [
-    "RawStoreSet",
-    "BigIntStoreSet",
-    "BigDecimalStoreSet",
-    "ProtoStoreSet",
-    "RawStoreSetIfNotExists",
-    "ProtoStoreSetIfNotExists",
+const WRITABLE_STORE: [&'static str; 20] = [
+    "StoreSetRaw",
+    "StoreSetBigInt",
+    "StoreSetBigDecimal",
+    "StoreSetProto",
+    "StoreSetI64",
+    "StoreSetIfNotExistsRaw",
+    "StoreSetIfNotExistsProto",
     "StoreAddInt64",
     "StoreAddFloat64",
     "StoreAddBigFloat",
@@ -147,11 +148,12 @@ const WRITABLE_STORE: [&'static str; 19] = [
     "StoreAppend",
 ];
 
-const READABLE_STORE: [&'static str; 4] = [
-    "BigDecimalStoreGet",
-    "BigIntStoreGet",
-    "ProtoStoreGet",
-    "RawStoreGet",
+const READABLE_STORE: [&'static str; 5] = [
+    "StoreGetI64",
+    "StoreGetBigDecimal",
+    "StoreGetBigInt",
+    "StoreGetProto",
+    "StoreGetRaw",
 ];
 
 #[derive(Debug)]
