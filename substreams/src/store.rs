@@ -884,15 +884,62 @@ pub struct DeltaI64 {
 
 impl Delta for DeltaI64 {
     fn new(d: &StoreDelta) -> DeltaI64 {
-        let ov_string = String::from_utf8(d.old_value.clone()).unwrap();
-        let nv_string = String::from_utf8(d.new_value.clone()).unwrap();
+        let mut ov = i64::default();
+        if d.old_value.len() != 0 {
+            ov = match decode_bytes_to_i64(d.old_value.clone()) {
+                None => 0,
+                Some(value) => value,
+            };
+        }
+        let mut nv = i64::default();
+        if d.old_value.len() != 0 {
+            nv = match decode_bytes_to_i64(d.new_value.clone()) {
+                None => 0,
+                Some(value) => value,
+            };
+        }
 
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
-            old_value: ov_string.parse::<i64>().unwrap(),
-            new_value: nv_string.parse::<i64>().unwrap(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
+}
+
+pub struct DeltaFloat64 {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: f64,
+    pub new_value: f64,
+}
+
+impl Delta for DeltaFloat64 {
+    fn new(d: &StoreDelta) -> DeltaFloat64 {
+        let mut ov = f64::default();
+        if d.old_value.len() != 0 {
+            ov = match decode_bytes_to_f64(d.old_value.clone()) {
+                None => 0 as f64,
+                Some(value) => value,
+            };
+        }
+        let mut nv = f64::default();
+        if d.old_value.len() != 0 {
+            nv = match decode_bytes_to_f64(d.new_value.clone()) {
+                None => 0 as f64,
+                Some(value) => value,
+            };
+        }
+
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
         }
     }
 }
