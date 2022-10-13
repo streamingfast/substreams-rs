@@ -1,9 +1,6 @@
-use {
-    crate::{
-        externs,
-        memory,
-        scalar::{BigDecimal, BigInt},
-    },
+use crate::{
+    externs, memory,
+    scalar::{BigFloat, BigInt},
 };
 
 pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>> {
@@ -69,7 +66,7 @@ pub fn get_first<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
 pub fn set<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<[u8]>
+    V: AsRef<[u8]>,
 {
     let key = key.as_ref();
     let value = value.as_ref();
@@ -87,7 +84,7 @@ where
 pub fn set_if_not_exists<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<[u8]>
+    V: AsRef<[u8]>,
 {
     let key = key.as_ref();
     let value = value.as_ref();
@@ -106,7 +103,7 @@ where
 pub fn append<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<[u8]>
+    V: AsRef<[u8]>,
 {
     let key = key.as_ref();
     let value = value.as_ref();
@@ -131,7 +128,7 @@ pub fn delete_prefix<K: AsRef<str>>(ord: i64, prefix: K) {
 pub fn add_bigint<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigInt>
+    V: AsRef<BigInt>,
 {
     let key = key.as_ref();
     let big_int = value.as_ref();
@@ -162,7 +159,7 @@ pub fn add_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
 pub fn add_bigfloat<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigDecimal>,
+    V: AsRef<BigFloat>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();
@@ -188,7 +185,7 @@ pub fn set_min_int64<K: AsRef<str>>(ord: i64, key: K, value: i64) {
 pub fn set_min_bigint<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigInt>
+    V: AsRef<BigInt>,
 {
     let key = key.as_ref();
     let big_int = value.as_ref();
@@ -214,7 +211,7 @@ pub fn set_min_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
 pub fn set_min_bigfloat<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigDecimal>,
+    V: AsRef<BigFloat>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();
@@ -240,7 +237,7 @@ pub fn set_max_int64<K: AsRef<str>>(ord: i64, key: K, value: i64) {
 pub fn set_max_bigint<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigInt>
+    V: AsRef<BigInt>,
 {
     let key = key.as_ref();
     let big_int = value.as_ref();
@@ -266,7 +263,7 @@ pub fn set_max_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
 pub fn set_max_bigfloat<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigDecimal>
+    V: AsRef<BigFloat>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();

@@ -15,7 +15,7 @@
 //!
 //!```no_run
 //! use substreams::{errors::Error, store};
-//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreGet};
+//! use substreams::store::{DeltaBigFloat, StoreGetProto, StoreGet};
 //! # mod eth { pub type Block = (); }
 //! # mod pb { // holding all codegen'd protobuf structs
 //! #   pub type Custom = ();
@@ -43,7 +43,7 @@
 //!
 //! /// Map handler which takes a source, another map, and a store in delta mode as inputs
 //! #[substreams::handlers::map]
-//! fn map_db(blk: eth::Block, mints: pb::Custom, store_deltas: store::Deltas<DeltaBigDecimal>) -> Result<pb::Custom, Error> {
+//! fn map_db(blk: eth::Block, mints: pb::Custom, store_deltas: store::Deltas<DeltaBigFloat>) -> Result<pb::Custom, Error> {
 //!     unimplemented!("do something");
 //! }
 //! ```
@@ -56,7 +56,7 @@
 //!
 //! ```no_run
 //! use substreams::store;
-//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreAddInt64, StoreGet};
+//! use substreams::store::{DeltaBigFloat, StoreGetProto, StoreAddInt64, StoreGet};
 //! # mod pb {
 //! #   use std::todo;
 //! #   use substreams::pb::substreams::StoreDelta;
@@ -82,7 +82,7 @@
 //! }
 //!
 //! #[substreams::handlers::store]
-//! fn store_mints(objects: pb::Custom, store: StoreGetProto<pb::Pairs>, another_store: StoreGetProto<pb::Tokens>, store_deltas: store::Deltas<DeltaBigDecimal>, output: StoreAddInt64) {
+//! fn store_mints(objects: pb::Custom, store: StoreGetProto<pb::Pairs>, another_store: StoreGetProto<pb::Tokens>, store_deltas: store::Deltas<DeltaBigFloat>, output: StoreAddInt64) {
 //!     // to something
 //! }
 //!```
