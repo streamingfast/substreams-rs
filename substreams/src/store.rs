@@ -4,50 +4,77 @@
 //! handlers.
 //!
 
-use std::i64;
-use std::str::FromStr;
 use {
     crate::{
         pb::substreams::StoreDelta,
-        scalar::{BigDecimal, BigInt},
+        scalar::{BigFloat, BigInt},
         state, {pb, proto},
     },
     prost,
+    std::i64,
     std::marker::PhantomData,
+    std::str::FromStr,
     substreams_macro::StoreWriter,
 };
 
-/// StoreSet is a trait which is implemented on any type of typed StoreSet
-pub trait StoreSet<T> {
+// todo: add delete prefix on all the stores
+
+/// `StoreSet` is a trait which is implemented on any type of typed StoreSet
+pub trait StoreSet<V> {
     fn new() -> Self;
     /// Set a given key to a given value, if the key existed before, it will be replaced.  
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T);
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T);
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
 }
 
-/// RawStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
+/// `StoreSetRaw` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
+///     `StoreSetRaw` implements AsRef<[u8]> to give the client the flexibility
+///     to either use the API with &Vec[...] or Vec[...].
 #[derive(StoreWriter)]
 pub struct StoreSetRaw {}
-impl StoreSet<Vec<u8>> for StoreSetRaw {
+impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
     fn new() -> Self {
         Self {}
     }
 
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
-        state::set(ord as i64, key, value);
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set(ord as i64, key, value.as_ref());
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::set(ord as i64, key, value);
+            state::set(ord as i64, key, value.as_ref());
         }
     }
 }
 
-/// I64StoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
+/// `StoreSetString` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
+///     `StoreSetString` implements AsRef<str> to give the client the flexibility
+///     to either use the API with &String or String.
+#[derive(StoreWriter)]
+pub struct StoreSetString {}
+impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set(ord as i64, key, value.as_ref().as_bytes());
+    }
+
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        for key in keys {
+            state::set(ord as i64, key, value.as_ref().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetI64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
+///     `StoreSetI64` implements AsRef<i64> to give the client the flexibility
+///     to either use the API with &i64 or i64.
 #[derive(StoreWriter)]
 pub struct StoreSetI64 {}
 impl StoreSet<i64> for StoreSetI64 {
@@ -56,77 +83,109 @@ impl StoreSet<i64> for StoreSetI64 {
     }
 
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &i64) {
-        state::set(ord as i64, key, Vec::from(value.to_string()));
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+        state::set(ord as i64, key, value.to_string().as_bytes());
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &i64) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: i64) {
         for key in keys {
-            state::set(ord as i64, key, Vec::from(value.to_string()));
+            state::set(ord as i64, key, value.to_string().as_bytes());
         }
     }
 }
 
-/// BigIntStoreSet is a struct representing a `store` with `updatePolicy` equal to `set`
-///     on a `valueType` equal to `bigint`
+/// `StoreSetFloat64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
+///     `StoreSetFloat64` implements AsRef<i64> to give the client the flexibility
+///     to either use the API with &f64 or f64.
+#[derive(StoreWriter)]
+pub struct StoreSetFloat64 {}
+impl StoreSet<f64> for StoreSetFloat64 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    /// Set a given key to a given value, if the key existed before, it will be replaced.
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+        state::set(ord as i64, key, value.to_string().as_bytes());
+    }
+
+    /// Set many keys to a given values, if the key existed before, it will be replaced.
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: f64) {
+        for key in keys {
+            state::set(ord as i64, key, value.to_string().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetBigFloat` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bigfloat`
+///     `StoreSetBigFloat` implements AsRef<BigFloat> to give the client the flexibility
+///     to either use the API with &BigFloat or BigFloat.
+#[derive(StoreWriter)]
+pub struct StoreSetBigFloat {}
+impl<V: AsRef<BigFloat>> StoreSet<V> for StoreSetBigFloat {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set(ord as i64, key, value.as_ref().to_string().as_bytes())
+    }
+
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        for key in keys {
+            state::set(ord as i64, key, value.as_ref().to_string().as_bytes())
+        }
+    }
+}
+
+/// `StoreSetBigInt` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bigint`
+///     `StoreSetBigInt` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigInt or BigInt.
 #[derive(StoreWriter)]
 pub struct StoreSetBigInt {}
-impl StoreSet<BigInt> for StoreSetBigInt {
+impl<V: AsRef<BigInt>> StoreSet<V> for StoreSetBigInt {
     fn new() -> Self {
         Self {}
     }
 
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
-        state::set(ord as i64, key, &Vec::from(value.to_string()));
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::set(ord as i64, key, &Vec::from(value.to_string()));
+            state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
         }
     }
 }
 
-#[derive(StoreWriter)]
-pub struct StoreSetBigDecimal {}
-impl StoreSet<BigDecimal> for StoreSetBigDecimal {
-    fn new() -> Self {
-        Self {}
-    }
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
-        state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
-    }
-
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
-        for key in keys {
-            state::set(ord as i64, key, &Vec::from(value.to_string().as_str()))
-        }
-    }
-}
-
+/// `StoreSetProto` is a struct representing a `store` with `updatePolicy` equal to `set` and a `valueType` equal to `proto:{your_proto_type}`
 #[allow(dead_code)]
-pub struct StoreSetProto<T: Default + prost::Message> {
-    casper: PhantomData<T>,
+pub struct StoreSetProto<V: Default + prost::Message> {
+    casper: PhantomData<V>,
 }
 
-impl<T: Default + prost::Message> StoreSet<T> for StoreSetProto<T> {
-    fn new() -> Self {
+impl<V: Default + prost::Message> StoreSetProto<V> {
+    pub fn new() -> Self {
         Self {
-            //Adding a PhantomData<T> field to your type tells the compiler that your type acts as though it stores a value of type T, even though it doesn't really. This information is used when computing certain safety properties.
-            // For a more in-depth explanation of how to use PhantomData<T>
+            // Adding a PhantomData<T> field to your type tells the compiler that
+            // your type acts as though it stores a value of type T, even though
+            // it doesn't really. This information is used when computing certain
+            // safety properties. For a more in-depth explanation of how to use
+            // PhantomData<T>
             casper: PhantomData,
         }
     }
 
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &T) {
+    pub fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
         match proto::encode(value) {
             Ok(bytes) => state::set(ord as i64, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T) {
+    pub fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         for key in keys {
             match proto::encode(value) {
                 Ok(bytes) => state::set(ord as i64, key, &bytes),
@@ -136,62 +195,163 @@ impl<T: Default + prost::Message> StoreSet<T> for StoreSetProto<T> {
     }
 }
 
-/// StoreSetIfNotExists is a struct for which other structs
-pub trait StoreSetIfNotExists<T> {
+/// `StoreSetIfNotExists` is a struct for which other structs
+pub trait StoreSetIfNotExists<V> {
     /// Initializes a new StoreSetIfNotExists
     fn new() -> Self;
     /// Set a given key to a given value, if the key existed before, it will be ignored and not set.  
-    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
     /// Set given keys to given values, if the key existed before, it will be ignored and not set.
-    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T);
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
 }
 
-/// StoreSetIfNotExists is a struct representing a `store` module with
-/// `updatePolicy` equal to `set_if_not_exists`
+/// `StoreSetIfNotExistsRaw` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `String`
+///     `StoreSetIfNotExistsRaw` implements AsRef<[u8]> to give the client the flexibility
+///     to either use the API with &Vec[...] or Vec[...].
 #[derive(StoreWriter)]
 pub struct StoreSetIfNotExistsRaw {}
-impl StoreSetIfNotExists<&Vec<u8>> for StoreSetIfNotExistsRaw {
+impl<V: AsRef<[u8]>> StoreSetIfNotExists<V> for StoreSetIfNotExistsRaw {
     fn new() -> Self {
-        StoreSetIfNotExistsRaw {}
+        Self {}
     }
 
-    /// Set a given key to a given value, if the key existed before, it will be ignored and not set.
-    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &Vec<u8>) {
-        state::set_if_not_exists(ord as i64, key, value);
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_if_not_exists(ord as i64, key, value.as_ref());
     }
 
-    /// Set given keys to given values, if the key existed before, it will be ignored and not set.
-    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &Vec<u8>) {
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value);
+            state::set_if_not_exists(ord as i64, key, value.as_ref());
         }
     }
 }
 
+/// `StoreSetIfNotExistsString` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `String`
+///     `StoreSetIfNotExistsString` implements AsRef<str> to give the client the flexibility
+///     to either use the API with &String or String.
+#[derive(StoreWriter)]
+pub struct StoreSetIfNotExistsString {}
+impl<V: AsRef<str>> StoreSetIfNotExists<V> for StoreSetIfNotExistsString {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_if_not_exists(ord as i64, key, value.as_ref().as_bytes());
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        for key in keys {
+            state::set_if_not_exists(ord as i64, key, value.as_ref().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetIfNotExistsBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `bigfloat`
+///     `StoreSetIfNotExistsBigFloat` implements AsRef<BigFloat> to give the client the flexibility
+///     to either use the API with &BigFloat or BigFloat.
+#[derive(StoreWriter)]
+pub struct StoreSetIfNotExistsBigFloat {}
+impl<V: AsRef<BigFloat>> StoreSetIfNotExists<V> for StoreSetIfNotExistsBigFloat {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_if_not_exists(ord as i64, key, value.as_ref().to_string().as_bytes());
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        for key in keys {
+            state::set_if_not_exists(ord as i64, key, value.as_ref().to_string().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetIfNotExistsBigInt` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `bigint`
+///     `StoreSetIfNotExistsBigInt` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigInt or BigInt.
+#[derive(StoreWriter)]
+pub struct StoreSetIfNotExistsBigInt {}
+impl<V: AsRef<BigInt>> StoreSetIfNotExists<V> for StoreSetIfNotExistsBigInt {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_if_not_exists(ord as i64, key, value.as_ref().to_string().as_bytes());
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        for key in keys {
+            state::set_if_not_exists(ord as i64, key, value.as_ref().to_string().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetIfNotExistsI64` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `int64`
+#[derive(StoreWriter)]
+pub struct StoreSetIfNotExistsI64 {}
+impl StoreSetIfNotExists<i64> for StoreSetIfNotExistsI64 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+        state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: i64) {
+        for key in keys {
+            state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetIfNotExistsFloat64` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `float64`
+#[derive(StoreWriter)]
+pub struct StoreSetIfNotExistsFloat64 {}
+impl StoreSetIfNotExists<f64> for StoreSetIfNotExistsFloat64 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+        state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+    }
+
+    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: f64) {
+        for key in keys {
+            state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+        }
+    }
+}
+
+/// `StoreSetIfNotExistsProto` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `proto:{your_proto_type}`
 #[allow(dead_code)]
 pub struct StoreSetIfNotExistsProto<T> {
     store: StoreSetIfNotExistsRaw,
     casper: PhantomData<T>,
 }
 
-impl<T: Default + prost::Message> StoreSetIfNotExists<T> for StoreSetIfNotExistsProto<T> {
-    fn new() -> Self {
+impl<T: Default + prost::Message> StoreSetIfNotExistsProto<T> {
+    pub fn new() -> Self {
         StoreSetIfNotExistsProto {
             store: StoreSetIfNotExistsRaw {},
             casper: PhantomData,
         }
     }
 
-    fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: T) {
-        match proto::encode(&value) {
+    pub fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &T) {
+        match proto::encode(value) {
             Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
 
-    fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: T) {
+    pub fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &T) {
         for key in keys {
-            match proto::encode(&value) {
+            match proto::encode(value) {
                 Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
                 Err(_) => panic!("failed to encode message"),
             }
@@ -199,219 +359,171 @@ impl<T: Default + prost::Message> StoreSetIfNotExists<T> for StoreSetIfNotExists
     }
 }
 
-/// StoreAddInt64 is a struct representing a `store` module with
-/// `updatePolicy` equal to `add` and a valueType of `int64`
+/// `StoreAdd` is a trait which is implemented on any type of types StoreAdd
+pub trait StoreAdd<V> {
+    /// Add a given value to an already existing key
+    fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+    /// Add multiple values to an already existing key
+    fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
+}
+
+/// `StoreAddInt64` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `int64`
 #[derive(StoreWriter)]
 pub struct StoreAddInt64 {}
-impl StoreAddInt64 {
-    /// Will add the value to the already present value at the key (or default to
-    /// zero if the key was not set)
-    pub fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+impl StoreAdd<i64> for StoreAddInt64 {
+    fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
         state::add_int64(ord as i64, key, value);
     }
 
-    /// Will add the value to the already present value of the keys (or default to
-    /// zero if the key was not set)
-    pub fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: i64) {
+    fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: i64) {
         for key in keys {
             state::add_int64(ord as i64, key, value);
         }
     }
 }
 
-/// StoreAddFloat64 is a struct representing a `store` module with
-/// `updatePolicy` equal to `add` and a valueType of `float64`
+/// `StoreAddFloat64` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `float64`
 #[derive(StoreWriter)]
 pub struct StoreAddFloat64 {}
-impl StoreAddFloat64 {
-    /// Will add the value to the already present value at the key (or default to
-    /// zero if the key was not set)
-    pub fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+impl StoreAdd<f64> for StoreAddFloat64 {
+    fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
         state::add_float64(ord as i64, key, value);
     }
 
-    /// Will add the value to the already present value of the keys (or default to
-    /// zero if the key was not set)
-    pub fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: f64) {
+    fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: f64) {
         for key in keys {
             state::add_float64(ord as i64, key, value);
         }
     }
 }
 
-/// StoreAddBigFloat is a struct representing a `store` module with
-/// `updatePolicy` equal to `add` and a valueType of `bigfloat`
+/// `StoreAddBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigfloat`
+///     `StoreAddBigFloat` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigFloat or BigFloat.
 #[derive(StoreWriter)]
 pub struct StoreAddBigFloat {}
-impl StoreAddBigFloat {
-    /// Will add the value to the already present value at the key (or default to
-    /// zero if the key was not set)
-    pub fn add<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigDecimal>,
-    {
-        state::add_bigfloat(ord as i64, key, value);
+impl<V: AsRef<BigFloat>> StoreAdd<V> for StoreAddBigFloat {
+    fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::add_bigfloat(ord as i64, key, value.as_ref());
     }
 
-    /// Will add the value to the already present value of the keys (or default to
-    /// zero if the key was not set)
-    pub fn add_many<K, V>(&self, ord: u64, keys: &Vec<K>, value: &V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigDecimal>,
-    {
+    fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::add_bigfloat(ord as i64, key, value);
+            state::add_bigfloat(ord as i64, key, value.as_ref());
         }
     }
 }
 
-/// StoreAddBigInt is a struct representing a `store` module with
-/// `updatePolicy` equal to `add` and a valueType of `bigint`
+/// `StoreAddBigInt` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigint`
+///     `StoreAddBigInt` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigInt or BigInt.
 #[derive(StoreWriter)]
 pub struct StoreAddBigInt {}
-impl StoreAddBigInt {
-    /// Will add the value to the already present value of the keys (or default to
-    /// zero if the key was not set)
-    pub fn add<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigInt>,
-    {
-        state::add_bigint(ord as i64, key, value);
+impl<V: AsRef<BigInt>> StoreAdd<V> for StoreAddBigInt {
+    fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::add_bigint(ord as i64, key, value.as_ref());
     }
 
-    /// Will add the value to the already present value of the keys (or default to
-    /// zero if the key was not set)
-    pub fn add_many<K, V>(&self, ord: u64, keys: &Vec<K>, value: &V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigInt>,
-    {
+    fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::add_bigint(ord as i64, key, value);
+            state::add_bigint(ord as i64, key, value.as_ref());
         }
     }
 }
 
-/// StoreMaxInt64 is a struct representing a `store` module with
-/// `updatePolicy` equal to `max` and a valueType of `int64`
-#[derive(StoreWriter)]
-pub struct StoreMaxInt64 {}
-impl StoreMaxInt64 {
+/// `StoreMax` is a trait which is implemented on any type of typed StoreMax
+pub trait StoreMax<V> {
     /// max will set the provided key in the store only if the value received in
     /// parameter is bigger than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+    fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+}
+
+/// `StoreMaxInt64` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `int64`
+#[derive(StoreWriter)]
+pub struct StoreMaxInt64 {}
+impl StoreMax<i64> for StoreMaxInt64 {
+    fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
         state::set_max_int64(ord as i64, key, value);
     }
 }
 
-/// StoreMaxBigInt is a struct representing a `store` module with
-/// `updatePolicy` equal to `max` and a valueType of `bigint`
+/// `StoreMaxBigInt` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigint`
+///     `StoreMaxBigInt` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigInt or BigInt.
 #[derive(StoreWriter)]
 pub struct StoreMaxBigInt {}
-impl StoreMaxBigInt {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is bigger than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn max<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigInt>,
-    {
-        state::set_max_bigint(ord as i64, key, value);
+impl<V: AsRef<BigInt>> StoreMax<V> for StoreMaxBigInt {
+    fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_max_bigint(ord as i64, key, value.as_ref());
     }
 }
 
-/// StoreMaxFloat64 is a struct representing a `store` module with
-/// `updatePolicy` equal to `max` and a valueType of `float64`
+/// `StoreMaxFloat64` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `float64`
 #[derive(StoreWriter)]
 pub struct StoreMaxFloat64 {}
-impl StoreMaxFloat64 {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is bigger than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+impl StoreMax<f64> for StoreMaxFloat64 {
+    fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
         state::set_max_float64(ord as i64, key, value);
     }
 }
 
-/// StoreMaxBigFloat is a struct representing a `store` module with
-/// `updatePolicy` equal to `max` and a valueType of `bigfloat`
+/// `StoreMaxBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigfloat`
+///     `StoreMaxBigFloat` implements AsRef<BigFloat> to give the client the flexibility
+///     to either use the API with &BigFloat or BigFloat.
 #[derive(StoreWriter)]
 pub struct StoreMaxBigFloat {}
-impl StoreMaxBigFloat {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is bigger than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn max<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigDecimal>,
-    {
-        state::set_max_bigfloat(ord as i64, key, value);
+impl<V: AsRef<BigFloat>> StoreMax<V> for StoreMaxBigFloat {
+    fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_max_bigfloat(ord as i64, key, value.as_ref());
     }
 }
 
-/// `StoreMinInt64` is a struct representing a `store` module with
-/// `updatePolicy` equal to `min` and a valueType of `int64`
-#[derive(StoreWriter)]
-pub struct StoreMinInt64 {}
-impl StoreMinInt64 {
+/// `StoreMin` is a trait which is implemented on any typed StoreMin
+pub trait StoreMin<V> {
     /// Will set the provided key in the store only if the value received in
     /// parameter is smaller than the one already present in the store, with
     /// a default of the zero value when the key is absent.
-    pub fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+    fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+}
+
+/// `StoreMinInt64` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `int64`
+#[derive(StoreWriter)]
+pub struct StoreMinInt64 {}
+impl StoreMin<i64> for StoreMinInt64 {
+    fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
         state::set_min_int64(ord as i64, key, value);
     }
 }
 
-/// StoreMinBigInt is a struct representing a `store` module with
-/// `updatePolicy` equal to `min` and a valueType of `bigint`
+/// `StoreMinBigInt` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigint`
+///     `StoreMinBigInt` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigInt or BigInt.
 #[derive(StoreWriter)]
 pub struct StoreMinBigInt {}
-impl StoreMinBigInt {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is smaller than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn min<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigInt>,
-    {
-        state::set_min_bigint(ord as i64, key, value);
+impl<V: AsRef<BigInt>> StoreMin<V> for StoreMinBigInt {
+    fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_min_bigint(ord as i64, key, value.as_ref());
     }
 }
 
-/// StoreMinFloat64 is a struct representing a `store` module with
-/// `updatePolicy` equal to `min` and a valueType of `float64`
+/// `StoreMinFloat64` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `float64`
 #[derive(StoreWriter)]
 pub struct StoreMinFloat64 {}
-impl StoreMinFloat64 {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is smaller than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+impl StoreMin<f64> for StoreMinFloat64 {
+    fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
         state::set_min_float64(ord as i64, key, value);
     }
 }
 
-/// StoreMinBigFloat is a struct representing a `store` module with
-/// `updatePolicy` equal to `min` and a valueType of `bigfloat`
+/// `StoreMinBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigfloat`
+///     `StoreMinBigFloat` implements AsRef<BigFloat> to give the client the flexibility
+///     to either use the API with &BigFloat or BigFloat.
 #[derive(StoreWriter)]
 pub struct StoreMinBigFloat {}
-impl StoreMinBigFloat {
-    /// Will set the provided key in the store only if the value received in
-    /// parameter is smaller than the one already present in the store, with
-    /// a default of the zero value when the key is absent.
-    pub fn min<K, V>(&self, ord: u64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<BigDecimal>,
-    {
-        state::set_min_bigfloat(ord as i64, key, value);
+impl<V: AsRef<BigFloat>> StoreMin<V> for StoreMinBigFloat {
+    fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        state::set_min_bigfloat(ord as i64, key, value.as_ref());
     }
 }
 
@@ -530,48 +642,81 @@ impl StoreGet<i64> for StoreGetI64 {
     }
 }
 
-pub struct StoreGetBigDecimal(StoreGetRaw);
-impl StoreGet<BigDecimal> for StoreGetBigDecimal {
-    fn new(idx: u32) -> StoreGetBigDecimal {
-        StoreGetBigDecimal {
-            0: StoreGetRaw { idx },
-        }
-    }
-
-    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-
-    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-
-    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
-    }
-}
-
-pub struct StoreGetBigInt(StoreGetRaw);
-impl StoreGetBigInt {
-    pub fn new(idx: u32) -> Self {
+pub struct StoreGetFloat64(StoreGetRaw);
+impl StoreGet<f64> for StoreGetFloat64 {
+    fn new(idx: u32) -> Self {
         Self {
             0: StoreGetRaw { idx },
         }
     }
 
-    pub fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<f64> {
+        let value = state::get_at(self.0.idx, ord as i64, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_f64(bytes),
+        };
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<f64> {
+        let value = state::get_last(self.0.idx, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_f64(bytes),
+        };
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<f64> {
+        let value = state::get_first(self.0.idx, key);
+        return match value {
+            None => None,
+            Some(bytes) => decode_bytes_to_f64(bytes),
+        };
+    }
+}
+
+pub struct StoreGetBigFloat(StoreGetRaw);
+impl StoreGet<BigFloat> for StoreGetBigFloat {
+    fn new(idx: u32) -> Self {
+        Self {
+            0: StoreGetRaw { idx },
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigFloat> {
+        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigFloat> {
+        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigFloat> {
+        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
+        match bytes_option {
+            None => None,
+            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+        }
+    }
+}
+
+pub struct StoreGetBigInt(StoreGetRaw);
+impl StoreGet<BigInt> for StoreGetBigInt {
+    fn new(idx: u32) -> Self {
+        Self {
+            0: StoreGetRaw { idx },
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
         let store_bytes: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
         match store_bytes {
             None => None,
@@ -579,7 +724,7 @@ impl StoreGetBigInt {
         }
     }
 
-    pub fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
         let store_bytes: Option<Vec<u8>> = state::get_last(self.0.idx, key);
         match store_bytes {
             None => None,
@@ -587,7 +732,7 @@ impl StoreGetBigInt {
         }
     }
 
-    pub fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
         let store_bytes: Option<Vec<u8>> = state::get_first(self.0.idx, key);
         match store_bytes {
             None => None,
@@ -686,25 +831,25 @@ impl<T: Delta> Deltas<T> {
 }
 
 pub trait DeltaDecoder<T> {
-    fn decode(d: &pb::substreams::StoreDelta) -> T;
+    fn decode(d: &StoreDelta) -> T;
 }
 
-pub struct DeltaBigDecimal {
+pub struct DeltaBigFloat {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
-    pub old_value: BigDecimal,
-    pub new_value: BigDecimal,
+    pub old_value: BigFloat,
+    pub new_value: BigFloat,
 }
 
-impl Delta for DeltaBigDecimal {
+impl Delta for DeltaBigFloat {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
-            old_value: BigDecimal::from_store_bytes(d.old_value.clone()),
-            new_value: BigDecimal::from_store_bytes(d.new_value.clone()),
+            old_value: BigFloat::from_store_bytes(d.old_value.clone()),
+            new_value: BigFloat::from_store_bytes(d.new_value.clone()),
         }
     }
 }
@@ -861,26 +1006,37 @@ fn decode_bytes_to_i64(bytes: Vec<u8>) -> Option<i64> {
     return match i64::from_str(int_as_string.as_str()) {
         Ok(value) => Some(value),
         Err(_) => panic!(
-            "value {} is not a value representation of an i64",
+            "value {} is not a valid representation of an i64",
             int_as_string
+        ),
+    };
+}
+
+fn decode_bytes_to_f64(bytes: Vec<u8>) -> Option<f64> {
+    let float64_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
+    return match f64::from_str(float64_as_string.as_str()) {
+        Ok(value) => Some(value),
+        Err(_) => panic!(
+            "value {} is not a valid representation of an f64",
+            float64_as_string
         ),
     };
 }
 
 #[cfg(test)]
 mod test {
-    use crate::store::decode_bytes_to_i64;
+    use crate::store::{decode_bytes_to_f64, decode_bytes_to_i64};
 
     #[test]
-    fn valid_int64_1_decode_bytes_to_i64() {
+    fn valid_int64_decode_bytes_to_i64() {
         let bytes: Vec<u8> = Vec::from("1".to_string());
         assert_eq!(1, decode_bytes_to_i64(bytes).unwrap())
     }
 
     #[test]
     fn valid_int64_max_value_decode_bytes_to_i64() {
-        let bytes: Vec<u8> = Vec::from("9223372036854775807".to_string());
-        assert_eq!(9223372036854775807, decode_bytes_to_i64(bytes).unwrap())
+        let bytes: Vec<u8> = Vec::from(i64::MAX.to_string());
+        assert_eq!(i64::MAX, decode_bytes_to_i64(bytes).unwrap())
     }
 
     #[test]
@@ -888,5 +1044,38 @@ mod test {
     fn invalid_bytes_decode_bytes_to_i64() {
         let bytes: Vec<u8> = Vec::from("invalid".to_string());
         decode_bytes_to_i64(bytes);
+    }
+
+    #[test]
+    #[should_panic]
+    fn no_bytes_decode_bytes_to_i64() {
+        let bytes: Vec<u8> = vec![];
+        decode_bytes_to_i64(bytes);
+    }
+
+    #[test]
+    fn valid_f64_decode_bytes_to_f64() {
+        let bytes: Vec<u8> = Vec::from("1.00".to_string());
+        assert_eq!(1.00, decode_bytes_to_f64(bytes).unwrap())
+    }
+
+    #[test]
+    fn valid_f64_max_value_decode_bytes_to_f64() {
+        let bytes: Vec<u8> = Vec::from(f64::MAX.to_string());
+        assert_eq!(f64::MAX, decode_bytes_to_f64(bytes).unwrap())
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_bytes_decode_bytes_to_f64() {
+        let bytes: Vec<u8> = Vec::from("invalid".to_string());
+        decode_bytes_to_f64(bytes);
+    }
+
+    #[test]
+    #[should_panic]
+    fn no_bytes_decode_bytes_to_f64() {
+        let bytes: Vec<u8> = vec![];
+        decode_bytes_to_f64(bytes);
     }
 }
