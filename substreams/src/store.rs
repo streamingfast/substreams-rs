@@ -22,9 +22,9 @@ use {
 /// `StoreSet` is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<V>: StoreDelete + StoreNew {
     /// Set a given key to a given value, if the key existed before, it will be replaced.  
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V);
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V);
 }
 
 pub trait StoreDelete {
@@ -53,14 +53,14 @@ impl StoreNew for StoreSetRaw {
 
 impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        state::set(ord as i64, key, value.as_ref());
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
+        state::set(ord as i64, key, value);
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         for key in keys {
-            state::set(ord as i64, key, value.as_ref());
+            state::set(ord as i64, key, value);
         }
     }
 }
@@ -79,11 +79,11 @@ impl StoreNew for StoreSetString {
 }
 
 impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
         state::set(ord as i64, key, value.as_ref().as_bytes());
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         for key in keys {
             state::set(ord as i64, key, value.as_ref().as_bytes());
         }
@@ -105,12 +105,12 @@ impl StoreNew for StoreSetI64 {
 
 impl StoreSet<i64> for StoreSetI64 {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &i64) {
         state::set(ord as i64, key, value.to_string().as_bytes());
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: i64) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &i64) {
         for key in keys {
             state::set(ord as i64, key, value.to_string().as_bytes());
         }
@@ -132,12 +132,12 @@ impl StoreNew for StoreSetFloat64 {
 
 impl StoreSet<f64> for StoreSetFloat64 {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &f64) {
         state::set(ord as i64, key, value.to_string().as_bytes());
     }
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: f64) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &f64) {
         for key in keys {
             state::set(ord as i64, key, value.to_string().as_bytes());
         }
@@ -157,14 +157,14 @@ impl StoreNew for StoreSetBigDecimal {
     }
 }
 
-impl<V: AsRef<BigDecimal>> StoreSet<V> for StoreSetBigDecimal {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        state::set(ord as i64, key, value.as_ref().to_string().as_bytes())
+impl StoreSet<BigDecimal> for StoreSetBigDecimal {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigDecimal) {
+        state::set(ord as i64, key, value.to_string().as_bytes())
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
         for key in keys {
-            state::set(ord as i64, key, value.as_ref().to_string().as_bytes())
+            state::set(ord as i64, key, value.to_string().as_bytes())
         }
     }
 }
@@ -182,12 +182,12 @@ impl StoreNew for StoreSetBigInt {
     }
 }
 
-impl<V: AsRef<BigInt>> StoreSet<V> for StoreSetBigInt {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+impl StoreSet<BigInt> for StoreSetBigInt {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &BigInt) {
         state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
         for key in keys {
             state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
         }
@@ -215,17 +215,20 @@ impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
     }
 }
 
-impl<V: Default + prost::Message> StoreSet<V> for StoreSetProto<V> {
-    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        match proto::encode(&value) {
+impl<V> StoreSet<V> for StoreSetProto<V>
+where
+    V: Default + prost::Message,
+{
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
+        match proto::encode(value) {
             Ok(bytes) => state::set(ord as i64, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
 
-    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         for key in keys {
-            match proto::encode(&value) {
+            match proto::encode(value) {
                 Ok(bytes) => state::set(ord as i64, key, &bytes),
                 Err(_) => panic!("failed to encode message"),
             }
