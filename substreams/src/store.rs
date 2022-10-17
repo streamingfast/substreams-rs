@@ -201,8 +201,10 @@ pub struct StoreSetProto<V: Default + prost::Message> {
 }
 
 impl<V: Default + prost::Message> StoreDelete for StoreSetProto<V> {}
-
-impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
+impl<V> StoreNew for StoreSetProto<V>
+where
+    V: Default + prost::Message,
+{
     fn new() -> Self {
         Self {
             // Adding a PhantomData<T> field to your type tells the compiler that
