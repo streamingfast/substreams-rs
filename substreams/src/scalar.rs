@@ -370,7 +370,7 @@ impl BigInt {
         return BigInt::from_str(bytes_as_str).unwrap();
     }
 
-    pub fn to_big_float(&self, decimals: u64) -> BigDecimal {
+    pub fn to_decimal(&self, decimals: u64) -> BigDecimal {
         let bd = BigDecimal::from_str(
             "1".pad_to_width_with_char((decimals + 1) as usize, '0')
                 .as_str(),
