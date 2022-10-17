@@ -7,12 +7,12 @@
 use prost::{DecodeError, EncodeError};
 
 /// Given an array of bytes, it will decode data in a Protobuf Message
-pub fn decode<T: std::default::Default + prost::Message>(buf: &Vec<u8>) -> Result<T, DecodeError> {
+pub fn decode<T: Default + prost::Message>(buf: &Vec<u8>) -> Result<T, DecodeError> {
     ::prost::Message::decode(&buf[..])
 }
 
 /// Given a pointer to a byte array, it will read and decode the data in a Protobuf message.
-pub fn decode_ptr<T: std::default::Default + prost::Message>(
+pub fn decode_ptr<T: Default + prost::Message>(
     ptr: *mut u8,
     size: usize,
 ) -> Result<T, DecodeError> {

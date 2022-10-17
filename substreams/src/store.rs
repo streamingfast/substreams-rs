@@ -7,7 +7,7 @@
 use {
     crate::{
         pb::substreams::StoreDelta,
-        scalar::{BigFloat, BigInt},
+        scalar::{BigDecimal, BigInt},
         state, {pb, proto},
     },
     prost,
@@ -20,24 +20,38 @@ use {
 // todo: add delete prefix on all the stores
 
 /// `StoreSet` is a trait which is implemented on any type of typed StoreSet
-pub trait StoreSet<V> {
-    fn new() -> Self;
+pub trait StoreSet<V>: StoreDelete + StoreNew {
     /// Set a given key to a given value, if the key existed before, it will be replaced.  
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
     /// Set many keys to a given values, if the key existed before, it will be replaced.
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
 }
 
+pub trait StoreDelete {
+    /// Delete values in a store given prefixed string
+    fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
+}
+
+pub trait StoreNew {
+    fn new() -> Self;
+}
+
 /// `StoreSetRaw` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
 ///     `StoreSetRaw` implements AsRef<[u8]> to give the client the flexibility
 ///     to either use the API with &Vec[...] or Vec[...].
-#[derive(StoreWriter)]
 pub struct StoreSetRaw {}
-impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
+
+impl StoreDelete for StoreSetRaw {}
+
+impl StoreNew for StoreSetRaw {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
         state::set(ord as i64, key, value.as_ref());
@@ -54,13 +68,17 @@ impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
 /// `StoreSetString` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
 ///     `StoreSetString` implements AsRef<str> to give the client the flexibility
 ///     to either use the API with &String or String.
-#[derive(StoreWriter)]
 pub struct StoreSetString {}
-impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
+
+impl StoreDelete for StoreSetString {}
+
+impl StoreNew for StoreSetString {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
         state::set(ord as i64, key, value.as_ref().as_bytes());
     }
@@ -75,13 +93,17 @@ impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
 /// `StoreSetI64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
 ///     `StoreSetI64` implements AsRef<i64> to give the client the flexibility
 ///     to either use the API with &i64 or i64.
-#[derive(StoreWriter)]
 pub struct StoreSetI64 {}
-impl StoreSet<i64> for StoreSetI64 {
+
+impl StoreDelete for StoreSetI64 {}
+
+impl StoreNew for StoreSetI64 {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl StoreSet<i64> for StoreSetI64 {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
         state::set(ord as i64, key, value.to_string().as_bytes());
@@ -98,13 +120,17 @@ impl StoreSet<i64> for StoreSetI64 {
 /// `StoreSetFloat64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
 ///     `StoreSetFloat64` implements AsRef<i64> to give the client the flexibility
 ///     to either use the API with &f64 or f64.
-#[derive(StoreWriter)]
 pub struct StoreSetFloat64 {}
-impl StoreSet<f64> for StoreSetFloat64 {
+
+impl StoreDelete for StoreSetFloat64 {}
+
+impl StoreNew for StoreSetFloat64 {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl StoreSet<f64> for StoreSetFloat64 {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
         state::set(ord as i64, key, value.to_string().as_bytes());
@@ -118,16 +144,20 @@ impl StoreSet<f64> for StoreSetFloat64 {
     }
 }
 
-/// `StoreSetBigFloat` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bigfloat`
-///     `StoreSetBigFloat` implements AsRef<BigFloat> to give the client the flexibility
-///     to either use the API with &BigFloat or BigFloat.
-#[derive(StoreWriter)]
-pub struct StoreSetBigFloat {}
-impl<V: AsRef<BigFloat>> StoreSet<V> for StoreSetBigFloat {
+/// `StoreSetBigDecimal` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bigdecimal`
+///     `StoreSetBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
+///     to either use the API with &BigDecimal or BigDecimal.
+pub struct StoreSetBigDecimal {}
+
+impl StoreDelete for StoreSetBigDecimal {}
+
+impl StoreNew for StoreSetBigDecimal {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl<V: AsRef<BigDecimal>> StoreSet<V> for StoreSetBigDecimal {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
         state::set(ord as i64, key, value.as_ref().to_string().as_bytes())
     }
@@ -142,13 +172,17 @@ impl<V: AsRef<BigFloat>> StoreSet<V> for StoreSetBigFloat {
 /// `StoreSetBigInt` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bigint`
 ///     `StoreSetBigInt` implements AsRef<BigInt> to give the client the flexibility
 ///     to either use the API with &BigInt or BigInt.
-#[derive(StoreWriter)]
 pub struct StoreSetBigInt {}
-impl<V: AsRef<BigInt>> StoreSet<V> for StoreSetBigInt {
+
+impl StoreDelete for StoreSetBigInt {}
+
+impl StoreNew for StoreSetBigInt {
     fn new() -> Self {
         Self {}
     }
+}
 
+impl<V: AsRef<BigInt>> StoreSet<V> for StoreSetBigInt {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
         state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
     }
@@ -166,8 +200,10 @@ pub struct StoreSetProto<V: Default + prost::Message> {
     casper: PhantomData<V>,
 }
 
-impl<V: Default + prost::Message> StoreSetProto<V> {
-    pub fn new() -> Self {
+impl<V: Default + prost::Message> StoreDelete for StoreSetProto<V> {}
+
+impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
+    fn new() -> Self {
         Self {
             // Adding a PhantomData<T> field to your type tells the compiler that
             // your type acts as though it stores a value of type T, even though
@@ -177,17 +213,19 @@ impl<V: Default + prost::Message> StoreSetProto<V> {
             casper: PhantomData,
         }
     }
+}
 
-    pub fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        match proto::encode(value) {
+impl<V: Default + prost::Message> StoreSet<V> for StoreSetProto<V> {
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
+        match proto::encode(&value) {
             Ok(bytes) => state::set(ord as i64, key, &bytes),
             Err(_) => panic!("failed to encode message"),
         }
     }
 
-    pub fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+    fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            match proto::encode(value) {
+            match proto::encode(&value) {
                 Ok(bytes) => state::set(ord as i64, key, &bytes),
                 Err(_) => panic!("failed to encode message"),
             }
@@ -203,6 +241,10 @@ pub trait StoreSetIfNotExists<V> {
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
     /// Set given keys to given values, if the key existed before, it will be ignored and not set.
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
+    /// Delete values in a store given prefixed string
+    fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
 }
 
 /// `StoreSetIfNotExistsRaw` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `String`
@@ -247,12 +289,12 @@ impl<V: AsRef<str>> StoreSetIfNotExists<V> for StoreSetIfNotExistsString {
     }
 }
 
-/// `StoreSetIfNotExistsBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `bigfloat`
-///     `StoreSetIfNotExistsBigFloat` implements AsRef<BigFloat> to give the client the flexibility
-///     to either use the API with &BigFloat or BigFloat.
+/// `StoreSetIfNotExistsBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `bigdecimal`
+///     `StoreSetIfNotExistsBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
+///     to either use the API with &BigDecimal or BigDecimal.
 #[derive(StoreWriter)]
-pub struct StoreSetIfNotExistsBigFloat {}
-impl<V: AsRef<BigFloat>> StoreSetIfNotExists<V> for StoreSetIfNotExistsBigFloat {
+pub struct StoreSetIfNotExistsBigDecimal {}
+impl<V: AsRef<BigDecimal>> StoreSetIfNotExists<V> for StoreSetIfNotExistsBigDecimal {
     fn new() -> Self {
         Self {}
     }
@@ -357,6 +399,10 @@ impl<T: Default + prost::Message> StoreSetIfNotExistsProto<T> {
             }
         }
     }
+
+    pub fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
 }
 
 /// `StoreAdd` is a trait which is implemented on any type of types StoreAdd
@@ -365,6 +411,10 @@ pub trait StoreAdd<V> {
     fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
     /// Add multiple values to an already existing key
     fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V);
+    /// Delete values in a store given prefixed string
+    fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
 }
 
 /// `StoreAddInt64` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `int64`
@@ -397,19 +447,19 @@ impl StoreAdd<f64> for StoreAddFloat64 {
     }
 }
 
-/// `StoreAddBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigfloat`
-///     `StoreAddBigFloat` implements AsRef<BigInt> to give the client the flexibility
-///     to either use the API with &BigFloat or BigFloat.
+/// `StoreAddBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigdecimal`
+///     `StoreAddBigDecimal` implements AsRef<BigInt> to give the client the flexibility
+///     to either use the API with &BigDecimal or BigDecimal.
 #[derive(StoreWriter)]
-pub struct StoreAddBigFloat {}
-impl<V: AsRef<BigFloat>> StoreAdd<V> for StoreAddBigFloat {
+pub struct StoreAddBigDecimal {}
+impl<V: AsRef<BigDecimal>> StoreAdd<V> for StoreAddBigDecimal {
     fn add<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        state::add_bigfloat(ord as i64, key, value.as_ref());
+        state::add_bigdecimal(ord as i64, key, value.as_ref());
     }
 
     fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
         for key in keys {
-            state::add_bigfloat(ord as i64, key, value.as_ref());
+            state::add_bigdecimal(ord as i64, key, value.as_ref());
         }
     }
 }
@@ -437,6 +487,10 @@ pub trait StoreMax<V> {
     /// parameter is bigger than the one already present in the store, with
     /// a default of the zero value when the key is absent.
     fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+    /// Delete values in a store given prefixed string
+    fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
 }
 
 /// `StoreMaxInt64` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `int64`
@@ -468,14 +522,14 @@ impl StoreMax<f64> for StoreMaxFloat64 {
     }
 }
 
-/// `StoreMaxBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigfloat`
-///     `StoreMaxBigFloat` implements AsRef<BigFloat> to give the client the flexibility
-///     to either use the API with &BigFloat or BigFloat.
+/// `StoreMaxBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigfloat`
+///     `StoreMaxBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
+///     to either use the API with &BigDecimal or BigDecimal.
 #[derive(StoreWriter)]
-pub struct StoreMaxBigFloat {}
-impl<V: AsRef<BigFloat>> StoreMax<V> for StoreMaxBigFloat {
+pub struct StoreMaxBigDecimal {}
+impl<V: AsRef<BigDecimal>> StoreMax<V> for StoreMaxBigDecimal {
     fn max<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        state::set_max_bigfloat(ord as i64, key, value.as_ref());
+        state::set_max_bigdecimal(ord as i64, key, value.as_ref());
     }
 }
 
@@ -485,6 +539,10 @@ pub trait StoreMin<V> {
     /// parameter is smaller than the one already present in the store, with
     /// a default of the zero value when the key is absent.
     fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: V);
+    /// Delete values in a store given prefixed string
+    fn delete_prefix(&self, ord: i64, prefix: &String) {
+        state::delete_prefix(ord, prefix);
+    }
 }
 
 /// `StoreMinInt64` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `int64`
@@ -516,14 +574,14 @@ impl StoreMin<f64> for StoreMinFloat64 {
     }
 }
 
-/// `StoreMinBigFloat` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigfloat`
-///     `StoreMinBigFloat` implements AsRef<BigFloat> to give the client the flexibility
-///     to either use the API with &BigFloat or BigFloat.
+/// `StoreMinBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigfloat`
+///     `StoreMinBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
+///     to either use the API with &BigDecimal or BigDecimal.
 #[derive(StoreWriter)]
-pub struct StoreMinBigFloat {}
-impl<V: AsRef<BigFloat>> StoreMin<V> for StoreMinBigFloat {
+pub struct StoreMinBigDecimal {}
+impl<V: AsRef<BigDecimal>> StoreMin<V> for StoreMinBigDecimal {
     fn min<K: AsRef<str>>(&self, ord: u64, key: K, value: V) {
-        state::set_min_bigfloat(ord as i64, key, value.as_ref());
+        state::set_min_bigdecimal(ord as i64, key, value.as_ref());
     }
 }
 
@@ -675,35 +733,35 @@ impl StoreGet<f64> for StoreGetFloat64 {
     }
 }
 
-pub struct StoreGetBigFloat(StoreGetRaw);
-impl StoreGet<BigFloat> for StoreGetBigFloat {
+pub struct StoreGetBigDecimal(StoreGetRaw);
+impl StoreGet<BigDecimal> for StoreGetBigDecimal {
     fn new(idx: u32) -> Self {
         Self {
             0: StoreGetRaw { idx },
         }
     }
 
-    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigFloat> {
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
         let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
         match bytes_option {
             None => None,
-            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
         }
     }
 
-    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigFloat> {
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
         let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
         match bytes_option {
             None => None,
-            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
         }
     }
 
-    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigFloat> {
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
         let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
         match bytes_option {
             None => None,
-            Some(bytes) => Some(BigFloat::from_store_bytes(bytes)),
+            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
         }
     }
 }
@@ -834,26 +892,28 @@ pub trait DeltaDecoder<T> {
     fn decode(d: &StoreDelta) -> T;
 }
 
-pub struct DeltaBigFloat {
+#[derive(Debug)]
+pub struct DeltaBigDecimal {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
-    pub old_value: BigFloat,
-    pub new_value: BigFloat,
+    pub old_value: BigDecimal,
+    pub new_value: BigDecimal,
 }
 
-impl Delta for DeltaBigFloat {
+impl Delta for DeltaBigDecimal {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal.clone(),
             key: d.key.clone(),
-            old_value: BigFloat::from_store_bytes(d.old_value.clone()),
-            new_value: BigFloat::from_store_bytes(d.new_value.clone()),
+            old_value: BigDecimal::from_store_bytes(d.old_value.clone()),
+            new_value: BigDecimal::from_store_bytes(d.new_value.clone()),
         }
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaBigInt {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -874,6 +934,7 @@ impl Delta for DeltaBigInt {
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaI64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -892,7 +953,7 @@ impl Delta for DeltaI64 {
             };
         }
         let mut nv = i64::default();
-        if d.old_value.len() != 0 {
+        if d.new_value.len() != 0 {
             nv = match decode_bytes_to_i64(d.new_value.clone()) {
                 None => 0,
                 Some(value) => value,
@@ -909,6 +970,7 @@ impl Delta for DeltaI64 {
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaFloat64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -927,7 +989,7 @@ impl Delta for DeltaFloat64 {
             };
         }
         let mut nv = f64::default();
-        if d.old_value.len() != 0 {
+        if d.new_value.len() != 0 {
             nv = match decode_bytes_to_f64(d.new_value.clone()) {
                 None => 0 as f64,
                 Some(value) => value,
@@ -944,6 +1006,7 @@ impl Delta for DeltaFloat64 {
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaString {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -964,6 +1027,7 @@ impl Delta for DeltaString {
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaProto<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -989,6 +1053,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct DeltaArray<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,

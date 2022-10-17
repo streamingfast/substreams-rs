@@ -12,11 +12,11 @@ use {
     thiserror::Error,
 };
 
-// ---------- BigFloat ---------- //
+// ---------- BigDecimal ---------- //
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BigFloat(bigdecimal::BigDecimal);
+pub struct BigDecimal(bigdecimal::BigDecimal);
 
-impl BigFloat {
+impl BigDecimal {
     /// These are the limits of IEEE-754 decimal128, a format we may want to switch to. See
     /// https://en.wikipedia.org/wiki/Decimal128_floating-point_format.
     pub const MIN_EXP: i32 = -6143;
@@ -32,12 +32,12 @@ impl BigFloat {
         bigdecimal::BigDecimal::parse_bytes(bytes, 10).map(Self)
     }
 
-    pub fn zero() -> BigFloat {
-        BigFloat::from(0)
+    pub fn zero() -> BigDecimal {
+        BigDecimal::from(0)
     }
 
-    pub fn one() -> BigFloat {
-        BigFloat::from(1)
+    pub fn one() -> BigDecimal {
+        BigDecimal::from(1)
     }
 
     pub fn as_bigint_and_exponent(&self) -> (num_bigint::BigInt, i64) {
@@ -52,24 +52,24 @@ impl BigFloat {
         self.0.is_zero()
     }
 
-    pub fn with_prec(&self, prec: u64) -> BigFloat {
-        BigFloat::from(self.0.with_prec(prec))
+    pub fn with_prec(&self, prec: u64) -> BigDecimal {
+        BigDecimal::from(self.0.with_prec(prec))
     }
 
-    pub fn neg(&self) -> BigFloat {
-        BigFloat::from(self.0.clone().neg())
+    pub fn neg(&self) -> BigDecimal {
+        BigDecimal::from(self.0.clone().neg())
     }
 
-    pub fn from_store_bytes(bytes: Vec<u8>) -> BigFloat {
+    pub fn from_store_bytes(bytes: Vec<u8>) -> BigDecimal {
         if bytes.len() == 0 {
-            return BigFloat::zero();
+            return BigDecimal::zero();
         }
         let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap();
-        return BigFloat::from_str(bytes_as_str).unwrap().with_prec(100);
+        return BigDecimal::from_str(bytes_as_str).unwrap().with_prec(100);
     }
 
-    pub fn divide_by_decimals(big_decimal_amount: BigFloat, decimals: u64) -> BigFloat {
-        let bd = BigFloat::from_str(
+    pub fn divide_by_decimals(big_decimal_amount: BigDecimal, decimals: u64) -> BigDecimal {
+        let bd = BigDecimal::from_str(
             "1".pad_to_width_with_char((decimals + 1) as usize, '0')
                 .as_str(),
         )
@@ -79,13 +79,13 @@ impl BigFloat {
     }
 }
 
-impl AsRef<BigFloat> for BigFloat {
-    fn as_ref(&self) -> &BigFloat {
+impl AsRef<BigDecimal> for BigDecimal {
+    fn as_ref(&self) -> &BigDecimal {
         &self
     }
 }
 
-impl ToPrimitive for BigFloat {
+impl ToPrimitive for BigDecimal {
     fn to_i64(&self) -> Option<i64> {
         self.0.to_i64()
     }
@@ -94,113 +94,113 @@ impl ToPrimitive for BigFloat {
     }
 }
 
-impl Display for BigFloat {
+impl Display for BigDecimal {
     fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
         self.0.fmt(f)
     }
 }
 
-impl fmt::Debug for BigFloat {
+impl fmt::Debug for BigDecimal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "BigDecimal({})", self.0)
     }
 }
 
-impl FromStr for BigFloat {
+impl FromStr for BigDecimal {
     type Err = <bigdecimal::BigDecimal as FromStr>::Err;
 
-    fn from_str(s: &str) -> Result<BigFloat, Self::Err> {
+    fn from_str(s: &str) -> Result<BigDecimal, Self::Err> {
         Ok(Self::from(bigdecimal::BigDecimal::from_str(s)?))
     }
 }
 
-impl TryFrom<String> for BigFloat {
+impl TryFrom<String> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match bigdecimal::BigDecimal::from_str(value.as_str()) {
-            Ok(bd) => Ok(BigFloat(bd)),
+            Ok(bd) => Ok(BigDecimal(bd)),
             Err(e) => Err(e),
         }
     }
 }
 
-impl TryFrom<&String> for BigFloat {
+impl TryFrom<&String> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: &String) -> Result<Self, Self::Error> {
         match bigdecimal::BigDecimal::from_str(value.as_str()) {
-            Ok(bd) => Ok(BigFloat(bd)),
+            Ok(bd) => Ok(BigDecimal(bd)),
             Err(e) => Err(e),
         }
     }
 }
 
-impl TryFrom<&str> for BigFloat {
+impl TryFrom<&str> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match bigdecimal::BigDecimal::from_str(value) {
-            Ok(bd) => Ok(BigFloat(bd)),
+            Ok(bd) => Ok(BigDecimal(bd)),
             Err(e) => Err(e),
         }
     }
 }
 
-impl From<i32> for BigFloat {
+impl From<i32> for BigDecimal {
     fn from(n: i32) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n))
     }
 }
 
-impl From<u32> for BigFloat {
+impl From<u32> for BigDecimal {
     fn from(n: u32) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n))
     }
 }
 
-impl From<i64> for BigFloat {
+impl From<i64> for BigDecimal {
     fn from(n: i64) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n))
     }
 }
 
-impl From<u64> for BigFloat {
+impl From<u64> for BigDecimal {
     fn from(n: u64) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n))
     }
 }
 
-impl From<BigInt> for BigFloat {
+impl From<BigInt> for BigDecimal {
     fn from(n: BigInt) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n.0))
     }
 }
 
-impl From<BigUint> for BigFloat {
+impl From<BigUint> for BigDecimal {
     fn from(val: BigUint) -> Self {
         BigInt(num_bigint::BigInt::from(val)).into()
     }
 }
 
-impl From<bigdecimal::BigDecimal> for BigFloat {
+impl From<bigdecimal::BigDecimal> for BigDecimal {
     fn from(big_decimal: bigdecimal::BigDecimal) -> Self {
-        BigFloat(big_decimal)
+        BigDecimal(big_decimal)
     }
 }
 
-impl From<&bigdecimal::BigDecimal> for BigFloat {
+impl From<&bigdecimal::BigDecimal> for BigDecimal {
     fn from(big_decimal: &bigdecimal::BigDecimal) -> Self {
-        BigFloat(big_decimal.clone())
+        BigDecimal(big_decimal.clone())
     }
 }
 
-impl TryFrom<f64> for BigFloat {
+impl TryFrom<f64> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     #[inline]
     fn try_from(n: f64) -> Result<Self, Self::Error> {
-        BigFloat::from_str(&format!(
+        BigDecimal::from_str(&format!(
             "{:.PRECISION$e}",
             n,
             PRECISION = ::std::f64::DIGITS as usize
@@ -208,25 +208,25 @@ impl TryFrom<f64> for BigFloat {
     }
 }
 
-impl Into<String> for &BigFloat {
+impl Into<String> for &BigDecimal {
     fn into(self) -> String {
         self.to_string()
     }
 }
 
-impl Into<String> for BigFloat {
+impl Into<String> for BigDecimal {
     fn into(self) -> String {
         self.to_string()
     }
 }
 
-impl Into<bigdecimal::BigDecimal> for BigFloat {
+impl Into<bigdecimal::BigDecimal> for BigDecimal {
     fn into(self) -> bigdecimal::BigDecimal {
         self.0
     }
 }
 
-impl Add for BigFloat {
+impl Add for BigDecimal {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -234,7 +234,7 @@ impl Add for BigFloat {
     }
 }
 
-impl Sub for BigFloat {
+impl Sub for BigDecimal {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
@@ -242,19 +242,19 @@ impl Sub for BigFloat {
     }
 }
 
-impl Mul for BigFloat {
+impl Mul for BigDecimal {
     type Output = Self;
 
-    fn mul(self, rhs: BigFloat) -> BigFloat {
+    fn mul(self, rhs: BigDecimal) -> BigDecimal {
         Self::from(self.0.mul(rhs.0))
     }
 }
 
-impl Div for BigFloat {
-    type Output = BigFloat;
+impl Div for BigDecimal {
+    type Output = BigDecimal;
 
-    fn div(self, other: BigFloat) -> BigFloat {
-        if other == BigFloat::from(0) {
+    fn div(self, other: BigDecimal) -> BigDecimal {
+        if other == BigDecimal::from(0) {
             panic!("Cannot divide by zero-valued `BigDecimal`!")
         }
 
@@ -370,14 +370,14 @@ impl BigInt {
         return BigInt::from_str(bytes_as_str).unwrap();
     }
 
-    pub fn to_big_float(&self, decimals: u64) -> BigFloat {
-        let bd = BigFloat::from_str(
+    pub fn to_big_float(&self, decimals: u64) -> BigDecimal {
+        let bd = BigDecimal::from_str(
             "1".pad_to_width_with_char((decimals + 1) as usize, '0')
                 .as_str(),
         )
         .unwrap()
         .with_prec(100);
-        let bd_bi: BigFloat = self.into();
+        let bd_bi: BigDecimal = self.into();
         return bd_bi.div(bd);
     }
 }
@@ -497,9 +497,9 @@ impl Into<String> for &BigInt {
     }
 }
 
-impl Into<BigFloat> for &BigInt {
-    fn into(self) -> BigFloat {
-        BigFloat(bigdecimal::BigDecimal::from(self.0.clone()))
+impl Into<BigDecimal> for &BigInt {
+    fn into(self) -> BigDecimal {
+        BigDecimal(bigdecimal::BigDecimal::from(self.0.clone()))
     }
 }
 

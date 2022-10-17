@@ -125,32 +125,34 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     }
 }
 
-const WRITABLE_STORE: [&'static str; 20] = [
+const WRITABLE_STORE: [&'static str; 21] = [
     "StoreSetRaw",
     "StoreSetBigInt",
-    "StoreSetBigFloat",
+    "StoreSetBigDecimal",
     "StoreSetProto",
     "StoreSetI64",
+    "StoreSetFloat64",
     "StoreSetIfNotExistsRaw",
     "StoreSetIfNotExistsProto",
     "StoreAddInt64",
     "StoreAddFloat64",
-    "StoreAddBigFloat",
+    "StoreAddBigDecimal",
     "StoreAddBigInt",
     "StoreMaxInt64",
     "StoreMaxBigInt",
     "StoreMaxFloat64",
-    "StoreMaxBigFloat",
+    "StoreMaxBigDecimal",
     "StoreMinInt64",
     "StoreMinBigInt",
     "StoreMinFloat64",
-    "StoreMinBigFloat",
+    "StoreMinBigDecimal",
     "StoreAppend",
 ];
 
-const READABLE_STORE: [&'static str; 5] = [
+const READABLE_STORE: [&'static str; 6] = [
     "StoreGetI64",
-    "StoreGetBigFloat",
+    "StoreGetFloat64",
+    "StoreGetBigDecimal",
     "StoreGetBigInt",
     "StoreGetProto",
     "StoreGetRaw",
@@ -208,7 +210,7 @@ fn parse_func_output(
     final_config: &FinalConfiguration,
     output: syn::ReturnType,
 ) -> Result<(), syn::Error> {
-    match final_config.module_type {
+    return match final_config.module_type {
         ModuleType::Map => {
             if output == syn::ReturnType::Default {
                 return Err(syn::Error::new(Span::call_site(), "Module of type Map should have a return of type Result<YOUR_TYPE, SubstreamError>"));
@@ -219,21 +221,21 @@ fn parse_func_output(
             let mut valid = true;
             for i in output.into_token_stream().into_iter() {
                 if index == expected.len() {
-                    if valid {
-                        return Ok(());
+                    return if valid {
+                        Ok(())
                     } else {
-                        return Err(syn::Error::new(
+                        Err(syn::Error::new(
                             Span::call_site(),
                             "Module of type Map should return a Result<>",
-                        ));
-                    }
+                        ))
+                    };
                 }
                 if i.to_string() != expected[index] {
                     valid = false
                 }
                 index += 1;
             }
-            return Ok(());
+            Ok(())
         }
         ModuleType::Store => {
             if output != syn::ReturnType::Default {
@@ -242,9 +244,9 @@ fn parse_func_output(
                     "Module of type Store should not have a return statement",
                 ));
             }
-            return Ok(());
+            Ok(())
         }
-    }
+    };
 }
 
 fn build_map_handler(

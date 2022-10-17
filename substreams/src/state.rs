@@ -1,6 +1,6 @@
 use crate::{
     externs, memory,
-    scalar::{BigFloat, BigInt},
+    scalar::{BigDecimal, BigInt},
 };
 
 pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>> {
@@ -156,17 +156,17 @@ pub fn add_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
     unsafe { externs::state::add_float64(ord, key.as_ptr(), key.len() as u32, value) }
 }
 
-pub fn add_bigfloat<K, V>(ord: i64, key: K, value: V)
+pub fn add_bigdecimal<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigFloat>,
+    V: AsRef<BigDecimal>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();
     let data: String = big_decimal.into();
 
     unsafe {
-        externs::state::add_bigfloat(
+        externs::state::add_bigdecimal(
             ord,
             key.as_ptr(),
             key.len() as u32,
@@ -208,17 +208,17 @@ pub fn set_min_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
     unsafe { externs::state::set_min_float64(ord, key.as_ptr(), key.len() as u32, value) }
 }
 
-pub fn set_min_bigfloat<K, V>(ord: i64, key: K, value: V)
+pub fn set_min_bigdecimal<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigFloat>,
+    V: AsRef<BigDecimal>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();
     let data: String = big_decimal.into();
 
     unsafe {
-        externs::state::set_min_bigfloat(
+        externs::state::set_min_bigdecimal(
             ord,
             key.as_ptr(),
             key.len() as u32,
@@ -260,17 +260,17 @@ pub fn set_max_float64<K: AsRef<str>>(ord: i64, key: K, value: f64) {
     unsafe { externs::state::set_max_float64(ord, key.as_ptr(), key.len() as u32, value) }
 }
 
-pub fn set_max_bigfloat<K, V>(ord: i64, key: K, value: V)
+pub fn set_max_bigdecimal<K, V>(ord: i64, key: K, value: V)
 where
     K: AsRef<str>,
-    V: AsRef<BigFloat>,
+    V: AsRef<BigDecimal>,
 {
     let key = key.as_ref();
     let big_decimal = value.as_ref();
     let data: String = big_decimal.into();
 
     unsafe {
-        externs::state::set_max_bigfloat(
+        externs::state::set_max_bigdecimal(
             ord,
             key.as_ptr(),
             key.len() as u32,
