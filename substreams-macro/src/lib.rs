@@ -15,6 +15,7 @@ pub fn store(args: TokenStream, item: TokenStream) -> TokenStream {
     return handler::main(args, item, config::ModuleType::Store);
 }
 
+// todo: remove this once satisfied with implementation of StoreDelete
 #[proc_macro_derive(StoreWriter)]
 pub fn derive(input: TokenStream) -> TokenStream {
     store::main(input)

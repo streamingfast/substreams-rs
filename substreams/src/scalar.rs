@@ -390,6 +390,12 @@ impl FromStr for BigInt {
     }
 }
 
+impl From<u32> for BigInt {
+    fn from(i: u32) -> BigInt {
+        BigInt(i.into())
+    }
+}
+
 impl From<i32> for BigInt {
     fn from(i: i32) -> BigInt {
         BigInt(i.into())
@@ -476,6 +482,12 @@ impl<'a> TryFrom<&'a BigInt> for u64 {
             shift_dist += 8;
         }
         Ok(n)
+    }
+}
+
+impl Into<u32> for BigInt {
+    fn into(self) -> u32 {
+        self.0.to_u32().unwrap()
     }
 }
 
