@@ -1,3 +1,4 @@
+#[cfg_attr(test, allow(unused))]
 #[link(wasm_import_module = "env")]
 extern "C" {
     pub fn output(ptr: *const u8, len: u32);
@@ -11,11 +12,13 @@ extern "C" {
     );
 }
 
+#[cfg_attr(test, allow(unused))]
 #[link(wasm_import_module = "logger")]
 extern "C" {
     pub fn println(ptr: *const u8, len: usize);
 }
 
+#[cfg_attr(test, allow(unused))]
 pub mod state {
     #[link(wasm_import_module = "state")]
     extern "C" {
