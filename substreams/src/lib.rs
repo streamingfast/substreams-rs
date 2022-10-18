@@ -124,63 +124,78 @@ pub mod prelude {
 pub use crate::hex::Hex;
 pub use hex_literal::hex;
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn output<M: prost::Message>(msg: M) {
-    // Need to return the buffer and forget about it issue occurred when trying to write large data
-    // wasm was "dropping" the data before we could write to it, which causes us to have garbage
-    // value. By forgetting the data we can properly call external output function to write the
-    // msg to heap.
-    let (ptr, len, _buffer) = proto::encode_to_ptr(&msg).unwrap();
-    std::mem::forget(&_buffer);
-    unsafe { externs::output(ptr, len as u32) }
+    #[cfg(target_arch = "wasm32")]
+    {
+        // Need to return the buffer and forget about it issue occurred when trying to write large data
+        // wasm was "dropping" the data before we could write to it, which causes us to have garbage
+        // value. By forgetting the data we can properly call external output function to write the
+        // msg to heap.
+        let (ptr, len, _buffer) = proto::encode_to_ptr(&msg).unwrap();
+        std::mem::forget(&_buffer);
+        unsafe { externs::output(ptr, len as u32) }
+    }
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn output_raw(data: Vec<u8>) {
-    unsafe { externs::output(data.as_ptr(), data.len() as u32) }
+    #[cfg(target_arch = "wasm32")]
+    unsafe {
+        externs::output(data.as_ptr(), data.len() as u32)
+    }
 }
 
 /// Registers a Substreams custom panic hook. The panic hook is invoked when then handler panics
 
 pub fn register_panic_hook() {
-    use std::sync::Once;
-    static SET_HOOK: Once = Once::new();
-    SET_HOOK.call_once(|| {
-        std::panic::set_hook(Box::new(hook));
-    });
+    #[cfg(target_arch = "wasm32")]
+    {
+        use std::sync::Once;
+        static SET_HOOK: Once = Once::new();
+        SET_HOOK.call_once(|| {
+            std::panic::set_hook(Box::new(hook));
+        });
+    }
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
 fn hook(info: &std::panic::PanicInfo<'_>) {
-    let error_msg = info
-        .payload()
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| info.payload().downcast_ref::<&'static str>().copied())
-        .unwrap_or("");
-    let location = info.location();
+    #[cfg(target_arch = "wasm32")]
+    {
+        let error_msg = info
+            .payload()
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| info.payload().downcast_ref::<&'static str>().copied())
+            .unwrap_or("");
+        let location = info.location();
 
-    unsafe {
-        let _ = match location {
-            Some(loc) => {
-                let file = loc.file();
-                let line = loc.line();
-                let column = loc.column();
+        unsafe {
+            let _ = match location {
+                Some(loc) => {
+                    let file = loc.file();
+                    let line = loc.line();
+                    let column = loc.column();
 
-                externs::register_panic(
+                    externs::register_panic(
+                        error_msg.as_ptr(),
+                        error_msg.len() as u32,
+                        file.as_ptr(),
+                        file.len() as u32,
+                        line,
+                        column,
+                    )
+                }
+                None => externs::register_panic(
                     error_msg.as_ptr(),
                     error_msg.len() as u32,
-                    file.as_ptr(),
-                    file.len() as u32,
-                    line,
-                    column,
-                )
-            }
-            None => externs::register_panic(
-                error_msg.as_ptr(),
-                error_msg.len() as u32,
-                std::ptr::null(),
-                0,
-                0,
-                0,
-            ),
-        };
+                    std::ptr::null(),
+                    0,
+                    0,
+                    0,
+                ),
+            };
+        }
     }
 }

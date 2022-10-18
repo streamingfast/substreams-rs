@@ -4,8 +4,6 @@
 //! in your handlers
 //!
 
-use crate::externs;
-
 /// Logs a message at INFO level on the logger of the current substream using interpolation of
 /// runtime expressions.
 ///
@@ -83,13 +81,15 @@ macro_rules! log_debug {
 pub use log_debug as debug;
 pub use log_info as info;
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn println<T: AsRef<str>>(msg: T) {
-    let reference = msg.as_ref();
+    #[cfg(target_arch = "wasm32")]
+    {
+        use crate::externs;
+        let reference = msg.as_ref();
 
-    #[cfg(not(target_arch = "wasm32"))]
-    println!("{}", reference);
-
-    unsafe {
-        externs::println(reference.as_ptr(), reference.len());
+        unsafe {
+            externs::println(reference.as_ptr(), reference.len());
+        }
     }
 }
