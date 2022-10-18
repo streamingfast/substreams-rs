@@ -90,7 +90,7 @@ fn encode_lower_hex<T: AsRef<[u8]>>(input: T) -> String {
     }
 
     let mut buffer = String::with_capacity(bytes.len());
-    write_lower_hex(bytes, &mut buffer).expect("non-faillible pre-allocated buffer");
+    write_lower_hex(bytes, &mut buffer).expect("non-fallible pre-allocated buffer");
     buffer
 }
 

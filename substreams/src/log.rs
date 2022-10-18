@@ -4,7 +4,6 @@
 //! in your handlers
 //!
 
-#[cfg(target_arch = "wasm32")]
 use crate::externs;
 
 /// Logs a message at INFO level on the logger of the current substream using interpolation of
@@ -90,7 +89,6 @@ pub fn println<T: AsRef<str>>(msg: T) {
     #[cfg(not(target_arch = "wasm32"))]
     println!("{}", reference);
 
-    #[cfg(target_arch = "wasm32")]
     unsafe {
         externs::println(reference.as_ptr(), reference.len());
     }

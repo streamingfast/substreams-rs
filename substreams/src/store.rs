@@ -1205,7 +1205,7 @@ fn decode_bytes_to_f64(bytes: Vec<u8>) -> Option<f64> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::store::{decode_bytes_to_f64, decode_bytes_to_i64};
 
     #[test]

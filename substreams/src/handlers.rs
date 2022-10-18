@@ -58,8 +58,9 @@ pub use substreams_macro::map;
 ///
 ///
 /// ```rust
+/// use substreams::prelude::{StoreGet, StoreNew};
 /// use substreams::{log, store};
-/// use substreams::store::{StoreGetProto, StoreAddInt64, StoreGet};
+/// use substreams::store::{StoreGetProto, StoreAddInt64};
 /// # mod proto {
 /// #   pub type Custom = ();
 /// #   #[derive(Clone, PartialEq, ::prost::Message)]
@@ -77,6 +78,7 @@ pub use substreams_macro::map;
 /// Equivalent code not using `#[substream::handlers::store]`
 ///
 /// ```rust
+/// use substreams::prelude::StoreNew;
 /// use substreams::{log, store};
 /// use substreams::store::StoreGetProto;
 /// # mod proto {

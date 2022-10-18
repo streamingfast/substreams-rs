@@ -14,8 +14,9 @@
 //! * The Result must have an Error type set to `substreams::error:Error`
 //!
 //!```no_run
+//! use substreams::prelude::{StoreGet, StoreNew};
 //! use substreams::{errors::Error, store};
-//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreGet};
+//! use substreams::store::{DeltaBigDecimal, StoreGetProto};
 //! # mod eth { pub type Block = (); }
 //! # mod pb { // holding all codegen'd protobuf structs
 //! #   pub type Custom = ();
@@ -56,7 +57,8 @@
 //!
 //! ```no_run
 //! use substreams::store;
-//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreAddInt64, StoreGet};
+//! use substreams::prelude::{StoreGet, StoreNew};
+//! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreAddInt64};
 //! # mod pb {
 //! #   use std::todo;
 //! #   use substreams::pb::substreams::StoreDelta;
@@ -89,7 +91,7 @@
 extern crate core;
 
 pub mod errors;
-#[cfg(target_arch = "wasm32")]
+
 mod externs;
 pub mod handlers;
 mod hex;
@@ -100,15 +102,28 @@ pub mod memory;
 pub mod pb;
 pub mod proto;
 pub mod scalar;
-#[cfg(target_arch = "wasm32")]
+
 mod state;
-#[cfg(target_arch = "wasm32")]
+
 pub mod store;
+
+/// A prelude that makes all store traits available.
+///
+/// Add the following code to import all traits listed below at once.
+///
+/// ```
+/// use substreams::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::store::{
+        Appender, Delta, DeltaDecoder, StoreAdd, StoreDelete, StoreGet, StoreMax, StoreMin,
+        StoreNew, StoreSet, StoreSetIfNotExists,
+    };
+}
 
 pub use crate::hex::Hex;
 pub use hex_literal::hex;
 
-#[cfg(target_arch = "wasm32")]
 pub fn output<M: prost::Message>(msg: M) {
     // Need to return the buffer and forget about it issue occurred when trying to write large data
     // wasm was "dropping" the data before we could write to it, which causes us to have garbage
@@ -119,14 +134,12 @@ pub fn output<M: prost::Message>(msg: M) {
     unsafe { externs::output(ptr, len as u32) }
 }
 
-///
-#[cfg(target_arch = "wasm32")]
 pub fn output_raw(data: Vec<u8>) {
     unsafe { externs::output(data.as_ptr(), data.len() as u32) }
 }
 
 /// Registers a Substreams custom panic hook. The panic hook is invoked when then handler panics
-#[cfg(target_arch = "wasm32")]
+
 pub fn register_panic_hook() {
     use std::sync::Once;
     static SET_HOOK: Once = Once::new();
@@ -135,7 +148,6 @@ pub fn register_panic_hook() {
     });
 }
 
-#[cfg(target_arch = "wasm32")]
 fn hook(info: &std::panic::PanicInfo<'_>) {
     let error_msg = info
         .payload()
