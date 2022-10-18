@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.0)
+
+* Abstraction of `StoreDelete` to implement `delete_prefix` and `StoreNew`
+* Removing config flag `wasm32`
+
 ## [0.2.1](https://github.com/streamingfast/substreams-rs/releases/tag/v0.2.1)
 
 * Added conditional compilation to make sure code that is linked to wasm modules can only be compiled when a wasm target is specified. Non-wasm targets will skip compiling the linked code allowing the crate to be compiled with any target.
