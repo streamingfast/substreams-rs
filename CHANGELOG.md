@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.1)
+
+* Made Windows target(s) able to run tests when depending on `substreams-ethereum` crate.
+
 ## [0.3.0](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.0)
 
-* Abstraction of `StoreDelete` to implement `delete_prefix` and `StoreNew`
-* Removing config flag `wasm32`
+* Abstraction of `StoreDelete` to implement `delete_prefix` and `StoreNew`.
+
+* Removing config flag `wasm32`.
 
 ## [0.2.1](https://github.com/streamingfast/substreams-rs/releases/tag/v0.2.1)
 
@@ -28,14 +33,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * `StoreGet`, `StoreSet` and `StoreSetIfNotExists` have all been changed from a `struct` to a `trait`
   * Multiple implementations for `StoreGet`, `StoreSet` and `StoreSetIfNotExists` have been added. Notably:
     * `BigDecimalStoreGet`, `BigDecimalStoreSet`, `BigIntStoreGet`, `BigIntStoreSet`. These stores are typed, meaning the user does not need to think about the encoding and the decoding as it's done for you. The user only needs to create a `BigDecimal` and store it. Storing and reading it will work out of the box for the users. No need to decode it.
-    * `ProtoStoreGet<ProtobufType>`, `ProtoStoreSet<ProtobufType>` and `ProtoStoreSetIfNotExists<ProtobufType>`. All these implementations of proto have to be typed. 
+    * `ProtoStoreGet<ProtobufType>`, `ProtoStoreSet<ProtobufType>` and `ProtoStoreSetIfNotExists<ProtobufType>`. All these implementations of proto have to be typed.
       example:
       ```bash
       #[derive(Clone, PartialEq, ::prost::Message)]
       pub struct ProtobufType {
           [...] // your attributes defined in your proto
       }
-      
+
       #[substreams::handlers::map]
       pub fn map_my_substreams(store: ProtoStoreGet<ProtobufType>) -> Result<[...]> {
           [...]
