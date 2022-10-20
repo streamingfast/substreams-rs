@@ -1004,6 +1004,42 @@ impl Delta for DeltaBigInt {
 }
 
 #[derive(Debug)]
+pub struct DeltaI32 {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: i32,
+    pub new_value: i32,
+}
+
+impl Delta for DeltaI32 {
+    fn new(d: &StoreDelta) -> DeltaI32 {
+        let mut ov = i32::default();
+        if d.old_value.len() != 0 {
+            ov = match decode_bytes_to_i32(d.old_value.clone()) {
+                None => 0,
+                Some(value) => value,
+            };
+        }
+        let mut nv = i32::default();
+        if d.new_value.len() != 0 {
+            nv = match decode_bytes_to_i32(d.new_value.clone()) {
+                None => 0,
+                Some(value) => value,
+            };
+        }
+
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: ov,
+            new_value: nv,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct DeltaI64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1071,6 +1107,48 @@ impl Delta for DeltaFloat64 {
             key: d.key.clone(),
             old_value: ov,
             new_value: nv,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct DeltaBool {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: bool,
+    pub new_value: bool,
+}
+
+impl Delta for DeltaBool {
+    fn new(d: &StoreDelta) -> DeltaBool {
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: !d.old_value.contains(&0),
+            new_value: !d.new_value.contains(&0),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct DeltaBytes {
+    pub operation: pb::substreams::store_delta::Operation,
+    pub ordinal: u64,
+    pub key: String,
+    pub old_value: Vec<u8>,
+    pub new_value: Vec<u8>,
+}
+
+impl Delta for DeltaBytes {
+    fn new(d: &StoreDelta) -> DeltaBytes {
+        Self {
+            operation: convert_i32_to_operation(d.operation),
+            ordinal: d.ordinal.clone(),
+            key: d.key.clone(),
+            old_value: d.old_value.clone(),
+            new_value: d.new_value.clone(),
         }
     }
 }
@@ -1182,6 +1260,17 @@ fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Oper
     };
 }
 
+fn decode_bytes_to_i32(bytes: Vec<u8>) -> Option<i32> {
+    let int_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
+    return match i32::from_str(int_as_string.as_str()) {
+        Ok(value) => Some(value),
+        Err(_) => panic!(
+            "value {} is not a valid representation of an i64",
+            int_as_string
+        ),
+    };
+}
+
 fn decode_bytes_to_i64(bytes: Vec<u8>) -> Option<i64> {
     let int_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
     return match i64::from_str(int_as_string.as_str()) {
@@ -1206,7 +1295,33 @@ fn decode_bytes_to_f64(bytes: Vec<u8>) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::store::{decode_bytes_to_f64, decode_bytes_to_i64};
+    use crate::store::{decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64};
+
+    #[test]
+    fn valid_int64_decode_bytes_to_i32() {
+        let bytes: Vec<u8> = Vec::from("1".to_string());
+        assert_eq!(1, decode_bytes_to_i32(bytes).unwrap())
+    }
+
+    #[test]
+    fn valid_int64_max_value_decode_bytes_to_i32() {
+        let bytes: Vec<u8> = Vec::from(i32::MAX.to_string());
+        assert_eq!(i32::MAX, decode_bytes_to_i32(bytes).unwrap())
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_bytes_decode_bytes_to_i32() {
+        let bytes: Vec<u8> = Vec::from("invalid".to_string());
+        decode_bytes_to_i32(bytes);
+    }
+
+    #[test]
+    #[should_panic]
+    fn no_bytes_decode_bytes_to_i32() {
+        let bytes: Vec<u8> = vec![];
+        decode_bytes_to_i32(bytes);
+    }
 
     #[test]
     fn valid_int64_decode_bytes_to_i64() {
