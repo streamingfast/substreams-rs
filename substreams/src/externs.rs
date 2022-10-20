@@ -1,3 +1,4 @@
+#[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
 extern "C" {
     pub fn output(ptr: *const u8, len: u32);
@@ -11,12 +12,14 @@ extern "C" {
     );
 }
 
+#[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "logger")]
 extern "C" {
     pub fn println(ptr: *const u8, len: usize);
 }
 
 pub mod state {
+    #[cfg(target_arch = "wasm32")]
     #[link(wasm_import_module = "state")]
     extern "C" {
         pub fn get_first(store_idx: u32, key_ptr: *const u8, key_len: u32, output_ptr: u32) -> u32;
