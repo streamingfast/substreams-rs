@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
+## [0.3.2](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.2)
+
+* Adding `DeltaI32`, `DeltaBool` and `DeltaBytes`.
+
 ## [0.3.1](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.1)
 
 * Made Windows target(s) able to run tests when depending on `substreams` crate.
