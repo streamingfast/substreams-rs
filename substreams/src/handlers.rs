@@ -52,6 +52,8 @@
 /// }
 /// ```
 pub use substreams_macro::map;
+pub use substreams_macro::map_impl;
+pub use substreams_macro::map_trait;
 
 /// Marks function to setup substream store handler WASM boilerplate
 /// ## Usage

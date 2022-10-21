@@ -9,6 +9,15 @@ mod store;
 pub fn map(args: TokenStream, item: TokenStream) -> TokenStream {
     return handler::main(args, item, config::ModuleType::Map);
 }
+#[proc_macro_attribute]
+pub fn map_trait(args: TokenStream, item: TokenStream) -> TokenStream {
+    return handler::main_treat(args, item, config::ModuleType::Map);
+}
+
+#[proc_macro_attribute]
+pub fn map_impl(args: TokenStream, item: TokenStream) -> TokenStream {
+    return handler::main_impl(args, item, config::ModuleType::Map);
+}
 
 #[proc_macro_attribute]
 pub fn store(args: TokenStream, item: TokenStream) -> TokenStream {

@@ -5,6 +5,37 @@ use proc_macro2::Span;
 use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
 
+pub fn main_treat(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
+    let result = quote! {
+        panic!("todo");
+    };
+
+    result.into()
+}
+pub fn main_impl(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
+    println!("**********************************************************");
+    println!("main_i");
+    println!("**********************************************************");
+    let original = item.clone();
+
+    let final_config = FinalConfiguration { module_type };
+    let input = syn::parse_macro_input!(item as syn::ItemFn);
+    let mut args: Vec<proc_macro2::TokenStream> = Vec::with_capacity(input.sig.inputs.len() * 2);
+
+    let output_result = parse_func_output(&final_config, input.sig.output.clone());
+    let body = &input.block;
+    let func_name = input.sig.ident.clone();
+
+    let result = quote! {
+        extern "C" fn #func_name(#(#args),*){
+        }
+    };
+    println!("**********************************************************");
+    println!("end main_i");
+    println!("**********************************************************");
+    result.into()
+}
+
 pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
     let original = item.clone();
 
@@ -272,7 +303,7 @@ fn build_map_handler(
     };
     let result = quote! {
         #header
-        pub extern "C" fn #func_name(#(#collected_args),*){
+        extern "C" fn #func_name(#(#collected_args),*){
             substreams::register_panic_hook();
             #lambda
             let result = func();
@@ -299,7 +330,7 @@ fn build_store_handler(
     let func_name = input.sig.ident.clone();
     let result = quote! {
         #header
-        pub extern "C" fn #func_name(#(#collected_args),*){
+        extern "C" fn #func_name(#(#collected_args),*){
             substreams::register_panic_hook();
             #(#decodings)*
             #(#read_only_stores)*
