@@ -736,6 +736,38 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     }
 }
 
+/// StoreGetString is as struct representing a read only store `store`
+pub struct StoreGetString {
+    idx: u32,
+}
+
+impl StoreGet<String> for StoreGetString {
+    fn new(idx: u32) -> Self {
+        StoreGetString { idx }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<String> {
+        match state::get_at(self.idx, ord as i64, key) {
+            None => None,
+            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<String> {
+        match state::get_last(self.idx, key) {
+            None => None,
+            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<String> {
+        match state::get_first(self.idx, key) {
+            None => None,
+            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
+        }
+    }
+}
+
 pub struct StoreGetI64(StoreGetRaw);
 impl StoreGet<i64> for StoreGetI64 {
     fn new(idx: u32) -> Self {
