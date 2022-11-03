@@ -86,17 +86,17 @@ impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
     }
 }
 
-/// `StoreSetI64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
-pub struct StoreSetI64 {}
-impl StoreNew for StoreSetI64 {
+/// `StoreSetInt64` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `int64`
+pub struct StoreSetInt64 {}
+impl StoreNew for StoreSetInt64 {
     fn new() -> Self {
         Self {}
     }
 }
 
-impl StoreDelete for StoreSetI64 {}
+impl StoreDelete for StoreSetInt64 {}
 
-impl StoreSet<i64> for StoreSetI64 {
+impl StoreSet<i64> for StoreSetInt64 {
     /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &i64) {
         state::set(ord as i64, key, value.to_string().as_bytes());
@@ -317,17 +317,17 @@ impl StoreSetIfNotExists<BigInt> for StoreSetIfNotExistsBigInt {
     }
 }
 
-/// `StoreSetIfNotExistsI64` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `int64`
-pub struct StoreSetIfNotExistsI64 {}
-impl StoreNew for StoreSetIfNotExistsI64 {
+/// `StoreSetIfNotExistsInt64` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `int64`
+pub struct StoreSetIfNotExistsInt64 {}
+impl StoreNew for StoreSetIfNotExistsInt64 {
     fn new() -> Self {
         Self {}
     }
 }
 
-impl StoreDelete for StoreSetIfNotExistsI64 {}
+impl StoreDelete for StoreSetIfNotExistsInt64 {}
 
-impl StoreSetIfNotExists<i64> for StoreSetIfNotExistsI64 {
+impl StoreSetIfNotExists<i64> for StoreSetIfNotExistsInt64 {
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &i64) {
         state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
     }
@@ -736,8 +736,8 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     }
 }
 
-pub struct StoreGetI64(StoreGetRaw);
-impl StoreGet<i64> for StoreGetI64 {
+pub struct StoreGetInt64(StoreGetRaw);
+impl StoreGet<i64> for StoreGetInt64 {
     fn new(idx: u32) -> Self {
         Self {
             0: StoreGetRaw { idx },
@@ -1040,7 +1040,7 @@ impl Delta for DeltaI32 {
 }
 
 #[derive(Debug)]
-pub struct DeltaI64 {
+pub struct DeltaInt64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -1048,8 +1048,8 @@ pub struct DeltaI64 {
     pub new_value: i64,
 }
 
-impl Delta for DeltaI64 {
-    fn new(d: &StoreDelta) -> DeltaI64 {
+impl Delta for DeltaInt64 {
+    fn new(d: &StoreDelta) -> DeltaInt64 {
         let mut ov = i64::default();
         if d.old_value.len() != 0 {
             ov = match decode_bytes_to_i64(d.old_value.clone()) {
