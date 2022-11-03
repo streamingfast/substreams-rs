@@ -130,7 +130,7 @@ const WRITABLE_STORE: [&'static str; 21] = [
     "StoreSetBigInt",
     "StoreSetBigDecimal",
     "StoreSetProto",
-    "StoreSetI64",
+    "StoreSetInt64",
     "StoreSetFloat64",
     "StoreSetIfNotExistsRaw",
     "StoreSetIfNotExistsProto",
@@ -150,7 +150,7 @@ const WRITABLE_STORE: [&'static str; 21] = [
 ];
 
 const READABLE_STORE: [&'static str; 6] = [
-    "StoreGetI64",
+    "StoreGetInt64",
     "StoreGetFloat64",
     "StoreGetBigDecimal",
     "StoreGetBigInt",
