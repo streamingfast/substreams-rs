@@ -126,7 +126,7 @@ maybe_wait_publish() {
     #     no matching package named `substreams-macro` found
     #     location searched: registry `crates-io`
     #     required by package `substreams v0.0.8-beta (/Users/maoueh/work/sf/substreams/target/package/substreams-0.0.8-beta)`
-    sleep 10
+    sleep 30
   fi
 }
 
