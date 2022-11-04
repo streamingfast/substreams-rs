@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
+## [0.4.0](https://github.com/streamingfast/substreams-rs/release/tag/v0.4.0)
+
+* Renaming `StoreI64`, `DeltaI32`, `DeltaI64` to `StoreInt64`, `DeltaInt32` and `DeltaInt64`.
+* Adding `StoreSetString`, `StoreGetString` and `StoreGetArray` typed stores.
+
 ## [0.3.2](https://github.com/streamingfast/substreams-rs/releases/tag/v0.3.2)
 
 * Adding `DeltaI32`, `DeltaBool` and `DeltaBytes`.
