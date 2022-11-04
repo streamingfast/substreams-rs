@@ -901,6 +901,62 @@ impl StoreGet<BigInt> for StoreGetBigInt {
 }
 
 #[allow(dead_code)]
+pub struct StoreGetArray<T> {
+    store: StoreGetRaw,
+    casper: PhantomData<T>,
+}
+
+impl<T: Into<String> + From<String> + Clone> StoreGet<Vec<T>> for StoreGetArray<T> {
+    fn new(idx: u32) -> Self {
+        Self {
+            store: StoreGetRaw { idx },
+            casper: PhantomData,
+        }
+    }
+
+    fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<Vec<T>> {
+        match self.store.get_at(ord, key) {
+            None => None,
+            Some(bytes) => split_array(bytes),
+        }
+    }
+
+    fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<T>> {
+        match self.store.get_last(key) {
+            None => None,
+            Some(bytes) => split_array(bytes),
+        }
+    }
+
+    fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<T>> {
+        match self.store.get_first(key) {
+            None => None,
+            Some(bytes) => split_array(bytes),
+        }
+    }
+}
+
+fn split_array<T: Into<String> + From<String> + Clone>(bytes: Vec<u8>) -> Option<Vec<T>> {
+    let mut chunk = String::from_utf8(bytes).unwrap();
+    match chunk.strip_suffix(";") {
+        None => return None,
+        Some(ch) => chunk = ch.to_string(),
+    }
+
+    let chunks: Vec<T> = chunk
+        .split(";")
+        .map(|v| v.to_string())
+        .map(|v| v.into())
+        .collect();
+
+    if chunks.len() == 0 {
+        return None;
+    }
+
+    return Some(chunks);
+}
+
+#[allow(dead_code)]
 pub struct StoreGetProto<T> {
     store: StoreGetRaw,
     casper: PhantomData<T>,
@@ -1327,7 +1383,9 @@ fn decode_bytes_to_f64(bytes: Vec<u8>) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::store::{decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64};
+    use crate::store::{
+        decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array,
+    };
 
     #[test]
     fn valid_int64_decode_bytes_to_i32() {
@@ -1405,5 +1463,39 @@ mod tests {
     fn no_bytes_decode_bytes_to_f64() {
         let bytes: Vec<u8> = vec![];
         decode_bytes_to_f64(bytes);
+    }
+
+    #[test]
+    fn split_arrays_no_elements() {
+        let value = "";
+        let bytes = value.as_bytes();
+
+        let expected_value = None;
+
+        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
+        assert_eq!(expected_value, actual_value)
+    }
+
+    #[test]
+    fn split_arrays_one_string_element() {
+        let value = "1;";
+        let bytes = value.as_bytes();
+
+        let expected_value: Option<Vec<String>> = Some(vec!["1".to_string()]);
+
+        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
+        assert_eq!(expected_value, actual_value)
+    }
+
+    #[test]
+    fn split_arrays_multiple_string_elements() {
+        let value = "1;2;3;";
+        let bytes = value.as_bytes();
+
+        let expected_value: Option<Vec<String>> =
+            Some(vec!["1".to_string(), "2".to_string(), "3".to_string()]);
+
+        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
+        assert_eq!(expected_value, actual_value)
     }
 }
