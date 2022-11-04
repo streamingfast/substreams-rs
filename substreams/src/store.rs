@@ -1092,7 +1092,7 @@ impl Delta for DeltaBigInt {
 }
 
 #[derive(Debug)]
-pub struct DeltaI32 {
+pub struct DeltaInt32 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
@@ -1100,8 +1100,8 @@ pub struct DeltaI32 {
     pub new_value: i32,
 }
 
-impl Delta for DeltaI32 {
-    fn new(d: &StoreDelta) -> DeltaI32 {
+impl Delta for DeltaInt32 {
+    fn new(d: &StoreDelta) -> DeltaInt32 {
         let mut ov = i32::default();
         if d.old_value.len() != 0 {
             ov = match decode_bytes_to_i32(d.old_value.clone()) {

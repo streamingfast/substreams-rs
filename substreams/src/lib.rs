@@ -118,16 +118,16 @@ pub mod prelude {
     pub use crate::scalar::{BigDecimal, BigInt};
     pub use crate::store::{
         Appender, Delta, DeltaArray, DeltaBigDecimal, DeltaBigInt, DeltaBool, DeltaBytes,
-        DeltaDecoder, DeltaFloat64, DeltaI32, DeltaI64, DeltaProto, DeltaString, Deltas, StoreAdd,
-        StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
-        StoreDelete, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetFloat64, StoreGetI64,
+        DeltaDecoder, DeltaFloat64, DeltaInt32, DeltaInt64, DeltaProto, DeltaString, Deltas,
+        StoreAdd, StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
+        StoreDelete, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetFloat64, StoreGetInt64,
         StoreGetProto, StoreGetRaw, StoreGetString, StoreMax, StoreMaxBigDecimal, StoreMaxBigInt,
         StoreMaxFloat64, StoreMaxInt64, StoreMin, StoreMinBigDecimal, StoreMinBigInt,
         StoreMinFloat64, StoreMinInt64, StoreNew, StoreSet, StoreSetBigDecimal, StoreSetBigInt,
-        StoreSetFloat64, StoreSetI64, StoreSetIfNotExists, StoreSetIfNotExistsBigDecimal,
-        StoreSetIfNotExistsBigInt, StoreSetIfNotExistsFloat64, StoreSetIfNotExistsI64,
-        StoreSetIfNotExistsProto, StoreSetIfNotExistsRaw, StoreSetIfNotExistsString, StoreSetProto,
-        StoreSetRaw, StoreSetString,
+        StoreSetFloat64, StoreSetIfNotExists, StoreSetIfNotExistsBigDecimal,
+        StoreSetIfNotExistsBigInt, StoreSetIfNotExistsFloat64, StoreSetIfNotExistsInt64,
+        StoreSetIfNotExistsProto, StoreSetIfNotExistsRaw, StoreSetIfNotExistsString, StoreSetInt64,
+        StoreSetProto, StoreSetRaw, StoreSetString,
     };
 }
 
