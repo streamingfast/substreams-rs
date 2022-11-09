@@ -12,6 +12,7 @@ categories = ["api-bindings", "external-ffi-bindings", "wasm"]
 rust-version = "1.60"
 
 [dependencies]
+anyhow = "1"
 substreams-macro = { version = "0.4.0", path = "../substreams-macro" }
 prost = "^0.11.0"
 prost-types = "^0.11.0"

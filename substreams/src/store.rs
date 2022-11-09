@@ -4,6 +4,8 @@
 //! handlers.
 //!
 
+use anyhow::Context;
+
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -18,7 +20,7 @@ use {
 
 /// `StoreSet` is a trait which is implemented on any type of typed StoreSet
 pub trait StoreSet<V>: StoreNew + StoreDelete {
-    /// Set a given key to a given value, if the key existed before, it will be replaced.  
+    /// Set a given key to a given value, if the key existed before, it will be replaced.
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V);
     /// Set many keys to a given values, if the key existed before, it will be replaced.
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V);
@@ -76,12 +78,14 @@ impl StoreDelete for StoreSetString {}
 
 impl<V: AsRef<str>> StoreSet<V> for StoreSetString {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        state::set(ord as i64, key, value.as_ref().as_bytes());
+        state::set(ord as i64, key, value.as_ref());
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+        let value = value.as_ref();
+
         for key in keys {
-            state::set(ord as i64, key, value.as_ref().as_bytes());
+            state::set(ord as i64, key, value);
         }
     }
 }
@@ -104,8 +108,10 @@ impl StoreSet<i64> for StoreSetInt64 {
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &i64) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set(ord as i64, key, value.to_string().as_bytes());
+            state::set(ord as i64, key, &as_str);
         }
     }
 }
@@ -128,8 +134,10 @@ impl StoreSet<f64> for StoreSetFloat64 {
 
     /// Set many keys to a given values, if the key existed before, it will be replaced.
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &f64) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set(ord as i64, key, value.to_string().as_bytes());
+            state::set(ord as i64, key, &as_str);
         }
     }
 }
@@ -150,8 +158,10 @@ impl StoreSet<BigDecimal> for StoreSetBigDecimal {
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set(ord as i64, key, value.to_string().as_bytes())
+            state::set(ord as i64, key, &as_str)
         }
     }
 }
@@ -172,8 +182,10 @@ impl StoreSet<BigInt> for StoreSetBigInt {
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
+        let as_str = value.as_ref().to_string();
+
         for key in keys {
-            state::set(ord as i64, key, value.as_ref().to_string().as_bytes());
+            state::set(ord as i64, key, &as_str);
         }
     }
 }
@@ -201,25 +213,27 @@ impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
 
 impl<V: Default + prost::Message> StoreSet<V> for StoreSetProto<V> {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        match proto::encode(value) {
-            Ok(bytes) => state::set(ord as i64, key, &bytes),
-            Err(_) => panic!("failed to encode message"),
-        }
+        let bytes = proto::encode(value)
+            .context("failed to encode message")
+            .unwrap();
+
+        state::set(ord as i64, key, &bytes)
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+        let bytes = proto::encode(value)
+            .context("failed to encode message")
+            .unwrap();
+
         for key in keys {
-            match proto::encode(value) {
-                Ok(bytes) => state::set(ord as i64, key, &bytes),
-                Err(_) => panic!("failed to encode message"),
-            }
+            state::set(ord as i64, key, &bytes)
         }
     }
 }
 
 /// `StoreSetIfNotExists` is a trait which is implemented on any type of typed StoreSetIfNotExists
 pub trait StoreSetIfNotExists<V>: StoreDelete + StoreNew {
-    /// Set a given key to a given value, if the key existed before, it will be ignored and not set.  
+    /// Set a given key to a given value, if the key existed before, it will be ignored and not set.
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &V);
     /// Set given keys to given values, if the key existed before, it will be ignored and not set.
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V);
@@ -243,8 +257,10 @@ impl<V: AsRef<[u8]>> StoreSetIfNotExists<V> for StoreSetIfNotExistsRaw {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+        let value = value.as_ref();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.as_ref());
+            state::set_if_not_exists(ord as i64, key, value);
         }
     }
 }
@@ -267,8 +283,10 @@ impl<V: AsRef<str>> StoreSetIfNotExists<V> for StoreSetIfNotExistsString {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+        let value = value.as_ref();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.as_ref().as_bytes());
+            state::set_if_not_exists(ord as i64, key, value);
         }
     }
 }
@@ -289,8 +307,10 @@ impl StoreSetIfNotExists<BigDecimal> for StoreSetIfNotExistsBigDecimal {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigDecimal) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.as_ref().to_string().as_bytes());
+            state::set_if_not_exists(ord as i64, key, &as_str);
         }
     }
 }
@@ -311,8 +331,10 @@ impl StoreSetIfNotExists<BigInt> for StoreSetIfNotExistsBigInt {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &BigInt) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+            state::set_if_not_exists(ord as i64, key, &as_str);
         }
     }
 }
@@ -333,8 +355,10 @@ impl StoreSetIfNotExists<i64> for StoreSetIfNotExistsInt64 {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &i64) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+            state::set_if_not_exists(ord as i64, key, &as_str);
         }
     }
 }
@@ -355,8 +379,10 @@ impl StoreSetIfNotExists<f64> for StoreSetIfNotExistsFloat64 {
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &f64) {
+        let as_str = value.to_string();
+
         for key in keys {
-            state::set_if_not_exists(ord as i64, key, value.to_string().as_bytes());
+            state::set_if_not_exists(ord as i64, key, &as_str);
         }
     }
 }
@@ -386,18 +412,20 @@ impl<V: Default + prost::Message> StoreDelete for StoreSetIfNotExistsProto<V> {}
 
 impl<V: Default + prost::Message> StoreSetIfNotExists<V> for StoreSetIfNotExistsProto<V> {
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        match proto::encode(value) {
-            Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
-            Err(_) => panic!("failed to encode message"),
-        }
+        let bytes = proto::encode(value)
+            .with_context(|| "failed to encode message")
+            .unwrap();
+
+        self.store.set_if_not_exists(ord, key, &bytes)
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
+        let bytes = proto::encode(value)
+            .with_context(|| "failed to encode message")
+            .unwrap();
+
         for key in keys {
-            match proto::encode(value) {
-                Ok(bytes) => self.store.set_if_not_exists(ord, key, &bytes),
-                Err(_) => panic!("failed to encode message"),
-            }
+            self.store.set_if_not_exists(ord, key, &bytes)
         }
     }
 }
@@ -472,8 +500,10 @@ impl<V: AsRef<BigDecimal>> StoreAdd<V> for StoreAddBigDecimal {
     }
 
     fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        let value = value.as_ref();
+
         for key in keys {
-            state::add_bigdecimal(ord as i64, key, value.as_ref());
+            state::add_bigdecimal(ord as i64, key, value);
         }
     }
 }
@@ -496,8 +526,10 @@ impl<V: AsRef<BigInt>> StoreAdd<V> for StoreAddBigInt {
     }
 
     fn add_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: V) {
+        let value = value.as_ref();
+
         for key in keys {
-            state::add_bigint(ord as i64, key, value.as_ref());
+            state::add_bigint(ord as i64, key, value);
         }
     }
 }
@@ -680,7 +712,7 @@ where
     /// Concatenates a given value at the end of the key's current value
     fn append<K: AsRef<str>>(&self, ord: u64, key: K, item: T) {
         let item: String = item.into();
-        state::append(ord as i64, &key, &format!("{};", &item).as_bytes().to_vec());
+        state::append(ord as i64, &key, &format!("{};", &item).as_bytes());
     }
 
     fn append_all<K: AsRef<str>>(&self, ord: u64, key: K, items: Vec<T>) {
@@ -716,7 +748,7 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// to go query a key that might have changed mid-block by
     /// the store module that built it.
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<Vec<u8>> {
-        return state::get_at(self.idx, ord as i64, key);
+        state::get_at(self.idx, ord as i64, key)
     }
 
     /// Retrieves a key from the store, like `get_at`, but querying the state of
@@ -724,7 +756,7 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// were applied within the current block. Tt does not need to rewind any changes
     /// in the middle of the block.
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
-        return state::get_last(self.idx, key);
+        state::get_last(self.idx, key)
     }
 
     /// Retrieves a key from the store, like `get_at`, but querying the state of
@@ -732,7 +764,7 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// were applied within the current block. However, it needs to unwind any keys that
     /// would have changed mid-block, so will be slightly less performant.
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
-        return state::get_first(self.idx, key);
+        state::get_first(self.idx, key)
     }
 }
 
@@ -747,24 +779,15 @@ impl StoreGet<String> for StoreGetString {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<String> {
-        match state::get_at(self.idx, ord as i64, key) {
-            None => None,
-            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
-        }
+        state::get_at(self.idx, ord as i64, key).map(|bytes| String::from_utf8(bytes).unwrap())
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<String> {
-        match state::get_last(self.idx, key) {
-            None => None,
-            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
-        }
+        state::get_last(self.idx, key).map(|bytes| String::from_utf8(bytes).unwrap())
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<String> {
-        match state::get_first(self.idx, key) {
-            None => None,
-            Some(bytes) => Some(String::from_utf8(bytes).unwrap()),
-        }
+        state::get_first(self.idx, key).map(|bytes| String::from_utf8(bytes).unwrap())
     }
 }
 
@@ -777,27 +800,21 @@ impl StoreGet<i64> for StoreGetInt64 {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<i64> {
-        let value = state::get_at(self.0.idx, ord as i64, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_i64(bytes),
-        };
+        state::get_at(self.0.idx, ord as i64, key)
+            .as_ref()
+            .map(decode_bytes_to_i64)
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<i64> {
-        let value = state::get_last(self.0.idx, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_i64(bytes),
-        };
+        state::get_last(self.0.idx, key)
+            .as_ref()
+            .map(decode_bytes_to_i64)
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<i64> {
-        let value = state::get_first(self.0.idx, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_i64(bytes),
-        };
+        state::get_first(self.0.idx, key)
+            .as_ref()
+            .map(decode_bytes_to_i64)
     }
 }
 
@@ -810,27 +827,21 @@ impl StoreGet<f64> for StoreGetFloat64 {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<f64> {
-        let value = state::get_at(self.0.idx, ord as i64, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_f64(bytes),
-        };
+        state::get_at(self.0.idx, ord as i64, key)
+            .as_ref()
+            .map(decode_bytes_to_f64)
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<f64> {
-        let value = state::get_last(self.0.idx, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_f64(bytes),
-        };
+        state::get_last(self.0.idx, key)
+            .as_ref()
+            .map(decode_bytes_to_f64)
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<f64> {
-        let value = state::get_first(self.0.idx, key);
-        return match value {
-            None => None,
-            Some(bytes) => decode_bytes_to_f64(bytes),
-        };
+        state::get_first(self.0.idx, key)
+            .as_ref()
+            .map(decode_bytes_to_f64)
     }
 }
 
@@ -843,27 +854,15 @@ impl StoreGet<BigDecimal> for StoreGetBigDecimal {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
+        state::get_at(self.0.idx, ord as i64, key).map(|bytes| BigDecimal::from_store_bytes(&bytes))
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_last(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
+        state::get_last(self.0.idx, key).map(|bytes| BigDecimal::from_store_bytes(&bytes))
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
-        let bytes_option: Option<Vec<u8>> = state::get_first(self.0.idx, key);
-        match bytes_option {
-            None => None,
-            Some(bytes) => Some(BigDecimal::from_store_bytes(bytes)),
-        }
+        state::get_first(self.0.idx, key).map(|bytes| BigDecimal::from_store_bytes(&bytes))
     }
 }
 
@@ -876,27 +875,15 @@ impl StoreGet<BigInt> for StoreGetBigInt {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_at(self.0.idx, ord as i64, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
+        state::get_at(self.0.idx, ord as i64, key).map(|bytes| BigInt::from_store_bytes(&bytes))
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_last(self.0.idx, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
+        state::get_last(self.0.idx, key).map(|bytes| BigInt::from_store_bytes(&bytes))
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
-        let store_bytes: Option<Vec<u8>> = state::get_first(self.0.idx, key);
-        match store_bytes {
-            None => None,
-            Some(bytes) => Some(BigInt::from_store_bytes(bytes)),
-        }
+        state::get_first(self.0.idx, key).map(|bytes| BigInt::from_store_bytes(&bytes))
     }
 }
 
@@ -915,24 +902,15 @@ impl<T: Into<String> + From<String> + Clone> StoreGet<Vec<T>> for StoreGetArray<
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<Vec<T>> {
-        match self.store.get_at(ord, key) {
-            None => None,
-            Some(bytes) => split_array(bytes),
-        }
+        self.store.get_at(ord, key).and_then(split_array)
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<T>> {
-        match self.store.get_last(key) {
-            None => None,
-            Some(bytes) => split_array(bytes),
-        }
+        self.store.get_last(key).and_then(split_array)
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<T>> {
-        match self.store.get_first(key) {
-            None => None,
-            Some(bytes) => split_array(bytes),
-        }
+        self.store.get_first(key).and_then(split_array)
     }
 }
 
@@ -964,12 +942,8 @@ pub struct StoreGetProto<T> {
 
 impl<T: Default + prost::Message> StoreGetProto<T> {
     pub fn must_get_last<K: AsRef<str>>(&self, key: K) -> T {
-        match self.get_last(key.as_ref().clone()) {
-            None => {
-                panic!("pool does not exist skipping pool {:?}", &key.as_ref());
-            }
-            Some(value) => value,
-        }
+        self.get_last(&key)
+            .unwrap_or_else(|| panic!("cannot get_last value: key {} not found", key.as_ref()))
     }
 }
 
@@ -986,42 +960,21 @@ where
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<T> {
-        match self.store.get_at(ord, key) {
-            None => None,
-            Some(bytes) => {
-                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
-                match value {
-                    Ok(_) => Some(value.unwrap()),
-                    Err(_) => None,
-                }
-            }
-        }
+        self.store
+            .get_at(ord, key)
+            .and_then(|bytes| proto::decode::<T>(&bytes).ok())
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<T> {
-        match self.store.get_last(key) {
-            None => None,
-            Some(bytes) => {
-                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
-                match value {
-                    Ok(_) => Some(value.unwrap()),
-                    Err(_) => None,
-                }
-            }
-        }
+        self.store
+            .get_last(key)
+            .and_then(|bytes| proto::decode::<T>(&bytes).ok())
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<T> {
-        match self.store.get_first(key) {
-            None => None,
-            Some(bytes) => {
-                let value: Result<T, prost::DecodeError> = proto::decode(&bytes);
-                match value {
-                    Ok(_) => Some(value.unwrap()),
-                    Err(_) => None,
-                }
-            }
-        }
+        self.store
+            .get_first(key)
+            .and_then(|bytes| proto::decode::<T>(&bytes).ok())
     }
 }
 
@@ -1035,13 +988,9 @@ pub struct Deltas<T> {
 
 impl<T: Delta> Deltas<T> {
     pub fn new(store_deltas: Vec<StoreDelta>) -> Self {
-        let mut deltas = Deltas { deltas: vec![] };
-
-        for d in store_deltas.iter() {
-            deltas.deltas.push(T::new(d))
+        Deltas {
+            deltas: store_deltas.iter().map(T::new).collect(),
         }
-
-        deltas
     }
 }
 
@@ -1062,10 +1011,10 @@ impl Delta for DeltaBigDecimal {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: BigDecimal::from_store_bytes(d.old_value.clone()),
-            new_value: BigDecimal::from_store_bytes(d.new_value.clone()),
+            old_value: BigDecimal::from_store_bytes(&d.old_value),
+            new_value: BigDecimal::from_store_bytes(&d.new_value),
         }
     }
 }
@@ -1083,10 +1032,10 @@ impl Delta for DeltaBigInt {
     fn new(d: &StoreDelta) -> Self {
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: BigInt::from_store_bytes(d.old_value.clone()),
-            new_value: BigInt::from_store_bytes(d.new_value.clone()),
+            old_value: BigInt::from_store_bytes(&d.old_value),
+            new_value: BigInt::from_store_bytes(&d.new_value),
         }
     }
 }
@@ -1102,27 +1051,12 @@ pub struct DeltaInt32 {
 
 impl Delta for DeltaInt32 {
     fn new(d: &StoreDelta) -> DeltaInt32 {
-        let mut ov = i32::default();
-        if d.old_value.len() != 0 {
-            ov = match decode_bytes_to_i32(d.old_value.clone()) {
-                None => 0,
-                Some(value) => value,
-            };
-        }
-        let mut nv = i32::default();
-        if d.new_value.len() != 0 {
-            nv = match decode_bytes_to_i32(d.new_value.clone()) {
-                None => 0,
-                Some(value) => value,
-            };
-        }
-
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
+            old_value: decode_bytes_to_i32(&d.old_value),
+            new_value: decode_bytes_to_i32(&d.new_value),
         }
     }
 }
@@ -1138,27 +1072,12 @@ pub struct DeltaInt64 {
 
 impl Delta for DeltaInt64 {
     fn new(d: &StoreDelta) -> DeltaInt64 {
-        let mut ov = i64::default();
-        if d.old_value.len() != 0 {
-            ov = match decode_bytes_to_i64(d.old_value.clone()) {
-                None => 0,
-                Some(value) => value,
-            };
-        }
-        let mut nv = i64::default();
-        if d.new_value.len() != 0 {
-            nv = match decode_bytes_to_i64(d.new_value.clone()) {
-                None => 0,
-                Some(value) => value,
-            };
-        }
-
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
+            old_value: decode_bytes_to_i64(&d.old_value),
+            new_value: decode_bytes_to_i64(&d.new_value),
         }
     }
 }
@@ -1174,27 +1093,12 @@ pub struct DeltaFloat64 {
 
 impl Delta for DeltaFloat64 {
     fn new(d: &StoreDelta) -> DeltaFloat64 {
-        let mut ov = f64::default();
-        if d.old_value.len() != 0 {
-            ov = match decode_bytes_to_f64(d.old_value.clone()) {
-                None => 0 as f64,
-                Some(value) => value,
-            };
-        }
-        let mut nv = f64::default();
-        if d.new_value.len() != 0 {
-            nv = match decode_bytes_to_f64(d.new_value.clone()) {
-                None => 0 as f64,
-                Some(value) => value,
-            };
-        }
-
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: ov,
-            new_value: nv,
+            old_value: decode_bytes_to_f64(&d.old_value),
+            new_value: decode_bytes_to_f64(&d.new_value),
         }
     }
 }
@@ -1254,7 +1158,7 @@ impl Delta for DeltaString {
     fn new(d: &StoreDelta) -> DeltaString {
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
             old_value: String::from_utf8(d.old_value.clone()).unwrap(),
             new_value: String::from_utf8(d.new_value.clone()).unwrap(),
@@ -1276,11 +1180,16 @@ where
     T: Default + prost::Message,
 {
     fn new(d: &StoreDelta) -> Self {
-        let nv: T = prost::Message::decode(&d.new_value[..]).unwrap();
-        let ov: T = prost::Message::decode(&d.old_value[..]).unwrap();
+        let nv: T = prost::Message::decode(d.new_value.as_ref())
+            .context("failed to decode new_value to proto message")
+            .unwrap();
+        let ov: T = prost::Message::decode(d.old_value.as_ref())
+            .context("failed to decode old_value to proto message")
+            .unwrap();
+
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
             old_value: ov,
             new_value: nv,
@@ -1305,15 +1214,13 @@ where
         let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
         let mut old_values: Vec<T> = old_chunks
             .split(";")
-            .map(|v| v.to_string())
-            .map(|v| v.into())
+            .map(|v| v.to_string().into())
             .collect();
 
-        let new_string = String::from_utf8(d.new_value.clone()).unwrap();
-        let mut new_values: Vec<T> = new_string
+        let new_chunks = String::from_utf8(d.new_value.clone()).unwrap();
+        let mut new_values: Vec<T> = new_chunks
             .split(";")
-            .map(|v| v.to_string())
-            .map(|v| v.into())
+            .map(|v| v.to_string().into())
             .collect();
 
         // remove last element which is a blank one, since there is always a ;
@@ -1322,7 +1229,7 @@ where
 
         Self {
             operation: convert_i32_to_operation(d.operation),
-            ordinal: d.ordinal.clone(),
+            ordinal: d.ordinal,
             key: d.key.clone(),
             old_value: old_values,
             new_value: new_values,
@@ -1331,54 +1238,63 @@ where
 }
 
 fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
-    return match operation {
-        x if x == pb::substreams::store_delta::Operation::Unset as i32 => {
-            pb::substreams::store_delta::Operation::Unset
-        }
-        x if x == pb::substreams::store_delta::Operation::Create as i32 => {
-            pb::substreams::store_delta::Operation::Create
-        }
-        x if x == pb::substreams::store_delta::Operation::Update as i32 => {
-            pb::substreams::store_delta::Operation::Update
-        }
-        x if x == pb::substreams::store_delta::Operation::Delete as i32 => {
-            pb::substreams::store_delta::Operation::Delete
-        }
-        _ => panic!("unhandled operation: {}", operation),
-    };
+    use pb::substreams::store_delta::Operation;
+
+    Operation::from_i32(operation).unwrap_or_else(|| panic!("unhandled operation: {}", operation))
 }
 
-fn decode_bytes_to_i32(bytes: Vec<u8>) -> Option<i32> {
-    let int_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
-    return match i32::from_str(int_as_string.as_str()) {
-        Ok(value) => Some(value),
-        Err(_) => panic!(
-            "value {} is not a valid representation of an i64",
-            int_as_string
-        ),
-    };
+// We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
+fn decode_bytes_to_i32(bytes: &Vec<u8>) -> i32 {
+    // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
+    //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
+    //        better understand implication of an invalid UTF-8 &str with `from_str` call.
+    let int_as_str =
+        std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
+
+    i32::from_str(int_as_str)
+        .with_context(|| {
+            format!(
+                "value {} is not a valid representation of an i32",
+                int_as_str
+            )
+        })
+        .unwrap()
 }
 
-fn decode_bytes_to_i64(bytes: Vec<u8>) -> Option<i64> {
-    let int_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
-    return match i64::from_str(int_as_string.as_str()) {
-        Ok(value) => Some(value),
-        Err(_) => panic!(
-            "value {} is not a valid representation of an i64",
-            int_as_string
-        ),
-    };
+// We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
+fn decode_bytes_to_i64(bytes: &Vec<u8>) -> i64 {
+    // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
+    //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
+    //        better understand implication of an invalid UTF-8 &str with `from_str` call.
+    let int_as_str =
+        std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
+
+    i64::from_str(int_as_str)
+        .with_context(|| {
+            format!(
+                "value {} is not a valid representation of an i64",
+                int_as_str
+            )
+        })
+        .unwrap()
 }
 
-fn decode_bytes_to_f64(bytes: Vec<u8>) -> Option<f64> {
-    let float64_as_string = String::from_utf8_lossy(&bytes.as_slice()).to_string();
-    return match f64::from_str(float64_as_string.as_str()) {
-        Ok(value) => Some(value),
-        Err(_) => panic!(
-            "value {} is not a valid representation of an f64",
-            float64_as_string
-        ),
-    };
+// We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
+fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
+    // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
+    //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
+    //        better understand implication of an invalid UTF-8 &str with `from_str` call.
+    let float64_as_str =
+        std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
+
+    f64::from_str(float64_as_str)
+        .with_context(|| {
+            format!(
+                "value {} is not a valid representation of an f64",
+                float64_as_str
+            )
+        })
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -1389,80 +1305,80 @@ mod tests {
 
     #[test]
     fn valid_int64_decode_bytes_to_i32() {
-        let bytes: Vec<u8> = Vec::from("1".to_string());
-        assert_eq!(1, decode_bytes_to_i32(bytes).unwrap())
+        let bytes: Vec<u8> = "1".as_bytes().to_vec();
+        assert_eq!(1, decode_bytes_to_i32(&bytes))
     }
 
     #[test]
     fn valid_int64_max_value_decode_bytes_to_i32() {
-        let bytes: Vec<u8> = Vec::from(i32::MAX.to_string());
-        assert_eq!(i32::MAX, decode_bytes_to_i32(bytes).unwrap())
+        let bytes: Vec<u8> = i32::MAX.to_string().as_bytes().to_vec();
+        assert_eq!(i32::MAX, decode_bytes_to_i32(&bytes))
     }
 
     #[test]
     #[should_panic]
     fn invalid_bytes_decode_bytes_to_i32() {
-        let bytes: Vec<u8> = Vec::from("invalid".to_string());
-        decode_bytes_to_i32(bytes);
+        let bytes: Vec<u8> = "invalid".as_bytes().to_vec();
+        decode_bytes_to_i32(&bytes);
     }
 
     #[test]
     #[should_panic]
     fn no_bytes_decode_bytes_to_i32() {
         let bytes: Vec<u8> = vec![];
-        decode_bytes_to_i32(bytes);
+        decode_bytes_to_i32(&bytes);
     }
 
     #[test]
     fn valid_int64_decode_bytes_to_i64() {
-        let bytes: Vec<u8> = Vec::from("1".to_string());
-        assert_eq!(1, decode_bytes_to_i64(bytes).unwrap())
+        let bytes: Vec<u8> = "1".as_bytes().to_vec();
+        assert_eq!(1, decode_bytes_to_i64(&bytes))
     }
 
     #[test]
     fn valid_int64_max_value_decode_bytes_to_i64() {
-        let bytes: Vec<u8> = Vec::from(i64::MAX.to_string());
-        assert_eq!(i64::MAX, decode_bytes_to_i64(bytes).unwrap())
+        let bytes: Vec<u8> = i64::MAX.to_string().as_bytes().to_vec();
+        assert_eq!(i64::MAX, decode_bytes_to_i64(&bytes))
     }
 
     #[test]
     #[should_panic]
     fn invalid_bytes_decode_bytes_to_i64() {
-        let bytes: Vec<u8> = Vec::from("invalid".to_string());
-        decode_bytes_to_i64(bytes);
+        let bytes: Vec<u8> = "invalid".as_bytes().to_vec();
+        decode_bytes_to_i64(&bytes);
     }
 
     #[test]
     #[should_panic]
     fn no_bytes_decode_bytes_to_i64() {
         let bytes: Vec<u8> = vec![];
-        decode_bytes_to_i64(bytes);
+        decode_bytes_to_i64(&bytes);
     }
 
     #[test]
     fn valid_f64_decode_bytes_to_f64() {
-        let bytes: Vec<u8> = Vec::from("1.00".to_string());
-        assert_eq!(1.00, decode_bytes_to_f64(bytes).unwrap())
+        let bytes: Vec<u8> = "1.00".as_bytes().to_vec();
+        assert_eq!(1.00, decode_bytes_to_f64(&bytes))
     }
 
     #[test]
     fn valid_f64_max_value_decode_bytes_to_f64() {
-        let bytes: Vec<u8> = Vec::from(f64::MAX.to_string());
-        assert_eq!(f64::MAX, decode_bytes_to_f64(bytes).unwrap())
+        let bytes: Vec<u8> = f64::MAX.to_string().as_bytes().to_vec();
+        assert_eq!(f64::MAX, decode_bytes_to_f64(&bytes))
     }
 
     #[test]
     #[should_panic]
     fn invalid_bytes_decode_bytes_to_f64() {
-        let bytes: Vec<u8> = Vec::from("invalid".to_string());
-        decode_bytes_to_f64(bytes);
+        let bytes: Vec<u8> = "invalid".as_bytes().to_vec();
+        decode_bytes_to_f64(&bytes);
     }
 
     #[test]
     #[should_panic]
     fn no_bytes_decode_bytes_to_f64() {
         let bytes: Vec<u8> = vec![];
-        decode_bytes_to_f64(bytes);
+        decode_bytes_to_f64(&bytes);
     }
 
     #[test]
@@ -1471,8 +1387,8 @@ mod tests {
         let bytes = value.as_bytes();
 
         let expected_value = None;
+        let actual_value = split_array::<String>(bytes.to_vec());
 
-        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
         assert_eq!(expected_value, actual_value)
     }
 
@@ -1481,9 +1397,9 @@ mod tests {
         let value = "1;";
         let bytes = value.as_bytes();
 
-        let expected_value: Option<Vec<String>> = Some(vec!["1".to_string()]);
+        let expected_value = Some(vec!["1".to_string()]);
+        let actual_value = split_array::<String>(bytes.to_vec());
 
-        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
         assert_eq!(expected_value, actual_value)
     }
 
@@ -1492,10 +1408,9 @@ mod tests {
         let value = "1;2;3;";
         let bytes = value.as_bytes();
 
-        let expected_value: Option<Vec<String>> =
-            Some(vec!["1".to_string(), "2".to_string(), "3".to_string()]);
+        let expected_value = Some(vec!["1".to_string(), "2".to_string(), "3".to_string()]);
+        let actual_value = split_array::<String>(bytes.to_vec());
 
-        let actual_value: Option<Vec<String>> = split_array(bytes.to_vec());
         assert_eq!(expected_value, actual_value)
     }
 }

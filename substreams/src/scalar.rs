@@ -60,22 +60,18 @@ impl BigDecimal {
         BigDecimal::from(self.0.clone().neg())
     }
 
-    pub fn from_store_bytes(bytes: Vec<u8>) -> BigDecimal {
+    pub fn from_store_bytes(bytes: &[u8]) -> BigDecimal {
         if bytes.len() == 0 {
             return BigDecimal::zero();
         }
+
         let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap();
         return BigDecimal::from_str(bytes_as_str).unwrap().with_prec(100);
     }
 
     pub fn divide_by_decimals(big_decimal_amount: BigDecimal, decimals: u64) -> BigDecimal {
-        let bd = BigDecimal::from_str(
-            "1".pad_to_width_with_char((decimals + 1) as usize, '0')
-                .as_str(),
-        )
-        .unwrap()
-        .with_prec(100);
-        return big_decimal_amount.div(bd);
+        // FIXME: Should we think about using a table of pre-made BigDecimal for a range of decimals between 0 -> 20?
+        big_decimal_amount.div(BigDecimal::new(BigInt::one(), decimals as i64))
     }
 }
 
@@ -118,10 +114,7 @@ impl TryFrom<String> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match bigdecimal::BigDecimal::from_str(value.as_str()) {
-            Ok(bd) => Ok(BigDecimal(bd)),
-            Err(e) => Err(e),
-        }
+        BigDecimal::try_from(value.as_str())
     }
 }
 
@@ -129,10 +122,7 @@ impl TryFrom<&String> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        match bigdecimal::BigDecimal::from_str(value.as_str()) {
-            Ok(bd) => Ok(BigDecimal(bd)),
-            Err(e) => Err(e),
-        }
+        BigDecimal::try_from(value.as_str())
     }
 }
 
@@ -140,10 +130,7 @@ impl TryFrom<&str> for BigDecimal {
     type Error = ParseBigDecimalError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match bigdecimal::BigDecimal::from_str(value) {
-            Ok(bd) => Ok(BigDecimal(bd)),
-            Err(e) => Err(e),
-        }
+        bigdecimal::BigDecimal::from_str(value).map(|bd| BigDecimal(bd))
     }
 }
 
@@ -254,11 +241,19 @@ impl Div for BigDecimal {
     type Output = BigDecimal;
 
     fn div(self, other: BigDecimal) -> BigDecimal {
-        if other == BigDecimal::from(0) {
+        self.div(&other)
+    }
+}
+
+impl Div<&BigDecimal> for BigDecimal {
+    type Output = BigDecimal;
+
+    fn div(self, other: &BigDecimal) -> BigDecimal {
+        if other.is_zero() {
             panic!("Cannot divide by zero-valued `BigDecimal`!")
         }
 
-        Self::from(self.0.div(other.0))
+        Self::from(self.0.div(&other.0))
     }
 }
 
@@ -299,6 +294,13 @@ impl BigInt {
 
     pub fn one() -> BigInt {
         BigInt::from(1)
+    }
+
+    pub fn from_unsigned_bytes_be(bytes: &[u8]) -> Self {
+        BigInt(num_bigint::BigInt::from_bytes_be(
+            num_bigint::Sign::Plus,
+            bytes,
+        ))
     }
 
     pub fn from_unsigned_bytes_le(bytes: &[u8]) -> Self {
@@ -362,11 +364,13 @@ impl BigInt {
         BigInt::from(self.0.clone().neg())
     }
 
-    pub fn from_store_bytes(bytes: Vec<u8>) -> BigInt {
+    pub fn from_store_bytes(bytes: &[u8]) -> BigInt {
+        let bytes = bytes.as_ref();
+
         if bytes.len() == 0 {
             return BigInt::zero();
         }
-        let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap();
+        let bytes_as_str = str::from_utf8(bytes).unwrap();
         return BigInt::from_str(bytes_as_str).unwrap();
     }
 
@@ -548,5 +552,43 @@ impl Div for BigInt {
         }
 
         BigInt(self.0.div(other.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BigDecimal;
+    use std::convert::TryFrom;
+
+    fn big_decimal(input: f64) -> BigDecimal {
+        BigDecimal::try_from(input).unwrap()
+    }
+
+    #[test]
+    fn bigdecimal_divide_by_decimals() {
+        assert_eq!(
+            BigDecimal::divide_by_decimals(big_decimal(50000.0), 3),
+            big_decimal(50.0)
+        );
+
+        assert_eq!(
+            BigDecimal::divide_by_decimals(big_decimal(112000000.5), 5),
+            big_decimal(1120.000005)
+        );
+
+        assert_eq!(
+            BigDecimal::divide_by_decimals(big_decimal(11205450180000000000.51), 18),
+            big_decimal(11.20545018)
+        );
+
+        assert_eq!(
+            BigDecimal::divide_by_decimals(big_decimal(112054501800000000.51), 18),
+            big_decimal(0.1120545018)
+        );
+
+        assert_eq!(
+            BigDecimal::divide_by_decimals(big_decimal(11205450180000000000.51), 20),
+            big_decimal(0.1120545018)
+        );
     }
 }

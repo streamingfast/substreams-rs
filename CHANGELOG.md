@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
+### Added
+
+* Added `BigInt::from_unsigned_bytes_be` to create the `BigInt` from unsigned big endian bytes.
+
+### Changed
+
+* *Breaking* Changed signature of `BigInt::from_store_bytes(bytes: Vec<u8>)` to `BigInt::from_store_bytes(bytes: &[u8])`.
+
+* *Breaking* Changed signature of `BigDecimal::from_store_bytes(bytes: Vec<u8>)` to `BigDecimal::from_store_bytes(bytes: &[u8])`.
+
+* Improved implementation of `BigDecimal::divide_by_decimals` to rely on `BigDecimal` instead of a padded string.
+
+* Reduced allocation performed when using `Store::set_if_not_exists_many`, `Store::set_many` and `Store::add_many` functions.
+
+* Removed a bunch of unnecessary clones and removed some useless conversion which should increase overall speed of various `Store` and `Scalar` operations.
+
 ## [0.4.0](https://github.com/streamingfast/substreams-rs/release/tag/v0.4.0)
 
 * Renaming `StoreSetIfNotExistsI64`, `StoreI64`, `DeltaI32`, `DeltaI64` to `StoreSetIfNotExistsInt64`, `StoreInt64`, `DeltaInt32` and `DeltaInt64`.
