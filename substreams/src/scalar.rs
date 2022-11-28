@@ -1,7 +1,6 @@
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
-    pad::PadStr,
     std::{
         convert::{TryFrom, TryInto},
         fmt::{self, Display, Formatter},
@@ -375,14 +374,9 @@ impl BigInt {
     }
 
     pub fn to_decimal(&self, decimals: u64) -> BigDecimal {
-        let bd = BigDecimal::from_str(
-            "1".pad_to_width_with_char((decimals + 1) as usize, '0')
-                .as_str(),
-        )
-        .unwrap()
-        .with_prec(100);
-        let bd_bi: BigDecimal = self.into();
-        return bd_bi.div(bd);
+        // FIXME: Should we think about using a table of pre-made BigDecimal for a range of decimals between 0 -> 20?
+        let big_decimal_amount: BigDecimal = self.into();
+        return big_decimal_amount.div(BigDecimal::new(BigInt::one(), decimals as i64));
     }
 }
 
@@ -415,18 +409,6 @@ impl From<u64> for BigInt {
 impl From<i64> for BigInt {
     fn from(i: i64) -> BigInt {
         BigInt(i.into())
-    }
-}
-
-impl From<[u8; 32]> for BigInt {
-    fn from(i: [u8; 32]) -> Self {
-        BigInt::from_signed_bytes_be(&i)
-    }
-}
-
-impl From<Vec<u8>> for BigInt {
-    fn from(bytes: Vec<u8>) -> Self {
-        BigInt::from_signed_bytes_be(bytes.as_ref())
     }
 }
 
@@ -558,10 +540,37 @@ impl Div for BigInt {
 #[cfg(test)]
 mod tests {
     use super::BigDecimal;
+    use super::BigInt;
     use std::convert::TryFrom;
 
     fn big_decimal(input: f64) -> BigDecimal {
         BigDecimal::try_from(input).unwrap()
+    }
+
+    fn big_int(input: u64) -> BigInt {
+        BigInt::try_from(input).unwrap()
+    }
+
+    #[test]
+    fn bigint_divide_by_decimals() {
+        assert_eq!(big_int(50000).to_decimal(3), big_decimal(50.0));
+
+        assert_eq!(big_int(112000000).to_decimal(5), big_decimal(1120.0));
+
+        assert_eq!(
+            big_int(11205450180000000000).to_decimal(18),
+            big_decimal(11.20545018)
+        );
+
+        assert_eq!(
+            big_int(112054501800000000).to_decimal(18),
+            big_decimal(0.1120545018)
+        );
+
+        assert_eq!(
+            big_int(11205450180000000000).to_decimal(20),
+            big_decimal(0.1120545018)
+        );
     }
 
     #[test]
