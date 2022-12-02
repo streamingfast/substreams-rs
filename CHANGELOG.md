@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
+* Add `from<usize>` for `BigDecimal`
+* Add `new` method for `BigInt` and `BigDecimal`
+
 ## [0.5.0](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.0)
 
 ### Added
