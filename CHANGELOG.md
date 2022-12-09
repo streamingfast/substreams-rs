@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 * Add `from<usize>` for `BigDecimal`
 * Add `new` method for `BigInt` and `BigDecimal`
+* Remove the `with_prec(100)` when returning a `BigDecimal` from a store.
 
 ## [0.5.0](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.0)
 
