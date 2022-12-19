@@ -65,7 +65,7 @@ impl BigDecimal {
         }
 
         let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap();
-        return BigDecimal::from_str(bytes_as_str).unwrap().with_prec(100);
+        return BigDecimal::from_str(bytes_as_str).unwrap();
     }
 
     pub fn divide_by_decimals(big_decimal_amount: BigDecimal, decimals: u64) -> BigDecimal {
