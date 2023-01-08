@@ -38,7 +38,7 @@ pub trait StoreNew {
     fn new() -> Self;
 }
 
-/// `StoreSetRaw` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
+/// `StoreSetRaw` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `bytes`
 ///     `StoreSetRaw` implements AsRef<[u8]> to give the client the flexibility
 ///     to either use the API with &Vec[...] or Vec[...].
 pub struct StoreSetRaw {}
