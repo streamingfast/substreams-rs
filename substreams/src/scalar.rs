@@ -1,3 +1,4 @@
+use num_bigint::Sign;
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
@@ -287,6 +288,10 @@ impl AsRef<BigInt> for BigInt {
 }
 
 impl BigInt {
+    pub fn new(sign: Sign, digits: Vec<u32>) -> BigInt {
+        return BigInt(num_bigint::BigInt::new(sign, digits));
+    }
+
     pub fn zero() -> BigInt {
         BigInt::from(0)
     }
