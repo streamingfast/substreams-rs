@@ -1,4 +1,5 @@
 use num_bigint::Sign;
+use num_traits::FromPrimitive;
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
@@ -155,6 +156,17 @@ impl From<i64> for BigDecimal {
 impl From<u64> for BigDecimal {
     fn from(n: u64) -> Self {
         Self::from(bigdecimal::BigDecimal::from(n))
+    }
+}
+
+impl From<usize> for BigDecimal {
+    fn from(n: usize) -> Self {
+        match bigdecimal::BigDecimal::from_usize(n) {
+            None => {
+                panic!("creating big decimal from invalid usize value {}", n)
+            }
+            Some(bd) => BigDecimal(bd),
+        }
     }
 }
 
