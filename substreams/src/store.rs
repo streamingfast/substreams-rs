@@ -1245,6 +1245,10 @@ fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Oper
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
 fn decode_bytes_to_i32(bytes: &Vec<u8>) -> i32 {
+    if bytes.is_empty() {
+        return 0;
+    }
+
     // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
     //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
     //        better understand implication of an invalid UTF-8 &str with `from_str` call.
@@ -1263,6 +1267,10 @@ fn decode_bytes_to_i32(bytes: &Vec<u8>) -> i32 {
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
 fn decode_bytes_to_i64(bytes: &Vec<u8>) -> i64 {
+    if bytes.is_empty() {
+        return 0;
+    }
+
     // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
     //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
     //        better understand implication of an invalid UTF-8 &str with `from_str` call.
@@ -1281,6 +1289,10 @@ fn decode_bytes_to_i64(bytes: &Vec<u8>) -> i64 {
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
 fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
+    if bytes.is_empty() {
+        return 0.0;
+    }
+
     // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
     //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
     //        better understand implication of an invalid UTF-8 &str with `from_str` call.
