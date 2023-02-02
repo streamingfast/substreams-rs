@@ -92,6 +92,8 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                                 let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas;
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
+                        } else if input_obj.is_string {
+                            proto_decodings.push(quote! { let #var_name: String = unsafe { String::from_raw_parts(#var_ptr, #var_len, #var_len) }; })
                         } else {
                             proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
                         }
@@ -166,6 +168,7 @@ struct Input {
     is_writable_store: bool,
     is_readable_store: bool,
     is_deltas: bool,
+    is_string: bool,
     resolved_ty: String,
     store_type: String,
 }
@@ -177,6 +180,7 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
                 is_writable_store: false,
                 is_readable_store: false,
                 is_deltas: false,
+                is_string: false,
                 resolved_ty: "".to_owned(),
                 store_type: "".to_string(),
             };
@@ -185,6 +189,9 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
                 last_type = segment.ident.to_string();
             }
             input.resolved_ty = last_type.clone();
+            if last_type == "String".to_owned() {
+                input.is_string = true;
+            }
             for t in WRITABLE_STORE {
                 if last_type == t.to_owned() {
                     input.is_writable_store = true;
