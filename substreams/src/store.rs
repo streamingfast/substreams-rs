@@ -1335,7 +1335,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn no_bytes_decode_bytes_to_i32() {
         let bytes: Vec<u8> = vec![];
         decode_bytes_to_i32(&bytes);
@@ -1361,7 +1360,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn no_bytes_decode_bytes_to_i64() {
         let bytes: Vec<u8> = vec![];
         decode_bytes_to_i64(&bytes);
@@ -1387,7 +1385,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn no_bytes_decode_bytes_to_f64() {
         let bytes: Vec<u8> = vec![];
         decode_bytes_to_f64(&bytes);
