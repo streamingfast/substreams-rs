@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.3)
+
+### Changed
+* Support common-sense cross-type arithmetic operations for `BigInt` and `BigDecimal`. (e.g. `BigInt` + `f64` -> `BigDecimal`)
+
 ## [0.5.2](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.1)
 
 * Fixed tests

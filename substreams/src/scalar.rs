@@ -194,6 +194,19 @@ impl From<&bigdecimal::BigDecimal> for BigDecimal {
     }
 }
 
+impl TryFrom<f32> for BigDecimal {
+    type Error = ParseBigDecimalError;
+
+    #[inline]
+    fn try_from(n: f32) -> Result<Self, Self::Error> {
+        BigDecimal::from_str(&format!(
+            "{:.PRECISION$e}",
+            n,
+            PRECISION = ::std::f32::DIGITS as usize
+        ))
+    }
+}
+
 impl TryFrom<f64> for BigDecimal {
     type Error = ParseBigDecimalError;
 
@@ -225,35 +238,52 @@ impl Into<bigdecimal::BigDecimal> for BigDecimal {
     }
 }
 
-impl Add for BigDecimal {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Self::from(self.0.add(other.0))
-    }
-}
-
-impl Sub for BigDecimal {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        Self::from(self.0.sub(other.0))
-    }
-}
-
-impl Mul for BigDecimal {
-    type Output = Self;
-
-    fn mul(self, rhs: BigDecimal) -> BigDecimal {
-        Self::from(self.0.mul(rhs.0))
-    }
-}
-
-impl Div for BigDecimal {
+impl<T> Add<T> for BigDecimal
+    where
+        T: Into<BigDecimal>,
+{
     type Output = BigDecimal;
 
-    fn div(self, other: BigDecimal) -> BigDecimal {
-        self.div(&other)
+    fn add(self, other: T) -> BigDecimal {
+        BigDecimal(self.0 + other.into().0)
+    }
+}
+
+impl<T> Sub<T> for BigDecimal
+    where
+        T: Into<BigDecimal>,
+{
+    type Output = BigDecimal;
+
+    fn sub(self, other: T) -> BigDecimal {
+        BigDecimal(self.0 - other.into().0)
+    }
+}
+
+impl<T> Mul<T> for BigDecimal
+    where
+        T: Into<BigDecimal>,
+{
+    type Output = BigDecimal;
+
+    fn mul(self, rhs: T) -> BigDecimal {
+        BigDecimal(self.0 * rhs.into().0)
+    }
+}
+
+impl<T> Div<T> for BigDecimal
+    where
+        T: Into<BigDecimal>,
+{
+    type Output = BigDecimal;
+
+    fn div(self, rhs: T) -> BigDecimal {
+        let rhs = rhs.into();
+        if rhs.is_zero() {
+            panic!("attempt to divide by zero");
+        }
+
+        BigDecimal(self.0 / rhs.0)
     }
 }
 
@@ -429,6 +459,18 @@ impl From<i64> for BigInt {
     }
 }
 
+impl From<usize> for BigInt {
+    fn from(i: usize) -> BigInt {
+        BigInt(i.into())
+    }
+}
+
+impl From<isize> for BigInt {
+    fn from(i: isize) -> BigInt {
+        BigInt(i.into())
+    }
+}
+
 impl TryFrom<String> for BigInt {
     type Error = ParseBigIntError;
 
@@ -518,41 +560,319 @@ impl Into<BigDecimal> for &BigInt {
     }
 }
 
-impl Add for BigInt {
+impl<T> Add<T> for BigInt
+    where T: Into<BigInt>,
+{
     type Output = BigInt;
 
-    fn add(self, other: BigInt) -> BigInt {
-        BigInt(self.0.add(other.0))
+    fn add(self, other: T) -> BigInt {
+        BigInt(self.0.add(other.into().0))
     }
 }
 
-impl Sub for BigInt {
-    type Output = BigInt;
+impl Add<BigDecimal> for BigInt {
+    type Output = BigDecimal;
 
-    fn sub(self, other: BigInt) -> BigInt {
-        BigInt(self.0.sub(other.0))
+    fn add(self, other: BigDecimal) -> BigDecimal {
+        let lhs: BigDecimal = self.into();
+        lhs.add(other)
     }
 }
 
-impl Mul for BigInt {
+macro_rules! impl_add_floats_bigint {
+    ($($t:ty),*) => {
+        $(
+            impl Add<$t> for BigInt
+            {
+                type Output = BigDecimal;
+
+                fn add(self, other: $t) -> BigDecimal {
+                    let rhs: BigDecimal = other.try_into().unwrap();
+                    self.add(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_add_floats_bigint!(f32, f64);
+
+macro_rules! impl_add_bigint_int {
+    ($($t:ty),*) => {
+        $(
+            impl Add<BigInt> for $t
+            {
+                type Output = BigInt;
+
+                fn add(self, other: BigInt) -> BigInt {
+                    let lhs: BigInt = self.into();
+                    lhs.add(other)
+                }
+            }
+        )*
+    }
+}
+impl_add_bigint_int!(u32, i32, u64, i64, usize, isize);
+
+macro_rules! impl_add_bigint_float {
+    ($($t:ty),*) => {
+        $(
+            impl Add<BigInt> for $t
+            {
+                type Output = BigDecimal;
+
+                fn add(self, other: BigInt) -> BigDecimal {
+                    let lhs: BigDecimal = match self.try_into() {
+                        Ok(v) => v,
+                        Err(_) => panic!("Cannot convert {} to BigDecimal", self)
+                    };
+                    let rhs: BigDecimal = other.into();
+                    lhs.add(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_add_bigint_float!(f32, f64);
+
+impl<T> Sub<T> for BigInt
+    where T: Into<BigInt>,
+{
     type Output = BigInt;
 
-    fn mul(self, other: BigInt) -> BigInt {
-        BigInt(self.0.mul(other.0))
+    fn sub(self, other: T) -> BigInt {
+        BigInt(self.0.sub(other.into().0))
     }
 }
 
-impl Div for BigInt {
+impl Sub<BigDecimal> for BigInt {
+    type Output = BigDecimal;
+
+    fn sub(self, other: BigDecimal) -> BigDecimal {
+        let lhs: BigDecimal = self.into();
+        lhs.sub(other)
+    }
+}
+
+macro_rules! impl_sub_floats_bigint {
+    ($($t:ty),*) => {
+        $(
+            impl Sub<$t> for BigInt
+            {
+                type Output = BigDecimal;
+
+                fn sub(self, other: $t) -> BigDecimal {
+                    let rhs: BigDecimal = other.try_into().unwrap();
+                    self.sub(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_sub_floats_bigint!(f32, f64);
+
+macro_rules! impl_sub_bigint_int {
+    ($($t:ty),*) => {
+        $(
+            impl Sub<BigInt> for $t
+            {
+                type Output = BigInt;
+
+                fn sub(self, other: BigInt) -> BigInt {
+                    let lhs: BigInt = self.into();
+                    lhs.sub(other)
+                }
+            }
+        )*
+    }
+}
+impl_sub_bigint_int!(u32, i32, u64, i64, usize, isize);
+
+macro_rules! impl_sub_bigint_float {
+    ($($t:ty),*) => {
+        $(
+            impl Sub<BigInt> for $t
+            {
+                type Output = BigDecimal;
+
+                fn sub(self, other: BigInt) -> BigDecimal {
+                    let lhs: BigDecimal = match self.try_into() {
+                        Ok(v) => v,
+                        Err(_) => panic!("Cannot convert {} to BigDecimal", self)
+                    };
+                    let rhs: BigDecimal = other.into();
+                    lhs.sub(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_sub_bigint_float!(f32, f64);
+
+impl<T> Mul<T> for BigInt
+    where T: Into<BigInt>,
+{
     type Output = BigInt;
 
-    fn div(self, other: BigInt) -> BigInt {
-        if other == BigInt::from(0) {
+    fn mul(self, other: T) -> BigInt {
+        BigInt(self.0.mul(other.into().0))
+    }
+}
+
+impl Mul<BigDecimal> for BigInt {
+    type Output = BigDecimal;
+
+    fn mul(self, other: BigDecimal) -> BigDecimal {
+        let lhs: BigDecimal = self.into();
+        lhs.mul(other)
+    }
+}
+
+macro_rules! impl_mul_floats_bigint {
+    ($($t:ty),*) => {
+        $(
+            impl Mul<$t> for BigInt
+            {
+                type Output = BigDecimal;
+
+                fn mul(self, other: $t) -> BigDecimal {
+                    let rhs: BigDecimal = other.try_into().unwrap();
+                    self.mul(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_mul_floats_bigint!(f32, f64);
+
+macro_rules! impl_mul_bigint_int {
+    ($($t:ty),*) => {
+        $(
+            impl Mul<BigInt> for $t
+            {
+                type Output = BigInt;
+
+                fn mul(self, other: BigInt) -> BigInt {
+                    let lhs: BigInt = self.into();
+                    lhs.mul(other)
+                }
+            }
+        )*
+    }
+}
+impl_mul_bigint_int!(u32, i32, u64, i64, usize, isize);
+
+macro_rules! impl_mul_bigint_float {
+    ($($t:ty),*) => {
+        $(
+            impl Mul<BigInt> for $t
+            {
+                type Output = BigDecimal;
+
+                fn mul(self, other: BigInt) -> BigDecimal {
+                    let lhs: BigDecimal = match self.try_into() {
+                        Ok(v) => v,
+                        Err(_) => panic!("Cannot convert {} to BigDecimal", self)
+                    };
+                    let rhs: BigDecimal = other.into();
+                    lhs.mul(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_mul_bigint_float!(f32, f64);
+
+impl<T> Div<T> for BigInt
+    where T: Into<BigInt>,
+{
+    type Output = BigInt;
+
+    fn div(self, other: T) -> BigInt {
+        let rhs: BigInt = other.into();
+        if rhs.is_zero() {
             panic!("Cannot divide by zero-valued `BigInt`!")
         }
 
-        BigInt(self.0.div(other.0))
+        BigInt(self.0.div(rhs.0))
     }
 }
+
+impl Div<BigDecimal> for BigInt {
+    type Output = BigDecimal;
+
+    fn div(self, other: BigDecimal) -> BigDecimal {
+        if other.is_zero() {
+            panic!("Cannot divide by zero-valued `BigDecimal`!")
+        }
+        let lhs: BigDecimal = self.into();
+        lhs.div(other)
+    }
+}
+
+macro_rules! impl_div_floats_bigint {
+    ($($t:ty),*) => {
+        $(
+            impl Div<$t> for BigInt
+            {
+                type Output = BigDecimal;
+
+                fn div(self, other: $t) -> BigDecimal {
+                    if other.is_zero() {
+                        panic!("Cannot divide by zero-valued `BigDecimal`!")
+                    }
+                    let rhs: BigDecimal = other.try_into().unwrap();
+                    self.div(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_div_floats_bigint!(f32, f64);
+
+macro_rules! impl_div_bigint_int {
+    ($($t:ty),*) => {
+        $(
+            impl Div<BigInt> for $t
+            {
+                type Output = BigInt;
+
+                fn div(self, other: BigInt) -> BigInt {
+                    if other.is_zero() {
+                        panic!("Cannot divide by zero-valued `BigInt`!")
+                    }
+                    let lhs: BigInt = self.into();
+                    lhs.div(other)
+                }
+            }
+        )*
+    }
+}
+impl_div_bigint_int!(u32, i32, u64, i64, usize, isize);
+
+macro_rules! impl_div_bigint_float {
+    ($($t:ty),*) => {
+        $(
+            impl Div<BigInt> for $t
+            {
+                type Output = BigDecimal;
+
+                fn div(self, other: BigInt) -> BigDecimal {
+                    let lhs: BigDecimal = match self.try_into() {
+                        Ok(v) => v,
+                        Err(_) => panic!("Cannot convert {} to BigDecimal", self)
+                    };
+
+                    let rhs: BigDecimal = other.into();
+                    if rhs.is_zero() {
+                        panic!("Cannot divide by zero-valued `BigDecimal`!")
+                    }
+                    lhs.div(rhs)
+                }
+            }
+        )*
+    }
+}
+impl_div_bigint_float!(f32, f64);
 
 #[cfg(test)]
 mod tests {
@@ -564,28 +884,171 @@ mod tests {
         BigDecimal::try_from(input).unwrap()
     }
 
-    fn big_int(input: u64) -> BigInt {
+    fn big_uint(input: u64) -> BigInt {
+        BigInt::try_from(input).unwrap()
+    }
+
+    fn big_int(input: i64) -> BigInt {
         BigInt::try_from(input).unwrap()
     }
 
     #[test]
-    fn bigint_divide_by_decimals() {
-        assert_eq!(big_int(50000).to_decimal(3), big_decimal(50.0));
+    fn bigint_op_int() {
+        assert_eq!(big_int(1) + 1 as i32, big_int(2));
+        assert_eq!(big_int(1) + 1 as i64, big_int(2));
+        assert_eq!(big_int(1) + 1 as u32, big_int(2));
+        assert_eq!(big_int(1) + 1 as u64, big_int(2));
+        assert_eq!(big_int(1) + 1 as isize, big_int(2));
+        assert_eq!(big_int(1) + 1 as usize, big_int(2));
+        assert_eq!(big_int(1) + 1, big_int(2));
+        assert_eq!(big_int(1) - 1 as i32, big_int(0));
+        assert_eq!(big_int(1) - 1 as i64, big_int(0));
+        assert_eq!(big_int(1) - 1 as u32, big_int(0));
+        assert_eq!(big_int(1) - 1 as u64, big_int(0));
+        assert_eq!(big_int(1) - 1 as isize, big_int(0));
+        assert_eq!(big_int(1) - 1 as usize, big_int(0));
+        assert_eq!(big_int(1) - 1, big_int(0));
+        assert_eq!(big_int(2) * 2 as i32, big_int(4));
+        assert_eq!(big_int(2) * 2 as i64, big_int(4));
+        assert_eq!(big_int(2) * 2 as u32, big_int(4));
+        assert_eq!(big_int(2) * 2 as u64, big_int(4));
+        assert_eq!(big_int(2) * 2 as isize, big_int(4));
+        assert_eq!(big_int(2) * 2 as usize, big_int(4));
+        assert_eq!(big_int(2) * 2, big_int(4));
+        assert_eq!(big_int(4) / 2 as i32, big_int(2));
+        assert_eq!(big_int(4) / 2 as i64, big_int(2));
+        assert_eq!(big_int(4) / 2 as u32, big_int(2));
+        assert_eq!(big_int(4) / 2 as u64, big_int(2));
+        assert_eq!(big_int(4) / 2 as isize, big_int(2));
+        assert_eq!(big_int(4) / 2 as usize, big_int(2));
+        assert_eq!(big_int(4) / 2, big_int(2));
+        assert_eq!(big_int(3) / 2 as i32, big_int(1));
+        assert_eq!(big_int(3) / 2 as i64, big_int(1));
+        assert_eq!(big_int(3) / 2 as u32, big_int(1));
+        assert_eq!(big_int(3) / 2 as u64, big_int(1));
+        assert_eq!(big_int(3) / 2 as isize, big_int(1));
+        assert_eq!(big_int(3) / 2 as usize, big_int(1));
+        assert_eq!(big_int(3) / 2, big_int(1));
+    }
 
-        assert_eq!(big_int(112000000).to_decimal(5), big_decimal(1120.0));
+    #[test]
+    fn big_uint_minus_int_is_signed() {
+        assert_eq!(big_uint(1) - 2 as i32, big_int(-1));
+        assert_eq!(big_uint(1) - 2 as i64, big_int(-1));
+        assert_eq!(big_uint(1) - 2 as u32, big_int(-1));
+        assert_eq!(big_uint(1) - 2 as u64, big_int(-1));
+        assert_eq!(big_uint(1) - 2 as isize, big_int(-1));
+        assert_eq!(big_uint(1) - 2 as usize, big_int(-1));
+        assert_eq!(big_uint(1) - 2, big_int(-1));
+    }
+
+    //
+    #[test]
+    fn int_op_bigint() {
+        assert_eq!(1 as i32 + big_int(1), big_int(2));
+        assert_eq!(1 as i64 + big_int(1), big_int(2));
+        assert_eq!(1 as u32 + big_int(1), big_int(2));
+        assert_eq!(1 as u64 + big_int(1), big_int(2));
+        assert_eq!(1 as isize + big_int(1), big_int(2));
+        assert_eq!(1 as usize + big_int(1), big_int(2));
+        assert_eq!(1 + big_int(1), big_int(2));
+        assert_eq!(1 as i32 - big_int(1), big_int(0));
+        assert_eq!(1 as i64 - big_int(1), big_int(0));
+        assert_eq!(1 as u32 - big_int(1), big_int(0));
+        assert_eq!(1 as u64 - big_int(1), big_int(0));
+        assert_eq!(1 as isize - big_int(1), big_int(0));
+        assert_eq!(1 as usize - big_int(1), big_int(0));
+        assert_eq!(1 - big_int(1), big_int(0));
+        assert_eq!(2 as i32 * big_int(2), big_int(4));
+        assert_eq!(2 as i64 * big_int(2), big_int(4));
+        assert_eq!(2 as u32 * big_int(2), big_int(4));
+        assert_eq!(2 as u64 * big_int(2), big_int(4));
+        assert_eq!(2 as isize * big_int(2), big_int(4));
+        assert_eq!(2 as usize * big_int(2), big_int(4));
+        assert_eq!(2  * big_int(2), big_int(4));
+        assert_eq!(4 as i32 / big_int(2), big_int(2));
+        assert_eq!(4 as i64 / big_int(2), big_int(2));
+        assert_eq!(4 as u32 / big_int(2), big_int(2));
+        assert_eq!(4 as u64 / big_int(2), big_int(2));
+        assert_eq!(4 as isize / big_int(2), big_int(2));
+        assert_eq!(4 as usize / big_int(2), big_int(2));
+        assert_eq!(4 / big_int(2), big_int(2));
+        assert_eq!(3 as i32 / big_int(2), big_int(1));
+        assert_eq!(3 as i64 / big_int(2), big_int(1));
+        assert_eq!(3 as u32 / big_int(2), big_int(1));
+        assert_eq!(3 as u64 / big_int(2), big_int(1));
+        assert_eq!(3 as isize / big_int(2), big_int(1));
+        assert_eq!(3 as usize / big_int(2), big_int(1));
+        assert_eq!(3 / big_int(2), big_int(1));
+    }
+
+
+    #[test]
+    fn bigint_op_float() {
+        assert_eq!(big_int(1) + 1.0 as f64, big_decimal(2.0));
+        assert_eq!(big_int(1) + 1.0 as f32, big_decimal(2.0));
+        assert_eq!(big_int(1) + 1.0, big_decimal(2.0));
+        assert_eq!(big_int(1) - 1.0 as f64, big_decimal(0.0));
+        assert_eq!(big_int(1) - 1.0 as f32, big_decimal(0.0));
+        assert_eq!(big_int(1) - 1.0, big_decimal(0.0));
+        assert_eq!(big_int(2) * 2.0 as f64, big_decimal(4.0));
+        assert_eq!(big_int(2) * 2.0 as f32, big_decimal(4.0));
+        assert_eq!(big_int(2) * 2.0, big_decimal(4.0));
+        assert_eq!(big_int(4) / 2.0 as f64, big_decimal(2.0));
+        assert_eq!(big_int(4) / 2.0 as f32, big_decimal(2.0));
+        assert_eq!(big_int(4) / 2.0, big_decimal(2.0));
+    }
+
+    #[test]
+    fn float_op_bigint() {
+        assert_eq!(1.0 as f64 + big_int(1), big_decimal(2.0));
+        assert_eq!(1.0 as f32 + big_int(1), big_decimal(2.0));
+        assert_eq!(1.0 + big_int(1), big_decimal(2.0));
+        assert_eq!(1.0 as f64 - big_int(1), big_decimal(0.0));
+        assert_eq!(1.0 as f32 - big_int(1), big_decimal(0.0));
+        assert_eq!(1.0 - big_int(1), big_decimal(0.0));
+        assert_eq!(2.0 as f64 * big_int(2), big_decimal(4.0));
+        assert_eq!(2.0 as f32 * big_int(2), big_decimal(4.0));
+        assert_eq!(2.0 * big_int(2), big_decimal(4.0));
+        assert_eq!(4.0 as f64 / big_int(2), big_decimal(2.0));
+        assert_eq!(4.0 as f32 / big_int(2), big_decimal(2.0));
+        assert_eq!(4.0 / big_int(2), big_decimal(2.0));
+    }
+
+    #[test]
+    fn bigint_op_bigdecimal() {
+        assert_eq!(big_int(1) + big_decimal(1.0), big_decimal(2.0));
+        assert_eq!(big_int(1) - big_decimal(1.0), big_decimal(0.0));
+        assert_eq!(big_int(2) * big_decimal(2.0), big_decimal(4.0));
+        assert_eq!(big_int(4) / big_decimal(2.0), big_decimal(2.0));
+    }
+
+    #[test]
+    fn bigdecimal_op_bigint() {
+        assert_eq!(big_decimal(1.0) + big_int(1), big_decimal(2.0));
+        assert_eq!(big_decimal(1.0) - big_int(1), big_decimal(0.0));
+        assert_eq!(big_decimal(2.0) * big_int(2), big_decimal(4.0));
+        assert_eq!(big_decimal(4.0) / big_int(2), big_decimal(2.0));
+    }
+
+    #[test]
+    fn bigint_divide_by_decimals() {
+        assert_eq!(big_uint(50000).to_decimal(3), big_decimal(50.0));
+
+        assert_eq!(big_uint(112000000).to_decimal(5), big_decimal(1120.0));
 
         assert_eq!(
-            big_int(11205450180000000000).to_decimal(18),
+            big_uint(11205450180000000000).to_decimal(18),
             big_decimal(11.20545018)
         );
 
         assert_eq!(
-            big_int(112054501800000000).to_decimal(18),
+            big_uint(112054501800000000).to_decimal(18),
             big_decimal(0.1120545018)
         );
 
         assert_eq!(
-            big_int(11205450180000000000).to_decimal(20),
+            big_uint(11205450180000000000).to_decimal(20),
             big_decimal(0.1120545018)
         );
     }
