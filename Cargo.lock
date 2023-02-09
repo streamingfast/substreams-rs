@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "substreams"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -335,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "substreams-macro"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "proc-macro2",
  "quote",
