@@ -31,6 +31,9 @@ pub mod state {
             key_len: u32,
             output_ptr: u32,
         ) -> u32;
+        pub fn has_first(store_idx: u32, key_ptr: *const u8, key_len: u32) -> u32;
+        pub fn has_last(store_idx: u32, key_ptr: *const u8, key_len: u32) -> u32;
+        pub fn has_at(store_idx: u32, ord: i64, key_ptr: *const u8, key_len: u32) -> u32;
         pub fn set(
             ord: i64,
             key_ptr: *const u8,
