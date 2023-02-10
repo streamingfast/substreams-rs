@@ -31,6 +31,24 @@ pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+pub fn has_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let key = key.as_ref();
+
+        unsafe {
+            let key_bytes = key.as_bytes();
+            let found =
+                externs::state::has_at(store_idx, ord, key_bytes.as_ptr(), key_bytes.len() as u32);
+            return found == 1;
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    false
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn get_last<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
     #[cfg(target_arch = "wasm32")]
     {
@@ -56,6 +74,24 @@ pub fn get_last<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
 
     #[cfg(not(target_arch = "wasm32"))]
     None
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+pub fn has_last<K: AsRef<str>>(store_idx: u32, key: K) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let key = key.as_ref();
+
+        unsafe {
+            let key_bytes = key.as_bytes();
+            let found =
+                externs::state::has_last(store_idx, key_bytes.as_ptr(), key_bytes.len() as u32);
+            return found == 1;
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    false
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
@@ -85,6 +121,24 @@ pub fn get_first<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
 
     #[cfg(not(target_arch = "wasm32"))]
     None
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+pub fn has_first<K: AsRef<str>>(store_idx: u32, key: K) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let key = key.as_ref();
+
+        unsafe {
+            let key_bytes = key.as_bytes();
+            let found =
+                externs::state::has_first(store_idx, key_bytes.as_ptr(), key_bytes.len() as u32);
+            return found == 1;
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    false
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]

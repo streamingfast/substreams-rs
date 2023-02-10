@@ -729,6 +729,9 @@ pub trait StoreGet<T> {
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<T>;
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<T>;
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<T>;
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool;
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool;
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool;
 }
 
 /// RawStoreGet is a struct representing a read only store `store`
@@ -753,7 +756,7 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
 
     /// Retrieves a key from the store, like `get_at`, but querying the state of
     /// the store as of the beginning of the block being processed, before any changes
-    /// were applied within the current block. Tt does not need to rewind any changes
+    /// were applied within the current block. It does not need to rewind any changes
     /// in the middle of the block.
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         state::get_last(self.idx, key)
@@ -765,6 +768,29 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// would have changed mid-block, so will be slightly less performant.
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         state::get_first(self.idx, key)
+    }
+
+    /// Checks if a key exists in the store. The ordinal is used here
+    /// to check if a key that might have changed mid-block by
+    /// the store module that built it exists.
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.idx, ord as i64, key)
+    }
+
+    /// Checks if a key exists in the store, like `has_at`, but querying the state of
+    /// the store as of the beginning of the block being processed, before any changes
+    /// were applied within the current block. It does not need to rewind any changes
+    /// in the middle of the block.
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.idx, key)
+    }
+
+    /// Checks if a key exists in the store, like `has_at`, but querying the state of
+    /// the store as of the beginning of the block being processed, before any changes
+    /// were applied within the current block. However, it needs to unwind any keys that
+    /// would have changed mid-block, so will be slightly less performant.
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.idx, key)
     }
 }
 
@@ -788,6 +814,18 @@ impl StoreGet<String> for StoreGetString {
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<String> {
         state::get_first(self.idx, key).map(|bytes| String::from_utf8(bytes).unwrap())
+    }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.idx, ord as i64, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.idx, key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.idx, key)
     }
 }
 
@@ -816,6 +854,18 @@ impl StoreGet<i64> for StoreGetInt64 {
             .as_ref()
             .map(decode_bytes_to_i64)
     }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.0.idx, ord as i64, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.0.idx, key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.0.idx, key)
+    }
 }
 
 pub struct StoreGetFloat64(StoreGetRaw);
@@ -843,6 +893,18 @@ impl StoreGet<f64> for StoreGetFloat64 {
             .as_ref()
             .map(decode_bytes_to_f64)
     }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.0.idx, ord as i64, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.0.idx, key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.0.idx, key)
+    }
 }
 
 pub struct StoreGetBigDecimal(StoreGetRaw);
@@ -864,6 +926,18 @@ impl StoreGet<BigDecimal> for StoreGetBigDecimal {
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigDecimal> {
         state::get_first(self.0.idx, key).map(|bytes| BigDecimal::from_store_bytes(&bytes))
     }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.0.idx, ord as i64, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.0.idx, key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.0.idx, key)
+    }
 }
 
 pub struct StoreGetBigInt(StoreGetRaw);
@@ -884,6 +958,18 @@ impl StoreGet<BigInt> for StoreGetBigInt {
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<BigInt> {
         state::get_first(self.0.idx, key).map(|bytes| BigInt::from_store_bytes(&bytes))
+    }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        state::has_at(self.0.idx, ord as i64, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_last(self.0.idx, key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        state::has_first(self.0.idx, key)
     }
 }
 
@@ -911,6 +997,18 @@ impl<T: Into<String> + From<String> + Clone> StoreGet<Vec<T>> for StoreGetArray<
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<T>> {
         self.store.get_first(key).and_then(split_array)
+    }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        self.store.has_at(ord, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        self.store.has_last(key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        self.store.has_first(key)
     }
 }
 
@@ -975,6 +1073,18 @@ where
         self.store
             .get_first(key)
             .and_then(|bytes| proto::decode::<T>(&bytes).ok())
+    }
+
+    fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
+        self.store.has_at(ord, key)
+    }
+
+    fn has_last<K: AsRef<str>>(&self, key: K) -> bool {
+        self.store.has_last(key)
+    }
+
+    fn has_first<K: AsRef<str>>(&self, key: K) -> bool {
+        self.store.has_first(key)
     }
 }
 

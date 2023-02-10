@@ -18,7 +18,7 @@ impl ModuleType {
 }
 
 pub struct FinalConfiguration {
-    pub module_type: ModuleType
+    pub module_type: ModuleType,
 }
 
 // struct Configuration {
@@ -62,7 +62,6 @@ pub struct FinalConfiguration {
 //         )),
 //     }
 // }
-
 
 // fn build_config(
 //     args: AttributeArgs,

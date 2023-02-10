@@ -1,16 +1,10 @@
 extern crate wee_alloc;
 
-use {
-    std::{
-        convert::TryInto,
-        slice
-    }
-};
+use std::{convert::TryInto, slice};
 
 /// Set the global allocator to the WebAssembly optimized one.
 // #[global_allocator]
 // static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 
 #[no_mangle]
 pub fn alloc(size: usize) -> *mut u8 {
@@ -33,7 +27,6 @@ pub fn alloc(size: usize) -> *mut u8 {
     ptr
 }
 
-
 /// Retakes the pointer which allows its memory to be freed.
 #[no_mangle]
 pub unsafe fn dealloc(ptr: *mut u8, size: usize) {
@@ -42,7 +35,6 @@ pub unsafe fn dealloc(ptr: *mut u8, size: usize) {
     let data = Vec::from_raw_parts(ptr, size, size);
     std::mem::drop(data);
 }
-
 
 // //! Memory Implementation for Substreams.
 // //!
@@ -90,11 +82,7 @@ pub fn get_output_data(output_ptr: *mut u8) -> Vec<u8> {
         let value_ptr: u32 = read_u32_from_heap(output_ptr, 4);
         let value_len: u32 = read_u32_from_heap(output_ptr.add(4), 4);
 
-        let ret = Vec::from_raw_parts(
-            value_ptr as *mut u8,
-            value_len as usize,
-            value_len as usize,
-        );
+        let ret = Vec::from_raw_parts(value_ptr as *mut u8, value_len as usize, value_len as usize);
 
         ret
     }

@@ -239,8 +239,8 @@ impl Into<bigdecimal::BigDecimal> for BigDecimal {
 }
 
 impl<T> Add<T> for BigDecimal
-    where
-        T: Into<BigDecimal>,
+where
+    T: Into<BigDecimal>,
 {
     type Output = BigDecimal;
 
@@ -250,8 +250,8 @@ impl<T> Add<T> for BigDecimal
 }
 
 impl<T> Sub<T> for BigDecimal
-    where
-        T: Into<BigDecimal>,
+where
+    T: Into<BigDecimal>,
 {
     type Output = BigDecimal;
 
@@ -261,8 +261,8 @@ impl<T> Sub<T> for BigDecimal
 }
 
 impl<T> Mul<T> for BigDecimal
-    where
-        T: Into<BigDecimal>,
+where
+    T: Into<BigDecimal>,
 {
     type Output = BigDecimal;
 
@@ -272,8 +272,8 @@ impl<T> Mul<T> for BigDecimal
 }
 
 impl<T> Div<T> for BigDecimal
-    where
-        T: Into<BigDecimal>,
+where
+    T: Into<BigDecimal>,
 {
     type Output = BigDecimal;
 
@@ -561,7 +561,8 @@ impl Into<BigDecimal> for &BigInt {
 }
 
 impl<T> Add<T> for BigInt
-    where T: Into<BigInt>,
+where
+    T: Into<BigInt>,
 {
     type Output = BigInt;
 
@@ -635,7 +636,8 @@ macro_rules! impl_add_bigint_float {
 impl_add_bigint_float!(f32, f64);
 
 impl<T> Sub<T> for BigInt
-    where T: Into<BigInt>,
+where
+    T: Into<BigInt>,
 {
     type Output = BigInt;
 
@@ -709,7 +711,8 @@ macro_rules! impl_sub_bigint_float {
 impl_sub_bigint_float!(f32, f64);
 
 impl<T> Mul<T> for BigInt
-    where T: Into<BigInt>,
+where
+    T: Into<BigInt>,
 {
     type Output = BigInt;
 
@@ -783,7 +786,8 @@ macro_rules! impl_mul_bigint_float {
 impl_mul_bigint_float!(f32, f64);
 
 impl<T> Div<T> for BigInt
-    where T: Into<BigInt>,
+where
+    T: Into<BigInt>,
 {
     type Output = BigInt;
 
@@ -965,7 +969,7 @@ mod tests {
         assert_eq!(2 as u64 * big_int(2), big_int(4));
         assert_eq!(2 as isize * big_int(2), big_int(4));
         assert_eq!(2 as usize * big_int(2), big_int(4));
-        assert_eq!(2  * big_int(2), big_int(4));
+        assert_eq!(2 * big_int(2), big_int(4));
         assert_eq!(4 as i32 / big_int(2), big_int(2));
         assert_eq!(4 as i64 / big_int(2), big_int(2));
         assert_eq!(4 as u32 / big_int(2), big_int(2));
@@ -981,7 +985,6 @@ mod tests {
         assert_eq!(3 as usize / big_int(2), big_int(1));
         assert_eq!(3 / big_int(2), big_int(1));
     }
-
 
     #[test]
     fn bigint_op_float() {
