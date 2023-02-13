@@ -23,6 +23,8 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     let mut read_only_stores: Vec<proc_macro2::TokenStream> =
         Vec::with_capacity(input.sig.inputs.len());
     let mut writable_store: proc_macro2::TokenStream = quote! {};
+    let mut forgets: Vec<proc_macro2::TokenStream> =
+        Vec::with_capacity(input.sig.inputs.len());
 
     for i in (&input.sig.inputs).into_iter() {
         match i {
@@ -56,9 +58,9 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         if input_obj.is_writable_store {
                             if has_seen_writable_store {
                                 return token_stream_with_error(
-                                original,
-                                syn::Error::new(pat_type.span(), format!("handler cannot have more then one writable store as an input"))
-                            );
+                                    original,
+                                    syn::Error::new(pat_type.span(), format!("handler cannot have more then one writable store as an input"))
+                                );
                             }
                             has_seen_writable_store = true;
                             let store_type = format_ident!("{}", input_obj.store_type);
@@ -93,7 +95,8 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
                         } else if input_obj.is_string {
-                            proto_decodings.push(quote! { let #var_name: String = unsafe { String::from_raw_parts(#var_ptr, #var_len, #var_len) }; })
+                            proto_decodings.push(quote! { let #var_name: String = unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len) }; });
+                            forgets.push(quote!{ unsafe {std::mem::forget(#var_name)}; });
                         } else {
                             proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
                         }
@@ -114,6 +117,7 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
             input,
             args,
             proto_decodings,
+            forgets,
             read_only_stores,
             writable_store,
         ),
@@ -121,6 +125,7 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
             input,
             args,
             proto_decodings,
+            forgets,
             read_only_stores,
             writable_store,
         ),
@@ -263,6 +268,7 @@ fn build_map_handler(
     input: syn::ItemFn,
     collected_args: Vec<proc_macro2::TokenStream>,
     decodings: Vec<proc_macro2::TokenStream>,
+    forgets: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
     writable_store: proc_macro2::TokenStream,
 ) -> TokenStream {
@@ -277,7 +283,9 @@ fn build_map_handler(
             #(#decodings)*
             #(#read_only_stores)*
             #writable_store
-            #body
+            let result = #body;
+            #(#forgets)*
+            result
         };
     };
     let result = quote! {
@@ -299,6 +307,7 @@ fn build_store_handler(
     input: syn::ItemFn,
     collected_args: Vec<proc_macro2::TokenStream>,
     decodings: Vec<proc_macro2::TokenStream>,
+    forgets: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
     writable_store: proc_macro2::TokenStream,
 ) -> TokenStream {
@@ -314,7 +323,9 @@ fn build_store_handler(
             #(#decodings)*
             #(#read_only_stores)*
             #writable_store
-            #body
+            let result = #body;
+            #(#forgets)*
+            result
         }
     };
     result.into()
