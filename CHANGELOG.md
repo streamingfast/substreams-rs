@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Next
+
+* Macros: Use std::mem::ManuallyDrop to manage memory instead of std::mem::forget for String input parameters.
+
 ## [0.5.4](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.4)
 
 * Bugfix: Fixed a bug where memory was not properly freed when using String input parameters in macros.
