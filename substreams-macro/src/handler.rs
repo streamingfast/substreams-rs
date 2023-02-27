@@ -127,7 +127,7 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     }
 }
 
-const WRITABLE_STORE: [&'static str; 22] = [
+const WRITABLE_STORE: [&'static str; 23] = [
     "StoreSetRaw",
     "StoreSetString",
     "StoreSetBigInt",
@@ -137,6 +137,7 @@ const WRITABLE_STORE: [&'static str; 22] = [
     "StoreSetFloat64",
     "StoreSetIfNotExistsRaw",
     "StoreSetIfNotExistsProto",
+    "StoreSetIfNotExistsString",
     "StoreAddInt64",
     "StoreAddFloat64",
     "StoreAddBigDecimal",
