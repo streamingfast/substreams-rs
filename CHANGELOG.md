@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Next
+
+* Macros: Add support for Option<T> and T as supported map output types, in addition to Result<T, ...>. 
+
 ## [0.5.6](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.5)
 
 * Macros: Add StoreSetIfNotExists* to the list of supported stores.

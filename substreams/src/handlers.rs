@@ -4,9 +4,9 @@
 //! Substreams handlers. The goal of these macros is to significantly reduce boilerplate
 //! code and ensure that your handler are more readable
 
-/// Marks function to setup substream map handler WASM boilerplate
+/// Marks function to setup substreams map handler WASM boilerplate
 ///
-/// ## Usage
+/// ## Usage with Result<T, ...>
 ///
 ///
 /// ```rust
@@ -19,7 +19,7 @@
 /// }
 /// ```
 ///
-/// Equivalent code not using `#[substream::handlers::map]`
+/// Equivalent code not using `#[substreams::handlers::map]`
 ///
 /// ```rust
 /// # mod eth { pub type Block = (); }
@@ -50,10 +50,100 @@
 ///     }
 ///     substreams::output(substreams::proto::encode(&result.unwrap()).unwrap());
 /// }
+///
+/// ```
+///
+/// ## Usage with Option<T>
+///
+///
+/// ```rust
+/// # mod eth { pub type Block = (); }
+/// # mod proto { pub type Custom = (); }
+///
+/// #[substreams::handlers::map]
+/// fn map_handler(blk: eth::Block) -> Option<proto::Custom> {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
+/// Equivalent code not using `#[substreams::handlers::map]`
+///
+/// ```rust
+/// # mod eth { pub type Block = (); }
+/// # mod proto {
+/// #  use std::todo;
+/// #  #[derive(Debug)]
+/// #  pub struct Custom(u8);
+/// #    impl prost::Message for Custom {
+/// #  fn encode_raw<B: prost::bytes::BufMut>(&self, _: &mut B) where Self: Sized { todo!() }
+/// #  fn merge_field<B: prost::bytes::Buf>(&mut self, _: u32, _: prost::encoding::WireType, _: &mut B, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
+/// #  fn encoded_len(&self) -> usize { todo!() }
+/// #  fn clear(&mut self) { todo!() }
+/// #  }
+/// # }
+///
+/// #[no_mangle]
+/// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
+///     substreams::register_panic_hook();
+///     let func = || -> Option<proto::Custom> {
+///         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+///         {
+///             unimplemented!("do something");
+///         }
+///     };
+///     let result = func();
+///     if result.is_none() {
+///         panic!("None returned from map function")
+///     }
+///     substreams::output(result.unwrap());
+/// }
+/// ```
+///
+/// ## Usage with T
+///
+///
+/// ```rust
+/// # mod eth { pub type Block = (); }
+/// # mod proto { pub type Custom = (); }
+///
+/// #[substreams::handlers::map]
+/// fn map_handler(blk: eth::Block) -> proto::Custom {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
+/// Equivalent code not using `#[substreams::handlers::map]`
+///
+/// ```rust
+/// # mod eth { pub type Block = (); }
+/// # mod proto {
+/// #  use std::todo;
+/// #  #[derive(Debug)]
+/// #  pub struct Custom(u8);
+/// #    impl prost::Message for Custom {
+/// #  fn encode_raw<B: prost::bytes::BufMut>(&self, _: &mut B) where Self: Sized { todo!() }
+/// #  fn merge_field<B: prost::bytes::Buf>(&mut self, _: u32, _: prost::encoding::WireType, _: &mut B, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
+/// #  fn encoded_len(&self) -> usize { todo!() }
+/// #  fn clear(&mut self) { todo!() }
+/// #  }
+/// # }
+///
+/// #[no_mangle]
+/// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
+///     substreams::register_panic_hook();
+///     let func = || -> proto::Custom {
+///         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+///         {
+///             unimplemented!("do something");
+///         }
+///     };
+///     let result = func();
+///     substreams::output(result);
+/// }
 /// ```
 pub use substreams_macro::map;
 
-/// Marks function to setup substream store handler WASM boilerplate
+/// Marks function to setup substreams store handler WASM boilerplate
 /// ## Usage
 ///
 ///
@@ -75,7 +165,7 @@ pub use substreams_macro::map;
 /// }
 /// ```
 ///
-/// Equivalent code not using `#[substream::handlers::store]`
+/// Equivalent code not using `#[substreams::handlers::store]`
 ///
 /// ```rust
 /// use substreams::prelude::StoreNew;

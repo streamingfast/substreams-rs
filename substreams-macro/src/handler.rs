@@ -1,6 +1,7 @@
 use crate::config::{FinalConfiguration, ModuleType};
 use crate::errors;
 use proc_macro::TokenStream;
+use std::collections::HashMap;
 use proc_macro2::Span;
 use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
@@ -12,8 +13,11 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     let input = syn::parse_macro_input!(item as syn::ItemFn);
 
     let output_result = parse_func_output(&final_config, input.sig.output.clone());
+    let output_type;
     match output_result {
-        Ok(_) => {}
+        Ok(t) => {
+            output_type = t;
+        }
         Err(e) => return token_stream_with_error(original, e),
     }
     let mut has_seen_writable_store = false;
@@ -117,13 +121,29 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
             read_only_stores,
             writable_store,
         ),
-        ModuleType::Map => build_map_handler(
-            input,
-            args,
-            proto_decodings,
-            read_only_stores,
-            writable_store,
-        ),
+        ModuleType::Map => {
+            match output_type {
+                OutputType::None => {
+                    return token_stream_with_error(
+                        original,
+                        syn::Error::new(
+                            input.sig.output.span(),
+                            format!("map handler must return a value"),
+                        ),
+                    );
+                }
+                _ => {}
+            }
+
+            build_map_handler(
+                input,
+                output_type,
+                args,
+                proto_decodings,
+                read_only_stores,
+                writable_store,
+            )
+        },
     }
 }
 
@@ -221,36 +241,73 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
     }
 }
 
+enum OutputType {
+    Result,
+    Option,
+    Other,
+    None,
+}
+
 fn parse_func_output(
     final_config: &FinalConfiguration,
     output: syn::ReturnType,
-) -> Result<(), syn::Error> {
+) -> Result<OutputType, syn::Error> {
     return match final_config.module_type {
         ModuleType::Map => {
             if output == syn::ReturnType::Default {
-                return Err(syn::Error::new(Span::call_site(), "Module of type Map should have a return of type Result<YOUR_TYPE, SubstreamError>"));
+                return Err(syn::Error::new(Span::call_site(), "Module of type Map should have a return of type Result<YOUR_TYPE, SubstreamsError>, Option<YOUR_TYPE>, or YOUR_TYPE"));
             }
 
-            let expected = vec!["-".to_owned(), ">".to_owned(), "Result".to_owned()];
+            let full_output =  output.clone().into_token_stream().to_string();
+            if full_output.contains("Option < Result <") {
+                return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type"));
+            } else if full_output.contains("Result < Option <") {
+                return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type"));
+            } else if full_output.contains("Option < Option <") {
+                return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type"));
+            } else if full_output.contains("Result < Result <") {
+                return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type"));
+            }
+
+            let expected = vec!["-".to_owned(), ">".to_owned(), "??type_value??".to_owned()];
+
+            let mut enum_types: HashMap<String, bool> = HashMap::new();
+            enum_types.insert("Result".to_owned(), true);
+            enum_types.insert("Option".to_owned(), true);
+
+            let mut output_type = OutputType::Other;
+
             let mut index = 0;
             let mut valid = true;
             for i in output.into_token_stream().into_iter() {
                 if index == expected.len() {
-                    return if valid {
-                        Ok(())
-                    } else {
-                        Err(syn::Error::new(
-                            Span::call_site(),
-                            "Module of type Map should return a Result<>",
-                        ))
-                    };
+                    break;
                 }
-                if i.to_string() != expected[index] {
+
+                if expected[index] == "??type_value??" {
+                    if !enum_types.contains_key(&i.to_string()) {
+                        output_type = OutputType::Other;
+                    } else {
+                        output_type = match i.to_string().as_str() {
+                            "Result" => OutputType::Result,
+                            "Option" => OutputType::Option,
+                            _ => return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type")),
+                        }
+                    }
+                } else if i.to_string() != expected[index] {
                     valid = false
                 }
                 index += 1;
             }
-            Ok(())
+
+            if valid {
+                Ok(output_type)
+            } else {
+                Err(syn::Error::new(
+                    Span::call_site(),
+                    "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type",
+                ))
+            }
         }
         ModuleType::Store => {
             if output != syn::ReturnType::Default {
@@ -259,13 +316,14 @@ fn parse_func_output(
                     "Module of type Store should not have a return statement",
                 ));
             }
-            Ok(())
+            Ok(OutputType::None)
         }
     };
 }
 
 fn build_map_handler(
     input: syn::ItemFn,
+    output_type: OutputType,
     collected_args: Vec<proc_macro2::TokenStream>,
     decodings: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
@@ -286,16 +344,41 @@ fn build_map_handler(
             result
         };
     };
+
+    let output_handler = match output_type {
+        OutputType::Result => {
+            quote! {
+                if result.is_err() {
+                    panic!("{:?}", result.err().unwrap())
+                }
+                substreams::output(result.unwrap());
+            }
+        }
+        OutputType::Option => {
+            quote! {
+                if result.is_none() {
+                    panic!("None returned from map function")
+                }
+                substreams::output(result.unwrap());
+            }
+        }
+        OutputType::Other => {
+            quote! {
+                substreams::output(result);
+            }
+        }
+        OutputType::None => {
+            quote! {}
+        }
+    };
+
     let result = quote! {
         #header
         pub extern "C" fn #func_name(#(#collected_args),*){
             substreams::register_panic_hook();
             #lambda
             let result = func();
-            if result.is_err() {
-                panic!("{:?}", result.err().unwrap())
-            }
-            substreams::output(result.unwrap());
+            #output_handler
         }
     };
     result.into()
