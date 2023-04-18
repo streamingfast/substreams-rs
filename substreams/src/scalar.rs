@@ -1,5 +1,5 @@
 use num_bigint::Sign;
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive, Num, Signed};
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
@@ -73,6 +73,11 @@ impl BigDecimal {
     pub fn divide_by_decimals(big_decimal_amount: BigDecimal, decimals: u64) -> BigDecimal {
         // FIXME: Should we think about using a table of pre-made BigDecimal for a range of decimals between 0 -> 20?
         big_decimal_amount.div(BigDecimal::new(BigInt::one(), decimals as i64))
+    }
+
+    pub fn absolute(&self) -> BigDecimal {
+        // TODO: implement as a a trit
+        BigDecimal::from(self.0.abs())
     }
 }
 
@@ -424,6 +429,10 @@ impl BigInt {
         // FIXME: Should we think about using a table of pre-made BigDecimal for a range of decimals between 0 -> 20?
         let big_decimal_amount: BigDecimal = self.into();
         return big_decimal_amount.div(BigDecimal::new(BigInt::one(), decimals as i64));
+    }
+
+    pub fn absolute(&self) -> BigInt {
+        BigInt::from(self.0.abs())
     }
 }
 
