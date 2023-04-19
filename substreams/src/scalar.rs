@@ -1,5 +1,5 @@
 use num_bigint::Sign;
-use num_traits::{FromPrimitive, Num, Signed};
+use num_traits::{FromPrimitive, Signed};
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
