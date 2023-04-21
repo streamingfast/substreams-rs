@@ -1,4 +1,4 @@
-use num_bigint::Sign;
+use num_bigint::{Sign, ToBigInt};
 use num_traits::{FromPrimitive, Signed};
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
@@ -78,6 +78,10 @@ impl BigDecimal {
     pub fn absolute(&self) -> BigDecimal {
         // TODO: implement as a a trit
         BigDecimal::from(self.0.abs())
+    }
+
+    pub fn to_bigint(&self) -> BigInt {
+        BigInt(self.0.to_bigint().unwrap())
     }
 }
 
