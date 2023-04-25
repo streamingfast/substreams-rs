@@ -700,8 +700,8 @@ pub struct StoreAppend<T> {
 }
 
 impl<T> Appender<T> for StoreAppend<T>
-where
-    T: Into<String>,
+    where
+        T: Into<String>,
 {
     fn new() -> Self {
         StoreAppend {
@@ -1046,8 +1046,8 @@ impl<T: Default + prost::Message> StoreGetProto<T> {
 }
 
 impl<T> StoreGet<T> for StoreGetProto<T>
-where
-    T: Default + prost::Message,
+    where
+        T: Default + prost::Message,
 {
     /// Return a StoreGet object with a store index set
     fn new(idx: u32) -> StoreGetProto<T> {
@@ -1096,7 +1096,7 @@ pub struct Deltas<T> {
     pub deltas: Vec<T>,
 }
 
-impl<T: Delta> Deltas<T> {
+impl<T: Delta + GetKey> Deltas<T> {
     pub fn new(store_deltas: Vec<StoreDelta>) -> Self {
         Deltas {
             deltas: store_deltas.iter().map(T::new).collect(),
@@ -1104,11 +1104,15 @@ impl<T: Delta> Deltas<T> {
     }
 }
 
+pub trait GetKey {
+    fn get_key(&self) -> &String;
+}
+
 pub trait DeltaDecoder<T> {
     fn decode(d: &StoreDelta) -> T;
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct DeltaBigDecimal {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1128,8 +1132,13 @@ impl Delta for DeltaBigDecimal {
         }
     }
 }
+impl GetKey for DeltaBigDecimal {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct DeltaBigInt {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1149,8 +1158,14 @@ impl Delta for DeltaBigInt {
         }
     }
 }
+impl GetKey for DeltaBigInt {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaInt32 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1170,8 +1185,14 @@ impl Delta for DeltaInt32 {
         }
     }
 }
+impl GetKey for DeltaInt32 {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaInt64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1191,8 +1212,14 @@ impl Delta for DeltaInt64 {
         }
     }
 }
+impl GetKey for DeltaInt64 {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaFloat64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1212,8 +1239,14 @@ impl Delta for DeltaFloat64 {
         }
     }
 }
+impl GetKey for DeltaFloat64 {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaBool {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1233,8 +1266,14 @@ impl Delta for DeltaBool {
         }
     }
 }
+impl GetKey for DeltaBool {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaBytes {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1254,8 +1293,14 @@ impl Delta for DeltaBytes {
         }
     }
 }
+impl GetKey for DeltaBytes {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaString {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1275,8 +1320,14 @@ impl Delta for DeltaString {
         }
     }
 }
+impl GetKey for DeltaString {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaProto<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1286,8 +1337,8 @@ pub struct DeltaProto<T> {
 }
 
 impl<T> Delta for DeltaProto<T>
-where
-    T: Default + prost::Message,
+    where
+        T: Default + prost::Message,
 {
     fn new(d: &StoreDelta) -> Self {
         let nv: T = prost::Message::decode(d.new_value.as_ref())
@@ -1306,8 +1357,14 @@ where
         }
     }
 }
+impl<T> GetKey for DeltaProto<T> {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct DeltaArray<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1317,8 +1374,8 @@ pub struct DeltaArray<T> {
 }
 
 impl<T> Delta for DeltaArray<T>
-where
-    T: Into<String> + From<String>,
+    where
+        T: Into<String> + From<String>,
 {
     fn new(d: &StoreDelta) -> Self {
         let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
@@ -1346,6 +1403,12 @@ where
         }
     }
 }
+impl<T> GetKey for DeltaArray<T> {
+    fn get_key(&self) -> &String {
+        &self.key
+    }
+}
+
 
 fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
     use pb::substreams::store_delta::Operation;

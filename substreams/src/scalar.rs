@@ -106,6 +106,12 @@ impl Display for BigDecimal {
     }
 }
 
+impl Default for BigDecimal {
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
 impl fmt::Debug for BigDecimal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "BigDecimal({})", self.0)
@@ -437,6 +443,12 @@ impl BigInt {
 
     pub fn absolute(&self) -> BigInt {
         BigInt::from(self.0.abs())
+    }
+}
+
+impl Default for BigInt {
+    fn default() -> Self {
+        BigInt::zero()
     }
 }
 
