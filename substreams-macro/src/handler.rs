@@ -12,9 +12,8 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
     let final_config = FinalConfiguration { module_type };
     let input = syn::parse_macro_input!(item as syn::ItemFn);
 
-    let output_result = parse_func_output(&final_config, input.sig.output.clone());
     let output_type;
-    match output_result {
+    match parse_func_output(&final_config, input.sig.output.clone()) {
         Ok(t) => {
             output_type = t;
         }
@@ -28,7 +27,8 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
         Vec::with_capacity(input.sig.inputs.len());
     let mut writable_store: proc_macro2::TokenStream = quote! {};
 
-    for i in (&input.sig.inputs).into_iter() {
+    let input_count = input.sig.inputs.len();
+    for (input_current, i) in (&input.sig.inputs).into_iter().enumerate() {
         match i {
             syn::FnArg::Receiver(_) => {
                 return token_stream_with_error(
@@ -45,7 +45,7 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                         let var_name = v.ident.clone();
 
                         let argument_type = &*pat_type.ty;
-                        let input_res = parse_input_type(argument_type);
+                        let input_res = parse_input_type(argument_type, input_current, input_count, &input.sig.ident.to_string());
                         if input_res.is_err() {
                             return token_stream_with_error(
                                 original,
@@ -198,7 +198,7 @@ struct Input {
     store_type: String,
 }
 
-fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError> {
+fn parse_input_type(ty: &syn::Type, input_index: usize, input_count: usize, handler_name: &str) -> Result<Input, errors::SubstreamMacroError> {
     match ty {
         syn::Type::Path(p) => {
             let mut input = Input {
@@ -217,19 +217,17 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             if last_type == "String".to_owned() {
                 input.is_string = true;
             }
-            for t in WRITABLE_STORE {
-                if last_type == t.to_owned() {
+            if last_type.starts_with("Store") {
+                input.store_type = last_type.clone();
+                if input_count - 1 == input_index && handler_name.starts_with("store_") {
                     input.is_writable_store = true;
-                    input.store_type = last_type.clone();
-                }
-            }
-            for t in READABLE_STORE {
-                if last_type == t.to_owned() {
+                } else {
                     input.is_readable_store = true;
-                    input.store_type = last_type.clone();
                 }
             }
-            if last_type == "Deltas".to_owned() {
+
+            // Some day, see if we can use resolved types around, to dig closer to the implementations.
+            if last_type.eq("Deltas") {
                 // todo: should check that it's fully qualified to be our `store::Deltas`
                 input.is_deltas = true;
             }
