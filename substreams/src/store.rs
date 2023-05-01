@@ -1112,7 +1112,7 @@ pub trait DeltaDecoder<T> {
     fn decode(d: &StoreDelta) -> T;
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaBigDecimal {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1138,7 +1138,7 @@ impl GetKey for DeltaBigDecimal {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaBigInt {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1165,7 +1165,7 @@ impl GetKey for DeltaBigInt {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaInt32 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1192,7 +1192,7 @@ impl GetKey for DeltaInt32 {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaInt64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1219,7 +1219,7 @@ impl GetKey for DeltaInt64 {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaFloat64 {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1246,7 +1246,7 @@ impl GetKey for DeltaFloat64 {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaBool {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1273,7 +1273,7 @@ impl GetKey for DeltaBool {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaBytes {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1300,7 +1300,7 @@ impl GetKey for DeltaBytes {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaString {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1327,7 +1327,7 @@ impl GetKey for DeltaString {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaProto<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1364,7 +1364,7 @@ impl<T> GetKey for DeltaProto<T> {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub struct DeltaArray<T> {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
