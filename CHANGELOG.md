@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 * Macros: Add support for Option<T> and T as supported map output types, in addition to Result<T, ...>.
 * Implement `Default` trait on `BigInt` and `BigDecimal` to be able to use `unwrap_or_default()`, which both default to _zero_.
 * Added `GetKey` trait, and implemented it for all the `Delta...` structs. Allows one to build generic filtering logic based on keys.
+* Added `absolute()` which returns the absolute value of a `BigInt` and a `BigDecimal`
+* Added `to_i32()` on `BigInt`
 
 ## [0.5.6](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.5)
 
