@@ -400,7 +400,11 @@ impl BigInt {
     }
 
     pub fn to_u64(&self) -> u64 {
-        self.try_into().unwrap()
+        self.0.to_u64().unwrap()
+    }
+
+    pub fn to_i32(&self) -> i32 {
+        self.0.to_i32().unwrap()
     }
 
     pub fn pow(self, exponent: u32) -> Self {
