@@ -5,7 +5,9 @@
 //!
 
 use anyhow::Context;
+use std::iter::Filter;
 
+use crate::pb::substreams::store_delta::Operation;
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -700,8 +702,8 @@ pub struct StoreAppend<T> {
 }
 
 impl<T> Appender<T> for StoreAppend<T>
-    where
-        T: Into<String>,
+where
+    T: Into<String>,
 {
     fn new() -> Self {
         StoreAppend {
@@ -1046,8 +1048,8 @@ impl<T: Default + prost::Message> StoreGetProto<T> {
 }
 
 impl<T> StoreGet<T> for StoreGetProto<T>
-    where
-        T: Default + prost::Message,
+where
+    T: Default + prost::Message,
 {
     /// Return a StoreGet object with a store index set
     fn new(idx: u32) -> StoreGetProto<T> {
@@ -1092,10 +1094,11 @@ pub trait Delta {
     fn new(d: &StoreDelta) -> Self;
     fn get_key(&self) -> &String;
     fn get_ordinal(&self) -> u64;
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation;
+    fn get_operation(&self) -> Operation;
 }
 
-pub struct Deltas<T> {
+#[derive(Debug)]
+pub struct Deltas<T: Delta> {
     pub deltas: Vec<T>,
 }
 
@@ -1107,11 +1110,67 @@ impl<T: Delta> Deltas<T> {
     }
 }
 
+pub fn key_segment_in<T: Delta>(idx: usize, key_segment: &str) -> impl FnMut(&&T) -> bool + '_ {
+    move |delta| segment(delta.get_key(), idx) == key_segment
+}
+
+pub fn key_first_segment_in<T: Delta>(key_segment: &str) -> impl FnMut(&&T) -> bool + '_ {
+    move |delta| first_segment(delta.get_key()) == key_segment
+}
+
+pub fn key_last_segment_in<T: Delta>(key_segment: &str) -> impl FnMut(&&T) -> bool + '_ {
+    move |delta| last_segment(delta.get_key()) == key_segment
+}
+
+pub fn key_first_segments_in<T: Delta>(idx: Vec<&str>) -> impl FnMut(&&T) -> bool + '_ {
+    move |delta| idx.contains(&first_segment(delta.get_key()))
+}
+
+pub fn key_last_segments_in<T: Delta>(idx: Vec<&str>) -> impl FnMut(&&T) -> bool + '_ {
+    move |delta| idx.contains(&last_segment(delta.get_key()))
+}
+
+pub fn operations_eq<T: Delta>(operation: Operation) -> impl FnMut(&&T) -> bool {
+    move |delta| delta.get_operation() as i32 == operation as i32
+}
+
+pub fn operations_ne<T: Delta>(operation: Operation) -> impl FnMut(&&T) -> bool {
+    move |delta| delta.get_operation() as i32 != operation as i32
+}
+
+fn first_segment(key: &String) -> &str {
+    return segment(key, 0);
+}
+
+fn last_segment(key: &String) -> &str {
+    return try_last_segment(key).unwrap();
+}
+
+fn try_last_segment(key: &String) -> Option<&str> {
+    let val = key.split(":").last();
+    match val {
+        Some(val) => Some(val),
+        None => None,
+    }
+}
+
+fn segment(key: &String, index: usize) -> &str {
+    return try_segment(key, index).unwrap();
+}
+
+fn try_segment(key: &String, index: usize) -> Option<&str> {
+    let val = key.split(":").nth(index);
+    match val {
+        Some(val) => Some(val),
+        None => None,
+    }
+}
+
 pub trait DeltaDecoder<T> {
     fn decode(d: &StoreDelta) -> T;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeltaBigDecimal {
     pub operation: pb::substreams::store_delta::Operation,
     pub ordinal: u64,
@@ -1133,9 +1192,11 @@ impl Delta for DeltaBigDecimal {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1161,9 +1222,11 @@ impl Delta for DeltaBigInt {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1189,9 +1252,11 @@ impl Delta for DeltaInt32 {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1217,9 +1282,11 @@ impl Delta for DeltaInt64 {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1245,12 +1312,13 @@ impl Delta for DeltaFloat64 {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
-
 
 #[derive(Debug)]
 pub struct DeltaBool {
@@ -1274,9 +1342,11 @@ impl Delta for DeltaBool {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1302,9 +1372,11 @@ impl Delta for DeltaBytes {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1330,9 +1402,11 @@ impl Delta for DeltaString {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1346,8 +1420,8 @@ pub struct DeltaProto<T> {
 }
 
 impl<T> Delta for DeltaProto<T>
-    where
-        T: Default + prost::Message,
+where
+    T: Default + prost::Message,
 {
     fn new(d: &StoreDelta) -> Self {
         let nv: T = prost::Message::decode(d.new_value.as_ref())
@@ -1368,9 +1442,11 @@ impl<T> Delta for DeltaProto<T>
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
@@ -1384,8 +1460,8 @@ pub struct DeltaArray<T> {
 }
 
 impl<T> Delta for DeltaArray<T>
-    where
-        T: Into<String> + From<String>,
+where
+    T: Into<String> + From<String>,
 {
     fn new(d: &StoreDelta) -> Self {
         let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
@@ -1415,9 +1491,11 @@ impl<T> Delta for DeltaArray<T>
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_ordinal(&self) -> u64 { self.ordinal }
+    fn get_ordinal(&self) -> u64 {
+        self.ordinal
+    }
     fn get_operation(&self) -> pb::substreams::store_delta::Operation {
-        return self.operation
+        return self.operation;
     }
 }
 
