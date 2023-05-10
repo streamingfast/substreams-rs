@@ -5,9 +5,7 @@
 //!
 
 use anyhow::Context;
-use std::iter::Filter;
 
-use crate::pb::substreams::store_delta::Operation;
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -1094,7 +1092,7 @@ pub trait Delta {
     fn new(d: &StoreDelta) -> Self;
     fn get_key(&self) -> &String;
     fn get_ordinal(&self) -> u64;
-    fn get_operation(&self) -> Operation;
+    fn get_operation(&self) -> pb::substreams::store_delta::Operation;
 }
 
 #[derive(Debug)]
@@ -1130,11 +1128,15 @@ pub fn key_last_segments_in<T: Delta>(idx: Vec<&str>) -> impl FnMut(&&T) -> bool
     move |delta| idx.contains(&last_segment(delta.get_key()))
 }
 
-pub fn operations_eq<T: Delta>(operation: Operation) -> impl FnMut(&&T) -> bool {
+pub fn operations_eq<T: Delta>(
+    operation: pb::substreams::store_delta::Operation,
+) -> impl FnMut(&&T) -> bool {
     move |delta| delta.get_operation() as i32 == operation as i32
 }
 
-pub fn operations_ne<T: Delta>(operation: Operation) -> impl FnMut(&&T) -> bool {
+pub fn operations_ne<T: Delta>(
+    operation: pb::substreams::store_delta::Operation,
+) -> impl FnMut(&&T) -> bool {
     move |delta| delta.get_operation() as i32 != operation as i32
 }
 
