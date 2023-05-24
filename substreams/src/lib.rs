@@ -106,6 +106,7 @@ pub mod scalar;
 mod state;
 
 pub mod store;
+pub mod key;
 
 /// A prelude that makes all store traits available.
 ///

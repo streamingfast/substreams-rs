@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
-* Added multiple predicate (`key_first_segment_in() key_first_segments_it() key_last_segment_in() operation_eq()` etc.) for filtering of deltas.
+* Added multiple predicate (`key_first_segment_in() key_first_segments_it() key_last_segment_in() operation_eq()` etc.) for filtering of deltas, in the `key` module.
 * Added `get_key`, `get_ordinal` and `get_operation` to the `Delta` trait, implemented for all Delta implementations.
 * Macros: Add support for Option<T> and T as supported map output types, in addition to Result<T, ...>.
 * Implement `Default` trait on `BigInt` and `BigDecimal` to be able to use `unwrap_or_default()`, which both default to _zero_.
