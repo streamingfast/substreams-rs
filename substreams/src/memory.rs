@@ -1,4 +1,4 @@
-extern crate wee_alloc;
+// extern crate wee_alloc;
 
 use std::{convert::TryInto, slice};
 

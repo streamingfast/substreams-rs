@@ -8,9 +8,9 @@ use anyhow::Context;
 
 use {
     crate::{
-        {pb, proto},
         pb::substreams::StoreDelta,
-        scalar::{BigDecimal, BigInt}, state,
+        scalar::{BigDecimal, BigInt},
+        state, {pb, proto},
     },
     prost,
     std::i64,

@@ -6,26 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
-* Added multiple predicate (`key_first_segment_in() key_first_segments_it() key_last_segment_in() operation_eq()` etc.) for filtering of deltas, in the `key` module.
-* Added `get_key`, `get_ordinal` and `get_operation` to the `Delta` trait, implemented for all Delta implementations.
-* Macros: Add support for Option<T> and T as supported map output types, in addition to Result<T, ...>.
-* Implement `Default` trait on `BigInt` and `BigDecimal` to be able to use `unwrap_or_default()`, which both default to _zero_.
-* Added `absolute()` which returns the absolute value of a `BigInt` and a `BigDecimal`
-* Added `to_i32()` on `BigInt`
+### Highlights
 
-## [0.5.6](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.5)
+In this release we added helpers to more easily decode store keys to extract meaningful information from them. In a lot of use cases, you will encode data into your keys for example `user:<address>` or `position:<pool>:<id>`. The new `key` module has been added to help extract segment of a key.
 
-* Macros: Add StoreSetIfNotExists* to the list of supported stores.
+The `key` module expects keys to be of the form `<segment>[:<segment>]*` so the `:` is the segment separator. The module is meant to be used like:
+
+
+
+* Core: Added `key` module which contains predicates `key_first_segment_in`, `key_first_segments_it`, `key_last_segment_in`, `operation_eq`, etc. for filtering of delta's keys.
+* Stores: Added `get_key`, `get_ordinal` and `get_operation` to the `Delta` trait, implemented for all Delta implementations.
+* Macros: Add support for `Option<T>` and `T` as supported map output types, in addition to `Result<T, ...>`.
+* Scalars: `BigInt` and `BigDecimal` types now implement the std `Default` trait (defaults to `0`) to be able to use `unwrap_or_default()`.
+* Scalar: Added `absolute` method on `BigInt` and `BigDecimal` types.
+* Scalar: Added `to_i32()` on `BigInt`
+
+## [0.5.6](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.6)
+
+* Macros: Add `StoreSetIfNotExists*` to the list of supported stores.
 
 ## [0.5.5](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.5)
 
-* Macros: Use std::mem::ManuallyDrop to manage memory instead of std::mem::forget for String input parameters.
-* Macros: Add StoreSetIfNotExistsString to the list of supported stores.
+* Macros: Use `std::mem::ManuallyDrop` to manage memory instead of `std::mem::forget` for String input parameters.
+* Macros: Add `StoreSetIfNotExistsString` to the list of supported stores.
 
 ## [0.5.4](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.4)
 
 * Bugfix: Fixed a bug where memory was not properly freed when using String input parameters in macros.
-* Added `has_at`, `has_first` and `has_last` methods to StoreGet
+* Added `has_at`, `has_first` and `has_last` methods to `StoreGet`.
 
 ## [0.5.3](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.3)
 
