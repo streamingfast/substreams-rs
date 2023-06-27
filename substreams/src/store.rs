@@ -4,6 +4,8 @@
 //! handlers.
 //!
 
+use std::str;
+
 use anyhow::Context;
 
 use {
@@ -1013,18 +1015,13 @@ impl<T: Into<String> + From<String> + Clone> StoreGet<Vec<T>> for StoreGetArray<
 }
 
 fn split_array<T: Into<String> + From<String> + Clone>(bytes: Vec<u8>) -> Option<Vec<T>> {
-    let mut chunk = String::from_utf8(bytes).unwrap();
+    let mut chunk = str::from_utf8(bytes.as_ref()).unwrap();
     match chunk.strip_suffix(";") {
         None => return None,
-        Some(ch) => chunk = ch.to_string(),
+        Some(ch) => chunk = ch,
     }
 
-    let chunks: Vec<T> = chunk
-        .split(";")
-        .map(|v| v.to_string())
-        .map(|v| v.into())
-        .collect();
-
+    let chunks: Vec<T> = chunk.split(";").map(|v| v.to_string().into()).collect();
     if chunks.len() == 0 {
         return None;
     }
@@ -1337,8 +1334,8 @@ impl Delta for DeltaString {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key.clone(),
-            old_value: String::from_utf8(d.old_value.clone()).unwrap(),
-            new_value: String::from_utf8(d.new_value.clone()).unwrap(),
+            old_value: str::from_utf8(d.old_value.as_ref()).unwrap().to_string(),
+            new_value: str::from_utf8(d.new_value.as_ref()).unwrap().to_string(),
         }
     }
     fn get_key(&self) -> &String {
@@ -1406,13 +1403,13 @@ where
     T: Into<String> + From<String>,
 {
     fn new(d: &StoreDelta) -> Self {
-        let old_chunks = String::from_utf8(d.old_value.clone()).unwrap();
+        let old_chunks = str::from_utf8(d.old_value.as_ref()).unwrap();
         let mut old_values: Vec<T> = old_chunks
             .split(";")
             .map(|v| v.to_string().into())
             .collect();
 
-        let new_chunks = String::from_utf8(d.new_value.clone()).unwrap();
+        let new_chunks = str::from_utf8(d.new_value.as_ref()).unwrap();
         let mut new_values: Vec<T> = new_chunks
             .split(";")
             .map(|v| v.to_string().into())
