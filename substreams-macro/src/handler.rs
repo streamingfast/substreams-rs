@@ -1,9 +1,9 @@
 use crate::config::{FinalConfiguration, ModuleType};
 use crate::errors;
 use proc_macro::TokenStream;
-use std::collections::HashMap;
 use proc_macro2::Span;
 use quote::{format_ident, quote, ToTokens};
+use std::collections::HashMap;
 use syn::spanned::Spanned;
 
 pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> TokenStream {
@@ -143,7 +143,7 @@ pub fn main(_args: TokenStream, item: TokenStream, module_type: ModuleType) -> T
                 read_only_stores,
                 writable_store,
             )
-        },
+        }
     }
 }
 
@@ -258,7 +258,7 @@ fn parse_func_output(
                 return Err(syn::Error::new(Span::call_site(), "Module of type Map should have a return of type Result<YOUR_TYPE, SubstreamsError>, Option<YOUR_TYPE>, or YOUR_TYPE"));
             }
 
-            let full_output =  output.clone().into_token_stream().to_string();
+            let full_output = output.clone().into_token_stream().to_string();
             if full_output.contains("Option < Result <") {
                 return Err(syn::Error::new(Span::call_site(), "Module of type Map should return a Result<T,...>, Option<T>, T where T is your custom type"));
             } else if full_output.contains("Result < Option <") {
