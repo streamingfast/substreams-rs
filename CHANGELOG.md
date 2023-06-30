@@ -8,18 +8,73 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Highlights
 
-In this release we added helpers to more easily decode store keys to extract meaningful information from them. In a lot of use cases, you will encode data into your keys for example `user:<address>` or `position:<pool>:<id>`. The new `key` module has been added to help extract segment of a key.
+In this release we add various helpers to more easily decode store keys and extract meaningful information from them as well as dealing with store deltas.
 
-The `key` module expects keys to be of the form `<segment>[:<segment>]*` so the `:` is the segment separator. The module is meant to be used like:
+In a lot of use cases, you will encode data into your keys for example `user:<address>` or `position:<pool>:<id>`. The new helpers make it easier than before to work with those. The Substreams default `key` key format is now to use the `:` segment separator to separate logical part of a key.
 
+Import at the top of your module the `use substreams::store::DeltaExt;` trait and gain access to `key_segment_at_eq`, `key_first_segment_eq`, `key_last_segment_eq`, `key_first_segment_in` and `key_last_segment_in` on iterator of type `Delta`.
 
+The new `key` module can then be used to extract useful part of the key:
 
-* Core: Added `key` module which contains predicates `key_first_segment_in`, `key_first_segments_it`, `key_last_segment_in`, `operation_eq`, etc. for filtering of delta's keys.
-* Stores: Added `get_key`, `get_ordinal` and `get_operation` to the `Delta` trait, implemented for all Delta implementations.
+```rust
+use substreams::key;
+use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
+fn db_out(store: Deltas<DeltaBigDecimal>) {
+    for delta in store.key_first_segment_eq("user") {
+        let address = key::segment_at(delta.get_key(), 1);
+        // Do something for this delta where the key was in format `user:<address>`
+    }
+}
+```
+
+Or when filtering for multiple segments:
+
+```rust
+use substreams::key;
+use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
+fn db_out(store: Deltas<DeltaBigDecimal>) {
+    for delta in store.key_first_segment_in(["user", "contract"]) {
+        // Do something for this delta where the key was in format `(user|contract):...`
+    }
+}
+```
+
+The `DeltaExt` trait also brings in `operation_eq` and `operation_not_eq` to filter `Deltas` based on the actual operation.
+
+```rust
+use substreams::key;
+use substreams::pb::substreams::store_delta::Operation;
+use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
+fn db_out(store: Deltas<DeltaBigDecimal>) {
+    for delta in store
+        .iter()
+        .operation_eq(Operation::Create)
+        .key_first_segment_in(["user", "contract"])
+        .key_last_segment_eq("token0")
+   {
+        // Do something for Create delta(s) where the key was in format `(user|contract):...:token0`
+    }
+}
+```
+
+### Added
+
+* Core: Added `key` module which contains extractor `segment_at`, `first_segment`, `last_segment`, `try_segment_at`, `try_first_segment` and `try_last_segment` to extract parts of a key.
+* Stores: Added `store::DeltaExt` trait which contains predicates `key_segment_at_eq`, `key_first_segment_eq`, `key_last_segment_eq`, `key_first_segment_in`, `key_last_segment_in`, `operation_eq` and `operation_not_eq` for filtering of delta's keys.
+* Stores: Added `get_key`, `get_operation` to the `Delta` trait, implemented for all Delta implementations.
 * Macros: Add support for `Option<T>` and `T` as supported map output types, in addition to `Result<T, ...>`.
 * Scalars: `BigInt` and `BigDecimal` types now implement the std `Default` trait (defaults to `0`) to be able to use `unwrap_or_default()`.
 * Scalar: Added `absolute` method on `BigInt` and `BigDecimal` types.
 * Scalar: Added `to_i32()` on `BigInt`
+
+### Improved
+
+* Stores: Reduced amount of clone performed in the `store` module which should improve speed a bit.
+
+### Changed
+
+* Stores: **Breaking** `Delta` trait method `new()` has been removed, removed by a trait bound `From<StoreDelta>` on `Deltas`, shouldn't affect anyone.
+* Stores: **Breaking** `Deltas` now require the trait bound `From<StoreDelta>` implemented for all Delta implementations, shouldn't affect anyone.
 
 ## [0.5.6](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.6)
 

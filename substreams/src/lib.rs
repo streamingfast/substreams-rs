@@ -105,8 +105,10 @@ pub mod scalar;
 
 mod state;
 
-pub mod store;
 pub mod key;
+pub mod store;
+
+mod operation;
 
 /// A prelude that makes all store traits available.
 ///
@@ -119,8 +121,8 @@ pub mod prelude {
     pub use crate::scalar::{BigDecimal, BigInt};
     pub use crate::store::{
         Appender, Delta, DeltaArray, DeltaBigDecimal, DeltaBigInt, DeltaBool, DeltaBytes,
-        DeltaDecoder, DeltaFloat64, DeltaInt32, DeltaInt64, DeltaProto, DeltaString, Deltas,
-        StoreAdd, StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
+        DeltaFloat64, DeltaInt32, DeltaInt64, DeltaProto, DeltaString, Deltas, StoreAdd,
+        StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
         StoreDelete, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetFloat64, StoreGetInt64,
         StoreGetProto, StoreGetRaw, StoreGetString, StoreMax, StoreMaxBigDecimal, StoreMaxBigInt,
         StoreMaxFloat64, StoreMaxInt64, StoreMin, StoreMinBigDecimal, StoreMinBigInt,
