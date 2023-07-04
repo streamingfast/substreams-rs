@@ -12,7 +12,10 @@ sd '^version = ".*?"$' "version = \"${version}\"" Cargo.toml
 sd 'version = ".*?",' "version = \"${version}\"," Cargo.toml
 sd '## Unreleased' "## ${version}" CHANGELOG.md
 
+# Important so that Cargo.lock is updated and you "test
+cargo test --target aarch64-apple-darwin # Change 'aarch64-apple-darwin' to fit your own platform!
+
 git add -A . && git commit -m "Preparing release of ${version}"
 
-sfreleaser release
+sfreleaser release "${version}"
 ```

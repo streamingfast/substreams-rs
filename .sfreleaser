@@ -1,0 +1,8 @@
+global:
+  language: rust
+  variant: library
+release:
+  # Must be specified in publish order
+  rust-crates:
+  - substreams-macro
+  - substreams
