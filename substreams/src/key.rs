@@ -14,7 +14,7 @@ use std::io::BufRead;
 /// use substreams::store::{Delta, Deltas, DeltaBigDecimal};
 ///
 /// fn db_out(deltas: Deltas<DeltaBigDecimal>) {
-///     for delta in deltas {
+///     for delta in deltas.into_iter() {
 ///         let kind = key::first_segment(delta.get_key());
 ///         let address = key::segment_at(delta.get_key(), 1);
 ///         // Do something for this kind and address
@@ -30,7 +30,7 @@ use std::io::BufRead;
 /// use substreams::store::{Delta, Deltas, DeltaBigDecimal};
 ///
 /// fn db_out(deltas: Deltas<DeltaBigDecimal>) {
-///     for delta in deltas {
+///     for delta in deltas.into_iter() {
 ///         let kind = key::try_first_segment(delta.get_key()).expect("invalid key: kind");
 ///         let address = key::try_segment_at(delta.get_key(), 1).expect("invalid key: address");
 ///         // Do something for this kind and address

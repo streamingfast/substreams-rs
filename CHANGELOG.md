@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.8)
+
+### Highlights
+
+This is a re-packaging of https://github.com/streamingfast/substreams-rs/release/tag/v0.5.7 with a small removal that was actually wrong. Please see [0.5.7](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.7) release notes for highlights of previous release.
+
+### Fixed
+
+* Removed `impl<I: Iterator>` from `Deltas`, this was implemented using `pop` which returns deltas in reverse order.
+
 ## [0.5.7](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.7)
 
 ### Highlights

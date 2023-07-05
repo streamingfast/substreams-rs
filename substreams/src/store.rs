@@ -17,7 +17,7 @@
 //! use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
 //!
 //! fn db_out(store: Deltas<DeltaBigDecimal>) {
-//!     for delta in store.key_first_segment_eq("user") {
+//!     for delta in store.into_iter().key_first_segment_eq("user") {
 //!         let address = key::segment_at(delta.get_key(), 1);
 //!
 //!         // Do something for this delta where the key was in format `user:<address>`
@@ -32,7 +32,7 @@
 //! use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
 //!
 //! fn db_out(store: Deltas<DeltaBigDecimal>) {
-//!     for delta in store.key_first_segment_in(["user", "contract"]) {
+//!     for delta in store.into_iter().key_first_segment_in(["user", "contract"]) {
 //!         // Do something for this delta where the key was in format `(user|contract):...`
 //!     }
 //! }
@@ -1236,14 +1236,6 @@ impl<T: Delta + From<StoreDelta>> Deltas<T> {
     /// Shortcut for `self.deltas.into_iter()`.
     pub fn into_iter(self) -> impl Iterator<Item = T> {
         self.deltas.into_iter()
-    }
-}
-
-impl<T: Delta> Iterator for Deltas<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.deltas.pop()
     }
 }
 
