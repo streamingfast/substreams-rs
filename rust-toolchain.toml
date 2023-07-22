@@ -1,4 +1,4 @@
 [toolchain]
-channel = "1.69"
+channel = "1.71"
 components = [ "rustfmt" ]
 targets = [ "wasm32-unknown-unknown" ]

@@ -53,7 +53,7 @@
 ///
 /// ```
 ///
-/// ## Usage with Option<T>
+/// ## Usage with `Option<T>`
 ///
 ///
 /// ```rust

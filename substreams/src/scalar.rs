@@ -18,8 +18,9 @@ use {
 pub struct BigDecimal(bigdecimal::BigDecimal);
 
 impl BigDecimal {
-    /// These are the limits of IEEE-754 decimal128, a format we may want to switch to. See
-    /// https://en.wikipedia.org/wiki/Decimal128_floating-point_format.
+    /// These are the limits of IEEE-754 decimal128, a format we may want to switch to.
+    ///
+    /// See <https://en.wikipedia.org/wiki/Decimal128_floating-point_format>
     pub const MIN_EXP: i32 = -6143;
     pub const MAX_EXP: i32 = 6144;
     pub const MAX_SIGNIFICANT_DIGITS: i32 = 34;

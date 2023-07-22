@@ -121,7 +121,7 @@ impl<V: AsRef<[u8]>> StoreSet<V> for StoreSetRaw {
 }
 
 /// `StoreSetString` is a struct representing a `store` with `updatePolicy` equal to `set` on a `valueType` equal to `string`
-/// `StoreSetString` implements AsRef<str> to give the client the flexibility
+/// `StoreSetString` implements `AsRef<str>` to give the client the flexibility
 /// to either use the API with &String or String.
 pub struct StoreSetString {}
 impl StoreNew for StoreSetString {
@@ -322,8 +322,8 @@ impl<V: AsRef<[u8]>> StoreSetIfNotExists<V> for StoreSetIfNotExistsRaw {
 }
 
 /// `StoreSetIfNotExistsString` is a struct representing a `store` module with `updatePolicy` equal to `set_if_not_exists` and a `valueType` equal to `string`
-///     `StoreSetIfNotExistsString` implements AsRef<str> to give the client the flexibility
-///     to either use the API with &String or String.
+/// `StoreSetIfNotExistsString` implements `AsRef<str>` to give the client the flexibility
+/// to either use the API with &String or String.
 pub struct StoreSetIfNotExistsString {}
 impl StoreNew for StoreSetIfNotExistsString {
     fn new() -> Self {
@@ -539,8 +539,8 @@ impl StoreAdd<f64> for StoreAddFloat64 {
 }
 
 /// `StoreAddBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigdecimal`
-///     `StoreAddBigDecimal` implements AsRef<BigInt> to give the client the flexibility
-///     to either use the API with &BigDecimal or BigDecimal.
+/// `StoreAddBigDecimal` implements `AsRef<BigInt>` to give the client the flexibility
+/// to either use the API with &BigDecimal or BigDecimal.
 pub struct StoreAddBigDecimal {}
 impl StoreNew for StoreAddBigDecimal {
     fn new() -> Self {
@@ -565,8 +565,8 @@ impl<V: AsRef<BigDecimal>> StoreAdd<V> for StoreAddBigDecimal {
 }
 
 /// `StoreAddBigInt` is a struct representing a `store` module with `updatePolicy` equal to `add` and a valueType of `bigint`
-///     `StoreAddBigInt` implements AsRef<BigInt> to give the client the flexibility
-///     to either use the API with &BigInt or BigInt.
+/// `StoreAddBigInt` implements `AsRef<BigInt>` to give the client the flexibility
+/// to either use the API with &BigInt or BigInt.
 pub struct StoreAddBigInt {}
 impl StoreNew for StoreAddBigInt {
     fn new() -> Self {
@@ -615,8 +615,8 @@ impl StoreMax<i64> for StoreMaxInt64 {
 }
 
 /// `StoreMaxBigInt` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigint`
-///     `StoreMaxBigInt` implements AsRef<BigInt> to give the client the flexibility
-///     to either use the API with &BigInt or BigInt.
+/// `StoreMaxBigInt` implements `AsRef<BigInt>` to give the client the flexibility
+/// to either use the API with &BigInt or BigInt.
 pub struct StoreMaxBigInt {}
 impl StoreNew for StoreMaxBigInt {
     fn new() -> Self {
@@ -649,8 +649,8 @@ impl StoreMax<f64> for StoreMaxFloat64 {
 }
 
 /// `StoreMaxBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `max` and a valueType of `bigdecimal`
-///     `StoreMaxBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
-///     to either use the API with &BigDecimal or BigDecimal.
+/// `StoreMaxBigDecimal` implements `AsRef<BigDecimal>` to give the client the flexibility
+/// to either use the API with &BigDecimal or BigDecimal.
 pub struct StoreMaxBigDecimal {}
 impl StoreNew for StoreMaxBigDecimal {
     fn new() -> Self {
@@ -691,8 +691,8 @@ impl StoreMin<i64> for StoreMinInt64 {
 }
 
 /// `StoreMinBigInt` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigint`
-///     `StoreMinBigInt` implements AsRef<BigInt> to give the client the flexibility
-///     to either use the API with &BigInt or BigInt.
+/// `StoreMinBigInt` implements `AsRef<BigInt>` to give the client the flexibility
+/// to either use the API with &BigInt or BigInt.
 pub struct StoreMinBigInt {}
 impl StoreNew for StoreMinBigInt {
     fn new() -> Self {
@@ -725,8 +725,8 @@ impl StoreMin<f64> for StoreMinFloat64 {
 }
 
 /// `StoreMinBigDecimal` is a struct representing a `store` module with `updatePolicy` equal to `min` and a valueType of `bigdecimal`
-///     `StoreMinBigDecimal` implements AsRef<BigDecimal> to give the client the flexibility
-///     to either use the API with &BigDecimal or BigDecimal.
+/// `StoreMinBigDecimal` implements `AsRef<BigDecimal>` to give the client the flexibility to either use
+/// the API with &BigDecimal or BigDecimal.
 pub struct StoreMinBigDecimal {}
 impl StoreNew for StoreMinBigDecimal {
     fn new() -> Self {
