@@ -1,43 +1,43 @@
-use std::io::BufRead;
-
-/// The key module contains functions for working extracting segments from key.
-///
-/// In a lot of use cases, you will encode data into your keys into segmented parts, adding a prefix
-/// as namespace for example `user` and `<address>` joined together using a separator.  The `key` module
-/// expects keys to use the `:` segment separator so keys looks like `<segment>[:<segment>]*`. Concrete
-/// examples are `user:0x1234` or `user:0x1234:balance`.
-///
-/// You can extract various parts from a key:
-///
-/// ```rust
-/// use substreams::key;
-/// use substreams::store::{Delta, Deltas, DeltaBigDecimal};
-///
-/// fn db_out(deltas: Deltas<DeltaBigDecimal>) {
-///     for delta in deltas.into_iter() {
-///         let kind = key::first_segment(delta.get_key());
-///         let address = key::segment_at(delta.get_key(), 1);
-///         // Do something for this kind and address
-///     }
-/// }
-/// ```
-///
-/// Those method panics if the key is not properly formatted or refering an invalid part. Use
-/// the `try_` version if you want to handle errors:
-///
-/// ```rust
-/// use substreams::key;
-/// use substreams::store::{Delta, Deltas, DeltaBigDecimal};
-///
-/// fn db_out(deltas: Deltas<DeltaBigDecimal>) {
-///     for delta in deltas.into_iter() {
-///         let kind = key::try_first_segment(delta.get_key()).expect("invalid key: kind");
-///         let address = key::try_segment_at(delta.get_key(), 1).expect("invalid key: address");
-///         // Do something for this kind and address
-///     }
-/// }
-/// ```
+//! The key module contains functions for working extracting segments from key.
+//!
+//! In a lot of use cases, you will encode data into your keys into segmented parts, adding a prefix
+//! as namespace for example `user` and `<address>` joined together using a separator.  The `key` module
+//! expects keys to use the `:` segment separator so keys looks like `<segment>[:<segment>]*`. Concrete
+//! examples are `user:0x1234` or `user:0x1234:balance`.
+//!
+//! You can extract various parts from a key:
+//!
+//! ```rust
+//! use substreams::key;
+//! use substreams::store::{Delta, Deltas, DeltaBigDecimal};
+//!
+//! fn db_out(deltas: Deltas<DeltaBigDecimal>) {
+//!     for delta in deltas.into_iter() {
+//!         let kind = key::first_segment(delta.get_key());
+//!         let address = key::segment_at(delta.get_key(), 1);
+//!         // Do something for this kind and address
+//!     }
+//! }
+//! ```
+//!
+//! Those method panics if the key is not properly formatted or refering an invalid part. Use
+//! the `try_` version if you want to handle errors:
+//!
+//! ```rust
+//! use substreams::key;
+//! use substreams::store::{Delta, Deltas, DeltaBigDecimal};
+//!
+//! fn db_out(deltas: Deltas<DeltaBigDecimal>) {
+//!     for delta in deltas.into_iter() {
+//!         let kind = key::try_first_segment(delta.get_key()).expect("invalid key: kind");
+//!         let address = key::try_segment_at(delta.get_key(), 1).expect("invalid key: address");
+//!         // Do something for this kind and address
+//!     }
+//! }
+//! ```
+//!
 use crate::prelude::Delta;
+use std::io::BufRead;
 
 pub fn segment_at(key: &String, index: usize) -> &str {
     try_segment_at(key, index).unwrap()

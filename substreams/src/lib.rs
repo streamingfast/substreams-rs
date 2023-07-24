@@ -9,9 +9,9 @@
 //! Below are a few `map` handler examples. The signature of the handler function is based
 //! on the inputs and output defined in the `map` module definition in the Manifest. There
 //! are a few things to note:
-//! * Best practice is to name your `map` module function `map_<your_action>'
-//! * `map` module function must *always* return a Result
-//! * The Result must have an Error type set to `substreams::error:Error`
+//! * Best practice is to name your `map` module function `map_<your_action>`
+//! * `map` module function must *always* return a [Result<Proto, E>]
+//! * The Result must have an Error type set to [crate::errors::Error]
 //!
 //!```no_run
 //! use substreams::prelude::{StoreGet, StoreNew};
@@ -22,7 +22,7 @@
 //! #   pub type Custom = ();
 //! #   #[derive(Clone, PartialEq, ::prost::Message)]
 //! #   pub struct Pairs {}
-//!   }
+//! # }
 //!
 //! /// Map handler which takes a source as input
 //! #[substreams::handlers::map]
@@ -47,12 +47,30 @@
 //! fn map_db(blk: eth::Block, mints: pb::Custom, store_deltas: store::Deltas<DeltaBigDecimal>) -> Result<pb::Custom, Error> {
 //!     unimplemented!("do something");
 //! }
+//!
+//! /// Map handler that can return no output or an error
+//! #[substreams::handlers::map]
+//! fn map_optional_transfers(blk: eth::Block) -> Result<Option<pb::Custom>, Error> {
+//!     Ok(None)
+//! }
+//!
+//! /// Map handler that can return no output
+//! #[substreams::handlers::map]
+//! fn map_maybe_transfers(blk: eth::Block) -> Option<pb::Custom> {
+//!     None
+//! }
+//!
+//! /// Map handler that can return its output only and directly
+//! #[substreams::handlers::map]
+//! fn map_direct_transfers(blk: eth::Block) -> pb::Custom {
+//!     unimplemented!("do something");
+//! }
 //! ```
 //!
 //! Below are a few `store` handler examples. The signature of the handler function is based
 //! on the inputs defined in the `store` module definition in the Manifest. There
 //! are a few things to note:
-//! * Best practice is to name your `map` module function `store_<your_action>'
+//! * Best practice is to name your `map` module function `store_<your_action>`
 //! * `store` module function must *return nothing*
 //!
 //! ```no_run

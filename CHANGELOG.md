@@ -4,9 +4,74 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Next
+## 0.5.9
 
-* **Deprecation** The method `read_u32_from_heap` has
+### Highlights
+
+#### `#[substreams::handlers::map]` now handles `Result<Option<T>, Error>` and `Option<T>`
+
+It's now possible to avoid sending back output from your mapper entirely by using `Option<T>` or `Result<Option<T>>`. This should be used whenever you are not returning something every block. This can make some use cases easier to "view" and comes with a small improved speed as the Protobuf encoding of an "empty" object will be avoided completely and a WASM intrinsic call will be avoided.
+
+#### Error Handling
+
+The `substreams::errors::Error` is now a plain alias to `anyhow::Error` which means it much easier to create generic errors, contextualize existing one and we gain the ability to be converted from any error that implements `std:error:Error` interface which is the majority of errors out there. This enables proper usage of the [`?` Rust operator](https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-question-mark-operator).
+
+```rust
+#[substreams::handlers::map]
+fn map_transfers(params: String, block: Block) -> Result<Transfers, substreams::errors::Error> {
+    let address = Hex::decode(params)?;
+
+    // ...
+}
+```
+
+Here, a decoding error returned by `Hex::decode` will be converted to `substreams::errors::Error` and an early return will happen at that point. This will make error handling and reporting much easier.
+
+The Rust [anyhow](https://docs.rs/anyhow/latest/anyhow/) library can now be used seamlessly to quickly write ad-hoc error as well as adding context to errors. First add `anyhow` as a dependency:
+
+```bash
+cargo add anyhow
+```
+
+Then use this code to contextualize another error:
+
+```rust
+use anyhow::Context;
+
+#[substreams::handlers::map]
+fn map_transfers(params: String, block: Block) -> Result<Transfers, substreams::errors::Error> {
+    let address = Hex::decode(&params).with_context(|| format!("invalid address '{}'", &params))?;
+
+    // ...
+}
+```
+
+This should be a seamless upgrade for the vast majority of users. This change comes at the price that `Error::Unexpected("msg".to_string())` is not available anymore. Add `anyhow` as a dependency to your project:
+
+```bash
+cargo add anyhow
+```
+
+And then convert `substreams::errors:Error::Unexpected` usage with:
+
+```rust
+use anyhow::anyhow;
+
+#[substreams::handlers::map]
+fn map_transfers(block: Block) -> Result<Transfers, substreams::errors::Error> {
+    if block.number == 0 {
+        return Err(anyhow!("invalid block #{}", block.number))
+    }
+
+    // ...
+}
+```
+
+### Changed
+
+* Added support `Result<Option<>>` and `Option<>` in `substreams::handlers::map` macro.
+
+* **Breaking** `substreams::errors:Error` is now an alias to `anyhow:Error`. This has been done for improving dealing with errors within Substreams Rust handler. If you were using `substreams::errors:Error::Unexpected`, now use `Err(anyhow!("invalid block #{}", block.number))` (add `anyhow = "1"` as a dependency of your project).
 
 ## [0.5.8](https://github.com/streamingfast/substreams-rs/release/tag/v0.5.8)
 
