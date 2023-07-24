@@ -8,11 +8,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Highlights
 
+This release brings:
+- `#[substreams::handlers::map]` now handles `Result<Option<T>, Error>` and `Option<T>`
+- Improved Error Handling
+
 #### `#[substreams::handlers::map]` now handles `Result<Option<T>, Error>` and `Option<T>`
 
-It's now possible to avoid sending back output from your mapper entirely by using `Option<T>` or `Result<Option<T>>`. This should be used whenever you are not returning something every block. This can make some use cases easier to "view" and comes with a small improved speed as the Protobuf encoding of an "empty" object will be avoided completely and a WASM intrinsic call will be avoided.
+It's now possible to avoid sending back output from your mapper entirely by using `Option<T>` or `Result<Option<T>>`. This should be used whenever you are not returning something every block. This can make some use cases easier to "view" and comes with a small improved speed as the Protobuf encoding of an "empty" object will be avoided completely and a WASM intrinsic call will be avoided. Here an example of a `Result<Option<T>, Error>`:
 
-#### Error Handling
+```rust
+#[substreams::handlers::map]
+fn map_transfers(blk: eth::Block) -> Result<Option<erc721::Transfers>, substreams::errors::Error> {
+    if some_condition {
+        return Ok(None);
+    }
+
+    Ok(Some(erc721::Transfers {
+        // ...
+    }))
+}
+```
+
+And plain `Option`:
+
+```rust
+#[substreams::handlers::map]
+fn map_transfers(blk: eth::Block) -> Option<erc721::Transfers> {
+    if some_condition {
+        return None;
+    }
+
+    Some(erc721::Transfers {
+        // ...
+    })
+}
+```
+
+#### Improved Error Handling
 
 The `substreams::errors::Error` is now a plain alias to `anyhow::Error` which means it much easier to create generic errors, contextualize existing one and we gain the ability to be converted from any error that implements `std:error:Error` interface which is the majority of errors out there. This enables proper usage of the [`?` Rust operator](https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-question-mark-operator).
 
