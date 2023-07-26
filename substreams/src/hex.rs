@@ -26,7 +26,8 @@ pub struct Hex<T>(pub T);
 impl<T: AsRef<[u8]>> Hex<T> {
     pub fn decode(data: T) -> Result<Vec<u8>, hex::FromHexError> {
         let data_ref: &[u8] = data.as_ref();
-        return ::hex::decode(remove_hex_prefix(data_ref));
+
+        ::hex::decode(remove_hex_prefix(data_ref))
     }
 
     pub fn encode(input: T) -> String {
@@ -106,7 +107,7 @@ fn encode_lower_hex<T: AsRef<[u8]>>(input: T) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::hex::{encode_lower_hex, remove_hex_prefix};
+    use crate::hex::encode_lower_hex;
     use crate::Hex;
 
     #[test]
@@ -119,7 +120,7 @@ mod tests {
     #[test]
     fn it_decode_remove_hex_prefix_correctly() {
         let input = "0x6e8b";
-        let expected_result: [u8; 2] = [110,139];
+        let expected_result: [u8; 2] = [110, 139];
 
         let result = Hex::decode(input).unwrap();
         assert_eq!(result, expected_result.to_vec())
@@ -137,12 +138,12 @@ mod tests {
     #[test]
     fn it_decode_without_hex_prefix_correctly() {
         let input = "6e8b";
-        let expected_result: [u8; 2] = [110,139];
+        let expected_result: [u8; 2] = [110, 139];
 
         let result = Hex::decode(input).unwrap();
         assert_eq!(result, expected_result.to_vec())
     }
-    
+
     #[test]
     fn it_decode_without_hex_prefix_string_correctly() {
         let input = "6e8b";
