@@ -25,7 +25,8 @@ pub struct Hex<T>(pub T);
 
 impl<T: AsRef<[u8]>> Hex<T> {
     pub fn decode(data: T) -> Result<Vec<u8>, hex::FromHexError> {
-        ::hex::decode(data)
+        let data_ref: &[u8] = data.as_ref();
+        return ::hex::decode(remove_hex_prefix(data_ref));
     }
 
     pub fn encode(input: T) -> String {
@@ -74,6 +75,15 @@ const LOWER_HEX_BYTES: [&str; 256] = [
     "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "fa", "fb", "fc", "fd", "fe", "ff",
 ];
 
+fn remove_hex_prefix(data: &[u8]) -> &[u8] {
+    // Removing 0x prefix. "0" = 48, "x" = 120 (UTF-8)
+    if data[0] == (48 as u8) && data[1] == (120 as u8) {
+        return &data[2..data.len()];
+    }
+
+    return data;
+}
+
 fn write_lower_hex(input: &[u8], mut w: impl std::fmt::Write) -> fmt::Result {
     for byte in input {
         w.write_str(LOWER_HEX_BYTES[*byte as usize])?;
@@ -83,7 +93,7 @@ fn write_lower_hex(input: &[u8], mut w: impl std::fmt::Write) -> fmt::Result {
 }
 
 fn encode_lower_hex<T: AsRef<[u8]>>(input: T) -> String {
-    let bytes = input.as_ref();
+    let bytes: &[u8] = input.as_ref();
 
     if bytes.len() == 0 {
         return String::new();
@@ -96,12 +106,49 @@ fn encode_lower_hex<T: AsRef<[u8]>>(input: T) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::hex::encode_lower_hex;
+    use crate::hex::{encode_lower_hex, remove_hex_prefix};
+    use crate::Hex;
 
     #[test]
     fn it_encode_lower_hex_correctly() {
         assert_eq!(encode_lower_hex(&[] as &[u8; 0]), "");
         assert_eq!(encode_lower_hex(&[0x01u8]), "01");
         assert_eq!(encode_lower_hex(&[0xa1u8, 0xc3u8]), "a1c3");
+    }
+
+    #[test]
+    fn it_decode_remove_hex_prefix_correctly() {
+        let input = "0x6e8b";
+        let expected_result: [u8; 2] = [110,139];
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(result, expected_result.to_vec())
+    }
+
+    #[test]
+    fn it_decode_remove_hex_prefix_string_correctly() {
+        let input = "0x6e8b";
+        let expected_result = "6e8b";
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(Hex::encode(result), expected_result)
+    }
+
+    #[test]
+    fn it_decode_without_hex_prefix_correctly() {
+        let input = "6e8b";
+        let expected_result: [u8; 2] = [110,139];
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(result, expected_result.to_vec())
+    }
+    
+    #[test]
+    fn it_decode_without_hex_prefix_string_correctly() {
+        let input = "6e8b";
+        let expected_result = "6e8b";
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(Hex::encode(result), expected_result)
     }
 }
