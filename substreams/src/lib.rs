@@ -163,8 +163,8 @@ pub fn output<M: prost::Message>(msg: M) {
         // wasm was "dropping" the data before we could write to it, which causes us to have garbage
         // value. By forgetting the data we can properly call external output function to write the
         // msg to heap.
-        let (ptr, len, _buffer) = proto::encode_to_ptr(&msg).unwrap();
-        std::mem::forget(&_buffer);
+        let (ptr, len, buffer) = proto::encode_to_ptr(&msg).unwrap();
+        std::mem::forget(buffer);
         unsafe { externs::output(ptr, len as u32) }
     }
 }

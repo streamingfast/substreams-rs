@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 This release brings:
 - You can now pass hexadecimal strings with the `0x` prefix to the `Hex::decode` function. Hexadecimal strings without the prefix are still supported.
+- Fixed warning that `std::mem::forget` was called a reference while it should receive an owned object.
 
 #### Example
 
@@ -23,6 +24,7 @@ let hex = Hex::decode("0x6e60bCdF52078A250932CF9FeC174c5F67348845")
 
 ### Changed
 - The `Hex::decode` function now accepts hexadecimal strings with the `0x` prefix. Hexadecimal strings without the prefix are still supported.
+- - Fixed warning that `std::mem::forget` was called a reference while it should receive an owned object.
 
 ## 0.5.9
 
