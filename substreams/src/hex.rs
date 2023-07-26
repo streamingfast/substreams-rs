@@ -106,12 +106,49 @@ fn encode_lower_hex<T: AsRef<[u8]>>(input: T) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::hex::encode_lower_hex;
+    use crate::hex::{encode_lower_hex, remove_hex_prefix};
+    use crate::Hex;
 
     #[test]
     fn it_encode_lower_hex_correctly() {
         assert_eq!(encode_lower_hex(&[] as &[u8; 0]), "");
         assert_eq!(encode_lower_hex(&[0x01u8]), "01");
         assert_eq!(encode_lower_hex(&[0xa1u8, 0xc3u8]), "a1c3");
+    }
+
+    #[test]
+    fn it_decode_remove_hex_prefix_correctly() {
+        let input = "0x6e8b";
+        let expected_result: [u8; 2] = [110,139];
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(result, expected_result.to_vec())
+    }
+
+    #[test]
+    fn it_decode_remove_hex_prefix_string_correctly() {
+        let input = "0x6e8b";
+        let expected_result = "6e8b";
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(Hex::encode(result), expected_result)
+    }
+
+    #[test]
+    fn it_decode_without_hex_prefix_correctly() {
+        let input = "6e8b";
+        let expected_result: [u8; 2] = [110,139];
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(result, expected_result.to_vec())
+    }
+    
+    #[test]
+    fn it_decode_without_hex_prefix_string_correctly() {
+        let input = "6e8b";
+        let expected_result = "6e8b";
+
+        let result = Hex::decode(input).unwrap();
+        assert_eq!(Hex::encode(result), expected_result)
     }
 }
