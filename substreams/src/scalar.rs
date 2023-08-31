@@ -1,5 +1,6 @@
 use num_bigint::{Sign, ToBigInt};
 use num_traits::{FromPrimitive, Signed};
+use num_integer::Integer;
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
@@ -448,6 +449,11 @@ impl BigInt {
 
     pub fn absolute(&self) -> BigInt {
         BigInt::from(self.0.abs())
+    }
+
+    pub fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+        let (quotient, remainder)= num_bigint::BigInt::div_rem(&self.0, &other.0);
+        return (BigInt(quotient),BigInt(remainder));
     }
 }
 
@@ -1014,6 +1020,16 @@ mod tests {
         assert_eq!(3 as isize / big_int(2), big_int(1));
         assert_eq!(3 as usize / big_int(2), big_int(1));
         assert_eq!(3 / big_int(2), big_int(1));
+    }
+
+    #[test] 
+    fn bigint_div_rem_by_bigint() {
+        assert_eq!(BigInt::div_rem(&big_int(3), &big_int(2)), (big_int(1),big_int(1)));
+        assert_eq!(BigInt::div_rem(&big_int(10), &big_int(3)), (big_int(3),big_int(1)));
+        assert_eq!(BigInt::div_rem(&big_int(7), &big_int(15)), (big_int(0),big_int(7)));
+        assert_eq!(BigInt::div_rem(&big_int(8), &big_int(8)), (big_int(1),big_int(0)));
+        assert_eq!(BigInt::div_rem(&big_int(-20), &big_int(5)), (big_int(-4),big_int(0)));
+        assert_eq!(BigInt::div_rem(&big_int(0), &big_int(2)), (big_int(0),big_int(0)));
     }
 
     #[test]

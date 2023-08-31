@@ -337,6 +337,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "num-bigint",
+ "num-integer",
  "num-traits",
  "pad",
  "prost",
