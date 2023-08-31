@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next 
 
-- `BigInt` now has a new method `div_rem` that perform division by another `BigInt` and returns the quotient and the remainder. 
+- `BigInt` now has a new method `div_rem` that performs division by another `BigInt` and returns the quotient and the remainder. 
 
 ## 0.5.10
 
