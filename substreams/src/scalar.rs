@@ -1,6 +1,11 @@
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Rem, Shl, ShlAssign, Shr,
+    ShrAssign,
+};
+
 use num_bigint::{Sign, ToBigInt};
-use num_traits::{FromPrimitive, Signed};
 use num_integer::Integer;
+use num_traits::{FromPrimitive, Pow, Signed};
 use {
     bigdecimal::{One, ParseBigDecimalError, ToPrimitive, Zero},
     num_bigint::{BigUint, ParseBigIntError, Sign as BigIntSign},
@@ -410,8 +415,6 @@ impl BigInt {
     }
 
     pub fn pow(self, exponent: u32) -> Self {
-        use num_traits::pow::Pow;
-
         BigInt(self.0.pow(exponent))
     }
 
@@ -452,8 +455,8 @@ impl BigInt {
     }
 
     pub fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
-        let (quotient, remainder)= num_bigint::BigInt::div_rem(&self.0, &other.0);
-        return (BigInt(quotient),BigInt(remainder));
+        let (quotient, remainder) = num_bigint::BigInt::div_rem(&self.0, &other.0);
+        return (BigInt(quotient), BigInt(remainder));
     }
 }
 
@@ -596,17 +599,6 @@ impl Into<BigDecimal> for &BigInt {
     }
 }
 
-impl<T> Add<T> for BigInt
-where
-    T: Into<BigInt>,
-{
-    type Output = BigInt;
-
-    fn add(self, other: T) -> BigInt {
-        BigInt(self.0.add(other.into().0))
-    }
-}
-
 impl Add<BigDecimal> for BigInt {
     type Output = BigDecimal;
 
@@ -633,23 +625,6 @@ macro_rules! impl_add_floats_bigint {
 }
 impl_add_floats_bigint!(f32, f64);
 
-macro_rules! impl_add_bigint_int {
-    ($($t:ty),*) => {
-        $(
-            impl Add<BigInt> for $t
-            {
-                type Output = BigInt;
-
-                fn add(self, other: BigInt) -> BigInt {
-                    let lhs: BigInt = self.into();
-                    lhs.add(other)
-                }
-            }
-        )*
-    }
-}
-impl_add_bigint_int!(u32, i32, u64, i64, usize, isize);
-
 macro_rules! impl_add_bigint_float {
     ($($t:ty),*) => {
         $(
@@ -670,17 +645,6 @@ macro_rules! impl_add_bigint_float {
     }
 }
 impl_add_bigint_float!(f32, f64);
-
-impl<T> Sub<T> for BigInt
-where
-    T: Into<BigInt>,
-{
-    type Output = BigInt;
-
-    fn sub(self, other: T) -> BigInt {
-        BigInt(self.0.sub(other.into().0))
-    }
-}
 
 impl Sub<BigDecimal> for BigInt {
     type Output = BigDecimal;
@@ -708,23 +672,6 @@ macro_rules! impl_sub_floats_bigint {
 }
 impl_sub_floats_bigint!(f32, f64);
 
-macro_rules! impl_sub_bigint_int {
-    ($($t:ty),*) => {
-        $(
-            impl Sub<BigInt> for $t
-            {
-                type Output = BigInt;
-
-                fn sub(self, other: BigInt) -> BigInt {
-                    let lhs: BigInt = self.into();
-                    lhs.sub(other)
-                }
-            }
-        )*
-    }
-}
-impl_sub_bigint_int!(u32, i32, u64, i64, usize, isize);
-
 macro_rules! impl_sub_bigint_float {
     ($($t:ty),*) => {
         $(
@@ -745,17 +692,6 @@ macro_rules! impl_sub_bigint_float {
     }
 }
 impl_sub_bigint_float!(f32, f64);
-
-impl<T> Mul<T> for BigInt
-where
-    T: Into<BigInt>,
-{
-    type Output = BigInt;
-
-    fn mul(self, other: T) -> BigInt {
-        BigInt(self.0.mul(other.into().0))
-    }
-}
 
 impl Mul<BigDecimal> for BigInt {
     type Output = BigDecimal;
@@ -783,23 +719,6 @@ macro_rules! impl_mul_floats_bigint {
 }
 impl_mul_floats_bigint!(f32, f64);
 
-macro_rules! impl_mul_bigint_int {
-    ($($t:ty),*) => {
-        $(
-            impl Mul<BigInt> for $t
-            {
-                type Output = BigInt;
-
-                fn mul(self, other: BigInt) -> BigInt {
-                    let lhs: BigInt = self.into();
-                    lhs.mul(other)
-                }
-            }
-        )*
-    }
-}
-impl_mul_bigint_int!(u32, i32, u64, i64, usize, isize);
-
 macro_rules! impl_mul_bigint_float {
     ($($t:ty),*) => {
         $(
@@ -820,22 +739,6 @@ macro_rules! impl_mul_bigint_float {
     }
 }
 impl_mul_bigint_float!(f32, f64);
-
-impl<T> Div<T> for BigInt
-where
-    T: Into<BigInt>,
-{
-    type Output = BigInt;
-
-    fn div(self, other: T) -> BigInt {
-        let rhs: BigInt = other.into();
-        if rhs.is_zero() {
-            panic!("Cannot divide by zero-valued `BigInt`!")
-        }
-
-        BigInt(self.0.div(rhs.0))
-    }
-}
 
 impl Div<BigDecimal> for BigInt {
     type Output = BigDecimal;
@@ -869,26 +772,6 @@ macro_rules! impl_div_floats_bigint {
 }
 impl_div_floats_bigint!(f32, f64);
 
-macro_rules! impl_div_bigint_int {
-    ($($t:ty),*) => {
-        $(
-            impl Div<BigInt> for $t
-            {
-                type Output = BigInt;
-
-                fn div(self, other: BigInt) -> BigInt {
-                    if other.is_zero() {
-                        panic!("Cannot divide by zero-valued `BigInt`!")
-                    }
-                    let lhs: BigInt = self.into();
-                    lhs.div(other)
-                }
-            }
-        )*
-    }
-}
-impl_div_bigint_int!(u32, i32, u64, i64, usize, isize);
-
 macro_rules! impl_div_bigint_float {
     ($($t:ty),*) => {
         $(
@@ -913,6 +796,236 @@ macro_rules! impl_div_bigint_float {
     }
 }
 impl_div_bigint_float!(f32, f64);
+
+/// The macro reads as follow
+///
+/// ```md
+///     impl <Trait> for (<prefix> <lhs>, <prefix> <rhs>) fn <method>
+/// ```
+///
+/// When using this macros, you think in term of binary operation, where the <lhs> operand is the
+/// type on which the trait is implemented, and the <rhs> operand is the type of the argument.
+///
+/// So the above example can be read as
+///
+/// ```md
+///     impl Trait<rhs> for lhs {
+///         $method(self, rhs: $rhs) -> BigInt {
+///             BigInt { 0: /* code */ }
+///         }
+///     }
+/// ```
+///
+/// The `ref` prefix means that the right operand is a reference to the type, you must still
+/// provide the `&`, the `ref` keyword is used in the macro below to decide how the arguments
+/// will actually be sent to the proxy implementation.
+///
+/// The `primitive` prefix means that type is a primitive type, and that the trait is implemented
+/// using primitive calling convention.
+///
+/// The `primitive into` prefix means that type is a primitive type but the underlying `num_big::BigInt`
+/// do not implement natively primitive type and that a conversion `num_big::BitInt::from(<primitive value>).
+macro_rules! forward_val_val_binop {
+    (impl $imp:ident for ($lhs:ty, $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            type Output = BigInt;
+
+            #[inline]
+            fn $method(self, rhs: $rhs) -> BigInt {
+                BigInt {
+                    0: $imp::$method(self.0, rhs.0),
+                }
+            }
+        }
+    };
+
+    (impl $imp:ident for (ref $lhs:ty, $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            type Output = BigInt;
+
+            #[inline]
+            fn $method(self, rhs: $rhs) -> BigInt {
+                BigInt {
+                    0: $imp::$method(&self.0, rhs.0),
+                }
+            }
+        }
+    };
+
+    (impl $imp:ident for ($lhs:ty, ref $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            type Output = BigInt;
+
+            #[inline]
+            fn $method(self, rhs: $rhs) -> BigInt {
+                BigInt {
+                    0: $imp::$method(self.0, &rhs.0),
+                }
+            }
+        }
+    };
+
+    (impl $imp:ident for (ref $lhs:ty, ref $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            type Output = BigInt;
+
+            #[inline]
+            fn $method(self, rhs: $rhs) -> BigInt {
+                BigInt {
+                    0: $imp::$method(&self.0, &rhs.0),
+                }
+            }
+        }
+    };
+
+    (impl $imp:ident for ($lhs:ty, primitive $($rhs:ty);+) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                type Output = BigInt;
+
+                #[inline]
+                fn $method(self, rhs: $rhs) -> BigInt {
+                    BigInt {
+                        0: $imp::$method(&self.0, rhs),
+                    }
+                }
+            }
+        )*
+    };
+
+    (impl $imp:ident for (primitive $($lhs:ty);+, $rhs:ty) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                type Output = BigInt;
+
+                #[inline]
+                fn $method(self, rhs: $rhs) -> BigInt {
+                    BigInt {
+                        0: $imp::$method(self, rhs.0),
+                    }
+                }
+            }
+        )*
+    };
+
+    (impl $imp:ident for (into $($lhs:ty);+, $rhs:ty) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                type Output = BigInt;
+
+                #[inline]
+                fn $method(self, rhs: $rhs) -> BigInt {
+                    BigInt {
+                        0: $imp::$method(Into::<num_bigint::BigInt>::into(self), rhs.0),
+                    }
+                }
+            }
+        )*
+    };
+
+    (impl $imp:ident for ($lhs:ty, into $($rhs:ty);+) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                type Output = BigInt;
+
+                #[inline]
+                fn $method(self, rhs: $rhs) -> BigInt {
+                    BigInt {
+                        0: $imp::$method(&self.0, Into::<num_bigint::BigInt>::into(rhs)),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+// See forward_val_val_binop for details, same thing but for `XXXAssign` traits
+macro_rules! forward_val_val_binop_assign {
+    (impl mut $imp:ident for ($lhs:ty, $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            #[inline]
+            fn $method(&mut self, rhs: $rhs) {
+                $imp::$method(&mut self.0, rhs.0)
+            }
+        }
+    };
+
+    (impl mut $imp:ident for ($lhs:ty, ref $rhs:ty) fn $method:ident) => {
+        impl $imp<$rhs> for $lhs {
+            #[inline]
+            fn $method(&mut self, rhs: $rhs) {
+                $imp::$method(&mut self.0, &rhs.0)
+            }
+        }
+    };
+
+    (impl mut $imp:ident for ($lhs:ty, primitive $($rhs:ty);+) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                #[inline]
+                fn $method(&mut self, rhs: $rhs) {
+                    $imp::$method(&mut self.0, rhs)
+                }
+            }
+        )*
+    };
+
+    (impl mut $imp:ident for ($lhs:ty, into $($rhs:ty);+) fn $method:ident) => {
+        $(
+            impl $imp<$rhs> for $lhs {
+                #[inline]
+                fn $method(&mut self, rhs: $rhs) {
+                    $imp::$method(&mut self.0, Into::<num_bigint::BigInt>::into(rhs))
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! forward_artithmetic_binop {
+    (impl $impl:ident fn $method:ident) => {
+        forward_val_val_binop!(impl $impl for (BigInt, primitive i8; u8; i16; u16; u32; i32; u64; i64; usize; isize) fn $method);
+        forward_val_val_binop!(impl $impl for (primitive i8; u8; i16; u16; u32; i32; u64; i64; usize; isize, BigInt) fn $method);
+    };
+}
+
+macro_rules! forward_logical_binop {
+    (impl $impl:ident fn $method:ident) => {
+        forward_val_val_binop!(impl $impl for (BigInt, BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (into i8; u8; i16; u16; u32; i32; u64; i64; usize; isize, BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (BigInt, into i8; u8; i16; u16; u32; i32; u64; i64; usize; u128; i128; isize) fn $method);
+        forward_val_val_binop!(impl $impl for (ref &BigInt, BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (BigInt, ref &BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (ref &BigInt, ref &BigInt) fn $method);
+    };
+}
+
+macro_rules! forward_logical_binop_assign {
+    (impl $impl:ident fn $method:ident) => {
+        forward_val_val_binop_assign!(impl mut $impl for (BigInt, BigInt) fn $method);
+        forward_val_val_binop_assign!(impl mut $impl for (BigInt, ref &BigInt) fn $method);
+        forward_val_val_binop_assign!(impl mut $impl for (BigInt, into u8; i8; u16; i16; u32; i32; u64; i64; u128; i128; usize; isize) fn $method);
+    };
+}
+
+forward_artithmetic_binop!(impl Add fn add);
+forward_artithmetic_binop!(impl Div fn div);
+forward_artithmetic_binop!(impl Mul fn mul);
+forward_val_val_binop!(impl Pow for (BigInt, primitive u8; u16; u32; u64; u128; usize) fn pow);
+forward_artithmetic_binop!(impl Rem fn rem);
+forward_artithmetic_binop!(impl Sub fn sub);
+
+forward_logical_binop!(impl BitAnd fn bitand);
+forward_logical_binop!(impl BitOr fn bitor);
+forward_logical_binop!(impl BitXor fn bitxor);
+forward_val_val_binop!(impl Shl for (BigInt, primitive u8; i8; u16; i16; u32; i32; u64; i64; u128; i128; usize; isize) fn shl);
+forward_val_val_binop!(impl Shr for (BigInt, primitive u8; i8; u16; i16; u32; i32; u64; i64; u128; i128; usize; isize) fn shr);
+
+forward_logical_binop_assign!(impl BitAndAssign fn bitand_assign);
+forward_logical_binop_assign!(impl BitOrAssign fn bitor_assign);
+forward_logical_binop_assign!(impl BitXorAssign fn bitxor_assign);
+forward_val_val_binop_assign!(impl mut ShlAssign for (BigInt, primitive u8; i8; u16; i16; u32; i32; u64; i64; u128; i128; usize; isize) fn shl_assign);
+forward_val_val_binop_assign!(impl mut ShrAssign for (BigInt, primitive u8; i8; u16; i16; u32; i32; u64; i64; u128; i128; usize; isize) fn shr_assign);
 
 #[cfg(test)]
 mod tests {
@@ -985,6 +1098,76 @@ mod tests {
     //
     #[test]
     fn int_op_bigint() {
+        // BitAnd
+        assert_eq!(1 as i32 & big_int(1), big_int(1));
+        assert_eq!(1 as i64 & big_int(1), big_int(1));
+        assert_eq!(1 as u32 & big_int(1), big_int(1));
+        assert_eq!(1 as u64 & big_int(1), big_int(1));
+        assert_eq!(1 as isize & big_int(1), big_int(1));
+        assert_eq!(1 as usize & big_int(1), big_int(1));
+        assert_eq!(big_int(1) & 1 as i32, big_int(1));
+        assert_eq!(big_int(1) & 1 as i64, big_int(1));
+        assert_eq!(big_int(1) & 1 as u32, big_int(1));
+        assert_eq!(big_int(1) & 1 as u64, big_int(1));
+        assert_eq!(big_int(1) & 1 as isize, big_int(1));
+        assert_eq!(big_int(1) & 1 as usize, big_int(1));
+        assert_eq!(big_int(1) & big_int(1), big_int(1));
+        assert_eq!(big_int(1) & &big_int(1), big_int(1));
+        assert_eq!(&big_int(1) & big_int(1), big_int(1));
+        assert_eq!(&big_int(1) & &big_int(1), big_int(1));
+
+        // BitOr
+        assert_eq!(1 as i32 | big_int(1), big_int(1));
+        assert_eq!(1 as i64 | big_int(1), big_int(1));
+        assert_eq!(1 as u32 | big_int(1), big_int(1));
+        assert_eq!(1 as u64 | big_int(1), big_int(1));
+        assert_eq!(1 as isize | big_int(1), big_int(1));
+        assert_eq!(1 as usize | big_int(1), big_int(1));
+        assert_eq!(big_int(1) | 1 as i32, big_int(1));
+        assert_eq!(big_int(1) | 1 as i64, big_int(1));
+        assert_eq!(big_int(1) | 1 as u32, big_int(1));
+        assert_eq!(big_int(1) | 1 as u64, big_int(1));
+        assert_eq!(big_int(1) | 1 as isize, big_int(1));
+        assert_eq!(big_int(1) | 1 as usize, big_int(1));
+        assert_eq!(big_int(1) | big_int(1), big_int(1));
+        assert_eq!(big_int(1) | &big_int(1), big_int(1));
+        assert_eq!(&big_int(1) | big_int(1), big_int(1));
+        assert_eq!(&big_int(1) | &big_int(1), big_int(1));
+
+        // BitXor
+        assert_eq!(1 as i32 ^ big_int(1), big_int(0));
+        assert_eq!(1 as i64 ^ big_int(1), big_int(0));
+        assert_eq!(1 as u32 ^ big_int(1), big_int(0));
+        assert_eq!(1 as u64 ^ big_int(1), big_int(0));
+        assert_eq!(1 as isize ^ big_int(1), big_int(0));
+        assert_eq!(1 as usize ^ big_int(1), big_int(0));
+        assert_eq!(big_int(1) ^ 1 as i32, big_int(0));
+        assert_eq!(big_int(1) ^ 1 as i64, big_int(0));
+        assert_eq!(big_int(1) ^ 1 as u32, big_int(0));
+        assert_eq!(big_int(1) ^ 1 as u64, big_int(0));
+        assert_eq!(big_int(1) ^ 1 as isize, big_int(0));
+        assert_eq!(big_int(1) ^ 1 as usize, big_int(0));
+        assert_eq!(big_int(1) ^ big_int(1), big_int(0));
+        assert_eq!(big_int(1) ^ &big_int(1), big_int(0));
+        assert_eq!(&big_int(1) ^ big_int(1), big_int(0));
+        assert_eq!(&big_int(1) ^ &big_int(1), big_int(0));
+
+        // Shr
+        assert_eq!(big_int(1) >> 1 as i32, big_int(0));
+        assert_eq!(big_int(1) >> 1 as i64, big_int(0));
+        assert_eq!(big_int(1) >> 1 as u32, big_int(0));
+        assert_eq!(big_int(1) >> 1 as u64, big_int(0));
+        assert_eq!(big_int(1) >> 1 as isize, big_int(0));
+        assert_eq!(big_int(1) >> 1 as usize, big_int(0));
+
+        // Shl
+        assert_eq!(big_int(1) << 1 as i32, big_int(2));
+        assert_eq!(big_int(1) << 1 as i64, big_int(2));
+        assert_eq!(big_int(1) << 1 as u32, big_int(2));
+        assert_eq!(big_int(1) << 1 as u64, big_int(2));
+        assert_eq!(big_int(1) << 1 as isize, big_int(2));
+        assert_eq!(big_int(1) << 1 as usize, big_int(2));
+
         assert_eq!(1 as i32 + big_int(1), big_int(2));
         assert_eq!(1 as i64 + big_int(1), big_int(2));
         assert_eq!(1 as u32 + big_int(1), big_int(2));
@@ -1022,14 +1205,32 @@ mod tests {
         assert_eq!(3 / big_int(2), big_int(1));
     }
 
-    #[test] 
+    #[test]
     fn bigint_div_rem_by_bigint() {
-        assert_eq!(BigInt::div_rem(&big_int(3), &big_int(2)), (big_int(1),big_int(1)));
-        assert_eq!(BigInt::div_rem(&big_int(10), &big_int(3)), (big_int(3),big_int(1)));
-        assert_eq!(BigInt::div_rem(&big_int(7), &big_int(15)), (big_int(0),big_int(7)));
-        assert_eq!(BigInt::div_rem(&big_int(8), &big_int(8)), (big_int(1),big_int(0)));
-        assert_eq!(BigInt::div_rem(&big_int(-20), &big_int(5)), (big_int(-4),big_int(0)));
-        assert_eq!(BigInt::div_rem(&big_int(0), &big_int(2)), (big_int(0),big_int(0)));
+        assert_eq!(
+            BigInt::div_rem(&big_int(3), &big_int(2)),
+            (big_int(1), big_int(1))
+        );
+        assert_eq!(
+            BigInt::div_rem(&big_int(10), &big_int(3)),
+            (big_int(3), big_int(1))
+        );
+        assert_eq!(
+            BigInt::div_rem(&big_int(7), &big_int(15)),
+            (big_int(0), big_int(7))
+        );
+        assert_eq!(
+            BigInt::div_rem(&big_int(8), &big_int(8)),
+            (big_int(1), big_int(0))
+        );
+        assert_eq!(
+            BigInt::div_rem(&big_int(-20), &big_int(5)),
+            (big_int(-4), big_int(0))
+        );
+        assert_eq!(
+            BigInt::div_rem(&big_int(0), &big_int(2)),
+            (big_int(0), big_int(0))
+        );
     }
 
     #[test]
@@ -1078,6 +1279,12 @@ mod tests {
         assert_eq!(big_decimal(1.0) - big_int(1), big_decimal(0.0));
         assert_eq!(big_decimal(2.0) * big_int(2), big_decimal(4.0));
         assert_eq!(big_decimal(4.0) / big_int(2), big_decimal(2.0));
+    }
+
+    #[test]
+    fn bigint_bitshift() {
+        let x = big_uint(0) & big_uint(1);
+        assert_eq!(big_uint(0), x);
     }
 
     #[test]

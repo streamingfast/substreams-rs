@@ -4,9 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Next 
+## Next
 
-- `BigInt` now has a new method `div_rem` that performs division by another `BigInt` and returns the quotient and the remainder. 
+### Highlights
+
+In this release we add further arithmetics and logics operators possibilities on `BigInt` type, namely:
+- `BitAnd`
+- `BitAndAssign`
+- `BitOr`
+- `BitOrAssign`
+- `BitXor`
+- `Rem`
+- `Pow`
+- `Shl`
+- `ShlAssign`
+- `ShrAssign`
+
+The `BigInt` now also has a new method `div_rem` that performs division by another `BigInt` and returns the quotient and the remainder.
 
 ## 0.5.10
 
