@@ -73,8 +73,15 @@ impl BigDecimal {
             return BigDecimal::zero();
         }
 
-        let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap();
-        return BigDecimal::from_str(bytes_as_str).unwrap();
+        let bytes_as_str = str::from_utf8(bytes.as_ref()).unwrap_or_else(|_| {
+            panic!(
+                "Invalid store UTF-8 bytes '{}'",
+                hex::encode(bytes.as_ref())
+            )
+        });
+
+        BigDecimal::from_str(bytes_as_str)
+            .unwrap_or_else(|_| panic!("Invalid store BigDecimal string '{}'", bytes_as_str))
     }
 
     pub fn divide_by_decimals(big_decimal_amount: BigDecimal, decimals: u64) -> BigDecimal {
@@ -88,7 +95,11 @@ impl BigDecimal {
     }
 
     pub fn to_bigint(&self) -> BigInt {
-        BigInt(self.0.to_bigint().unwrap())
+        BigInt(
+            self.0
+                .to_bigint()
+                .unwrap_or_else(|| panic!("Unable to convert BigDecimal '{}' into BigInt", self)),
+        )
     }
 }
 
@@ -407,11 +418,15 @@ impl BigInt {
     }
 
     pub fn to_u64(&self) -> u64 {
-        self.0.to_u64().unwrap()
+        self.0
+            .to_u64()
+            .unwrap_or_else(|| panic!("BigInt '{}' is too large to fit into u64", self))
     }
 
     pub fn to_i32(&self) -> i32 {
-        self.0.to_i32().unwrap()
+        self.0
+            .to_i32()
+            .unwrap_or_else(|| panic!("BigInt '{}' is too large to fit into u32", self))
     }
 
     pub fn pow(self, exponent: u32) -> Self {
@@ -440,8 +455,12 @@ impl BigInt {
         if bytes.len() == 0 {
             return BigInt::zero();
         }
-        let bytes_as_str = str::from_utf8(bytes).unwrap();
-        return BigInt::from_str(bytes_as_str).unwrap();
+
+        let bytes_as_str = str::from_utf8(bytes)
+            .unwrap_or_else(|_| panic!("Invalid store UTF-8 bytes '{}'", hex::encode(bytes)));
+
+        BigInt::from_str(bytes_as_str)
+            .unwrap_or_else(|_| panic!("Invalid store BigInt string '{}'", bytes_as_str))
     }
 
     pub fn to_decimal(&self, decimals: u64) -> BigDecimal {
@@ -571,13 +590,17 @@ impl<'a> TryFrom<&'a BigInt> for u64 {
 
 impl Into<u32> for BigInt {
     fn into(self) -> u32 {
-        self.0.to_u32().unwrap()
+        self.0
+            .to_u32()
+            .unwrap_or_else(|| panic!("BigInt '{}' is too large to fit into u32", self))
     }
 }
 
 impl Into<i32> for BigInt {
     fn into(self) -> i32 {
-        self.0.to_i32().unwrap()
+        self.0
+            .to_i32()
+            .unwrap_or_else(|| panic!("BigInt '{}' is too large to fit into i32", self))
     }
 }
 
@@ -616,7 +639,7 @@ macro_rules! impl_add_floats_bigint {
                 type Output = BigDecimal;
 
                 fn add(self, other: $t) -> BigDecimal {
-                    let rhs: BigDecimal = other.try_into().unwrap();
+                    let rhs: BigDecimal = other.try_into().unwrap_or_else(|_| panic!("Cannot convert '{}' to BigDecimal", other));
                     self.add(rhs)
                 }
             }
@@ -663,7 +686,7 @@ macro_rules! impl_sub_floats_bigint {
                 type Output = BigDecimal;
 
                 fn sub(self, other: $t) -> BigDecimal {
-                    let rhs: BigDecimal = other.try_into().unwrap();
+                    let rhs: BigDecimal = other.try_into().unwrap_or_else(|_| panic!("Cannot convert '{}' to BigDecimal", other));
                     self.sub(rhs)
                 }
             }
@@ -710,7 +733,7 @@ macro_rules! impl_mul_floats_bigint {
                 type Output = BigDecimal;
 
                 fn mul(self, other: $t) -> BigDecimal {
-                    let rhs: BigDecimal = other.try_into().unwrap();
+                    let rhs: BigDecimal = other.try_into().unwrap_or_else(|_| panic!("Cannot convert '{}' to BigDecimal", other));
                     self.mul(rhs)
                 }
             }
@@ -763,7 +786,7 @@ macro_rules! impl_div_floats_bigint {
                     if other.is_zero() {
                         panic!("Cannot divide by zero-valued `BigDecimal`!")
                     }
-                    let rhs: BigDecimal = other.try_into().unwrap();
+                    let rhs: BigDecimal = other.try_into().unwrap_or_else(|_| panic!("Cannot convert '{}' to BigDecimal", other));
                     self.div(rhs)
                 }
             }

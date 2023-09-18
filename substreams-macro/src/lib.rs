@@ -43,7 +43,7 @@ mod test {
                     substreams::register_panic_hook();
                     let func = || -> pb::Custom {
                         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len)
-                            .unwrap();
+                            .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                         let result = {
                             unimplemented!("do something");
                         };
@@ -71,7 +71,8 @@ mod test {
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
                     let func = || -> Option<pb::Custom> {
-                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len)
+                            .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                         let result = { unimplemented!("do something"); };
                         result
                     };
@@ -100,7 +101,8 @@ mod test {
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
                     let func = || -> Result<pb::Custom> {
-                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len)
+                            .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                         let result = { unimplemented!("do something"); };
                         result
                     };
@@ -109,7 +111,7 @@ mod test {
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
-                    substreams::output(result.unwrap());
+                    substreams::output(result.expect("already checked that result is not an error"));
                 }
             },
         );
@@ -130,7 +132,8 @@ mod test {
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
                     let func = || -> Result<Option<pb::Custom> > {
-                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+                        let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len)
+                            .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                         let result = { unimplemented!("do something"); };
                         result
                     };
@@ -139,7 +142,7 @@ mod test {
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
-                    if let Some(inner) = result.unwrap() {
+                    if let Some(inner) = result.expect("already checked that result is not an error") {
                         substreams::output(inner);
                     }
                 }

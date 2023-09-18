@@ -40,19 +40,35 @@ use crate::prelude::Delta;
 use std::io::BufRead;
 
 pub fn segment_at(key: &String, index: usize) -> &str {
-    try_segment_at(key, index).unwrap()
+    try_segment_at(key, index).unwrap_or_else(|| {
+        panic!(
+            "Unable to extract segment index {} out of key {}",
+            index, key
+        )
+    })
 }
 
 pub fn segment_at_owned(key: String, index: usize) -> String {
     let mut parts = std::io::Cursor::new(key.into_bytes()).split(b':');
 
     // Use of unwrap because those who want to check errors must use the try_ version
-    let segment_result = parts.nth(index).unwrap();
+    let segment_result = parts.nth(index).unwrap_or_else(|| {
+        panic!(
+            "Unable to extract segment index {} for key {}",
+            index,
+            parts
+                .map(|x| String::from_utf8(x.expect("Cursor is infallible"))
+                    .expect("Must be valid UTF-8 here as we split an initially valid String"))
+                .collect::<Vec<_>>()
+                .join(":"),
+        )
+    });
 
-    // Use of unwrap because I/O is infallible as we own the memory location already (no external I/O is done)
-    let segment = segment_result.unwrap();
+    // Use of expect because I/O is infallible as we own the memory location already (no external I/O is done)
+    let segment = segment_result.expect("Cursor is infallible");
 
-    String::from_utf8(segment).unwrap()
+    String::from_utf8(segment)
+        .expect("Must be valid UTF-8 here as we split an initially valid String")
 }
 
 pub fn first_segment(key: &String) -> &str {
@@ -60,7 +76,8 @@ pub fn first_segment(key: &String) -> &str {
 }
 
 pub fn last_segment(key: &String) -> &str {
-    try_last_segment(key).unwrap()
+    try_last_segment(key)
+        .unwrap_or_else(|| panic!("Unable to extract last segment out of key {}", key))
 }
 
 pub fn try_segment_at(key: &String, index: usize) -> Option<&str> {

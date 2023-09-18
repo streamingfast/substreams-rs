@@ -37,77 +37,78 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
                     ),
                 );
             }
-            syn::FnArg::Typed(pat_type) => {
-                match &*pat_type.pat {
-                    syn::Pat::Ident(v) => {
-                        let var_name = v.ident.clone();
+            syn::FnArg::Typed(pat_type) => match &*pat_type.pat {
+                syn::Pat::Ident(v) => {
+                    let var_name = v.ident.clone();
 
-                        let argument_type = &*pat_type.ty;
-                        let input_res = parse_input_type(argument_type);
-                        if input_res.is_err() {
+                    let argument_type = &*pat_type.ty;
+                    let input_obj = match parse_input_type(argument_type) {
+                        Ok(t) => t,
+                        Err(e) => {
                             return token_stream_with_error(
                                 original,
                                 syn::Error::new(
                                     pat_type.span(),
-                                    format!("failed to parse input {:?}", input_res.err()),
+                                    format!("failed to parse input {:?}", e),
                                 ),
-                            );
+                            )
                         }
-                        let input_obj = input_res.unwrap();
+                    };
 
-                        if input_obj.is_writable_store {
-                            if has_seen_writable_store {
-                                return token_stream_with_error(
+                    if input_obj.is_writable_store {
+                        if has_seen_writable_store {
+                            return token_stream_with_error(
                                     original,
                                     syn::Error::new(pat_type.span(), format!("handler cannot have more then one writable store as an input"))
                                 );
-                            }
-                            has_seen_writable_store = true;
-                            let store_type = format_ident!("{}", input_obj.store_type);
-                            writable_store =
-                                quote! { let #var_name: #argument_type = #store_type::new(); };
-                            continue;
                         }
+                        has_seen_writable_store = true;
+                        let store_type = format_ident!("{}", input_obj.store_type);
+                        writable_store =
+                            quote! { let #var_name: #argument_type = #store_type::new(); };
+                        continue;
+                    }
 
-                        if input_obj.is_readable_store {
-                            let var_idx = format_ident!("{}_idx", var_name);
-                            let store_type = format_ident!("{}", input_obj.store_type);
-                            args.push(quote! { #var_idx: u32 });
-                            read_only_stores.push(quote! { let #var_name: #argument_type = #store_type::new(#var_idx); });
-                            continue;
-                        }
+                    if input_obj.is_readable_store {
+                        let var_idx = format_ident!("{}_idx", var_name);
+                        let store_type = format_ident!("{}", input_obj.store_type);
+                        args.push(quote! { #var_idx: u32 });
+                        read_only_stores.push(
+                            quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
+                        );
+                        continue;
+                    }
 
-                        if final_config.module_type == ModuleType::Store
-                            && var_name.to_string().ends_with("_idx")
-                        {
-                            args.push(quote! { #pat_type });
-                            continue;
-                        }
-                        let var_ptr = format_ident!("{}_ptr", var_name);
-                        let var_len = format_ident!("{}_len", var_name);
-                        args.push(quote! { #var_ptr: *mut u8 });
-                        args.push(quote! { #var_len: usize });
+                    if final_config.module_type == ModuleType::Store
+                        && var_name.to_string().ends_with("_idx")
+                    {
+                        args.push(quote! { #pat_type });
+                        continue;
+                    }
+                    let var_ptr = format_ident!("{}_ptr", var_name);
+                    let var_len = format_ident!("{}_len", var_name);
+                    args.push(quote! { #var_ptr: *mut u8 });
+                    args.push(quote! { #var_len: usize });
 
-                        if input_obj.is_deltas {
-                            let raw = format_ident!("raw_{}", var_name);
-                            proto_decodings.push(quote! {
-                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap().deltas;
+                    if input_obj.is_deltas {
+                        let raw = format_ident!("raw_{}", var_name);
+                        proto_decodings.push(quote! {
+                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas;
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
-                        } else if input_obj.is_string {
-                            proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
-                        } else {
-                            proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap(); })
-                        }
-                    }
-                    _ => {
-                        return token_stream_with_error(
-                            original,
-                            syn::Error::new(pat_type.span(), format!("unknown argument type")),
-                        );
+                    } else if input_obj.is_string {
+                        proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
+                    } else {
+                        proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
                     }
                 }
-            }
+                _ => {
+                    return token_stream_with_error(
+                        original,
+                        syn::Error::new(pat_type.span(), format!("unknown argument type")),
+                    );
+                }
+            },
         }
     }
 
@@ -314,7 +315,7 @@ fn build_map_handler(
                     panic!("{:?}", result.unwrap_err())
                 }
 
-                substreams::output(result.unwrap());
+                substreams::output(result.expect("already checked that result is not an error"));
             }
         }
         OutputType::ResultOption => {
@@ -323,7 +324,7 @@ fn build_map_handler(
                     panic!("{:?}", result.unwrap_err())
                 }
 
-                if let Some(inner) = result.unwrap() {
+                if let Some(inner) = result.expect("already checked that result is not an error") {
                     substreams::output(inner);
                 }
             }

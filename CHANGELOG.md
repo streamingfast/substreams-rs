@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Highlights
 
 In this release we add further arithmetics and logics operators possibilities on `BigInt` type, namely:
+
 - `BitAnd`
 - `BitAndAssign`
 - `BitOr`
@@ -21,6 +22,12 @@ In this release we add further arithmetics and logics operators possibilities on
 - `ShrAssign`
 
 The `BigInt` now also has a new method `div_rem` that performs division by another `BigInt` and returns the quotient and the remainder.
+
+We also improved error messages on a variety of error cases for example `BigInt::to_u32` and `BigInt::to_u64` will now print a much more useful message that should make it clear that the value is too big.
+
+### Changed
+
+* Removed all internal usage of `.unwrap()` and replaced them with `.expect(<message>)` or `.unwrap_or_else(|| panic!(<message>))` improving the error message on different edge cases that can happen from time to time.
 
 ## 0.5.10
 

@@ -58,8 +58,6 @@
 //! ```
 use std::{io::BufRead, str};
 
-use anyhow::Context;
-
 use crate::{key, operation, pb::substreams::store_delta::Operation};
 
 use {
@@ -270,16 +268,14 @@ impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
 impl<V: Default + prost::Message> StoreSet<V> for StoreSetProto<V> {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
         let bytes = proto::encode(value)
-            .context("failed to encode message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
 
         state::set(ord as i64, key, &bytes)
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         let bytes = proto::encode(value)
-            .context("failed to encode message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
 
         for key in keys {
             state::set(ord as i64, key, &bytes)
@@ -469,16 +465,14 @@ impl<V: Default + prost::Message> StoreDelete for StoreSetIfNotExistsProto<V> {}
 impl<V: Default + prost::Message> StoreSetIfNotExists<V> for StoreSetIfNotExistsProto<V> {
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
         let bytes = proto::encode(value)
-            .with_context(|| "failed to encode message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
 
         self.store.set_if_not_exists(ord, key, &bytes)
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
         let bytes = proto::encode(value)
-            .with_context(|| "failed to encode message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
 
         for key in keys {
             self.store.set_if_not_exists(ord, key, &bytes)
@@ -861,15 +855,33 @@ impl StoreGet<String> for StoreGetString {
     }
 
     fn get_at<K: AsRef<str>>(&self, ord: u64, key: K) -> Option<String> {
-        state::get_at(self.idx, ord as i64, key).map(|bytes| String::from_utf8(bytes).unwrap())
+        let key_ref = key.as_ref();
+
+        state::get_at(self.idx, ord as i64, key_ref).map(|bytes| {
+            String::from_utf8(bytes).unwrap_or_else(|_| {
+                panic!("Invalid UTF-8 sequence in store value for key: {}", key_ref)
+            })
+        })
     }
 
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<String> {
-        state::get_last(self.idx, key).map(|bytes| String::from_utf8(bytes).unwrap())
+        let key_ref = key.as_ref();
+
+        state::get_last(self.idx, key_ref).map(|bytes| {
+            String::from_utf8(bytes).unwrap_or_else(|_| {
+                panic!("Invalid UTF-8 sequence in store value for key: {}", key_ref)
+            })
+        })
     }
 
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<String> {
-        state::get_first(self.idx, key).map(|bytes| String::from_utf8(bytes).unwrap())
+        let key_ref = key.as_ref();
+
+        state::get_first(self.idx, key_ref).map(|bytes| {
+            String::from_utf8(bytes).unwrap_or_else(|_| {
+                panic!("Invalid UTF-8 sequence in store value for key: {}", key_ref)
+            })
+        })
     }
 
     fn has_at<K: AsRef<str>>(&self, ord: u64, key: K) -> bool {
@@ -1071,9 +1083,13 @@ impl<T: Into<String> + From<String>> StoreGet<Vec<T>> for StoreGetArray<T> {
 fn split_array<T: Into<String> + From<String>>(bytes: Vec<u8>) -> Option<Vec<T>> {
     let parts = std::io::Cursor::new(bytes).split(b';');
     let chunks: Vec<_> = parts
-        .map(|x| x.unwrap())
+        .map(|x| x.expect("Cursor is infallible"))
         .filter(|x| x.len() > 0)
-        .map(|part| String::from_utf8(part).unwrap().into())
+        .map(|part| {
+            String::from_utf8(part)
+                .unwrap_or_else(|_| panic!("Invalid UTF-8 sequence in store value"))
+                .into()
+        })
         .collect();
 
     match chunks.len() {
@@ -1401,8 +1417,12 @@ impl From<StoreDelta> for DeltaString {
             operation: convert_i32_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
-            old_value: String::from_utf8(d.old_value).unwrap(),
-            new_value: String::from_utf8(d.new_value).unwrap(),
+            old_value: String::from_utf8(d.old_value).unwrap_or_else(|_| {
+                panic!("Invalid UTF-8 sequence in Store DeltaString old value")
+            }),
+            new_value: String::from_utf8(d.new_value).unwrap_or_else(|_| {
+                panic!("Invalid UTF-8 sequence in Store DeltaString new value")
+            }),
         }
     }
 }
@@ -1419,11 +1439,9 @@ pub struct DeltaProto<T> {
 impl<T: Default + prost::Message + PartialEq> From<StoreDelta> for DeltaProto<T> {
     fn from(d: StoreDelta) -> Self {
         let nv: T = prost::Message::decode(d.new_value.as_ref())
-            .context("failed to decode new_value to proto message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to decode Store DeltaProto for new value"));
         let ov: T = prost::Message::decode(d.old_value.as_ref())
-            .context("failed to decode old_value to proto message")
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Unable to decode Store DeltaProto for old value"));
 
         Self {
             operation: convert_i32_to_operation(d.operation),
@@ -1563,14 +1581,12 @@ fn decode_bytes_to_i32(bytes: &Vec<u8>) -> i32 {
     let int_as_str =
         std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
 
-    i32::from_str(int_as_str)
-        .with_context(|| {
-            format!(
-                "value {} is not a valid representation of an i32",
-                int_as_str
-            )
-        })
-        .unwrap()
+    i32::from_str(int_as_str).unwrap_or_else(|_| {
+        panic!(
+            "value {} is not a valid representation of an i32",
+            int_as_str
+        )
+    })
 }
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
@@ -1585,14 +1601,12 @@ fn decode_bytes_to_i64(bytes: &Vec<u8>) -> i64 {
     let int_as_str =
         std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
 
-    i64::from_str(int_as_str)
-        .with_context(|| {
-            format!(
-                "value {} is not a valid representation of an i64",
-                int_as_str
-            )
-        })
-        .unwrap()
+    i64::from_str(int_as_str).unwrap_or_else(|_| {
+        panic!(
+            "value {} is not a valid representation of an i64",
+            int_as_str
+        )
+    })
 }
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
@@ -1607,14 +1621,12 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
     let float64_as_str =
         std::str::from_utf8(bytes).expect("received bytes expected to be valid UTF-8 string");
 
-    f64::from_str(float64_as_str)
-        .with_context(|| {
-            format!(
-                "value {} is not a valid representation of an f64",
-                float64_as_str
-            )
-        })
-        .unwrap()
+    f64::from_str(float64_as_str).unwrap_or_else(|_| {
+        panic!(
+            "value {} is not a valid representation of an f64",
+            float64_as_str
+        )
+    })
 }
 
 #[cfg(test)]
