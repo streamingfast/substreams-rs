@@ -1007,6 +1007,10 @@ macro_rules! forward_val_val_binop_assign {
 
 macro_rules! forward_artithmetic_binop {
     (impl $impl:ident fn $method:ident) => {
+        forward_val_val_binop!(impl $impl for (BigInt, BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (ref &BigInt, BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (BigInt, ref &BigInt) fn $method);
+        forward_val_val_binop!(impl $impl for (ref &BigInt, ref &BigInt) fn $method);
         forward_val_val_binop!(impl $impl for (BigInt, primitive i8; u8; i16; u16; u32; i32; u64; i64; usize; isize) fn $method);
         forward_val_val_binop!(impl $impl for (primitive i8; u8; i16; u16; u32; i32; u64; i64; usize; isize, BigInt) fn $method);
     };
@@ -1121,6 +1125,18 @@ mod tests {
     //
     #[test]
     fn int_op_bigint() {
+        // Minus
+        assert_eq!(big_int(1) - big_int(1), big_int(0));
+        assert_eq!(&big_int(1) - big_int(1), big_int(0));
+        assert_eq!(big_int(1) - &big_int(1), big_int(0));
+        assert_eq!(&big_int(1) - &big_int(1), big_int(0));
+
+        // Add
+        assert_eq!(big_int(1) + big_int(1), big_int(2));
+        assert_eq!(&big_int(1) + big_int(1), big_int(2));
+        assert_eq!(big_int(1) + &big_int(1), big_int(2));
+        assert_eq!(&big_int(1) + &big_int(1), big_int(2));
+
         // BitAnd
         assert_eq!(1 as i32 & big_int(1), big_int(1));
         assert_eq!(1 as i64 & big_int(1), big_int(1));
