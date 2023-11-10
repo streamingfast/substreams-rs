@@ -10,7 +10,7 @@ export version=0.5.7
 
 sd '^version = ".*?"$' "version = \"${version}\"" Cargo.toml
 sd 'version = ".*?",' "version = \"${version}\"," Cargo.toml
-sd '## Unreleased' "## ${version}" CHANGELOG.md
+sd '## (Next|Unreleased)' "## ${version}" CHANGELOG.md
 
 # Important so that Cargo.lock is updated and you "test
 cargo test --target aarch64-apple-darwin # Change 'aarch64-apple-darwin' to fit your own platform!
