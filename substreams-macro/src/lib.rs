@@ -57,6 +57,35 @@ mod test {
     }
 
     #[test]
+    fn test_map_mut() {
+        let item = quote! {
+            fn map_transfers(mut blk: eth::Block) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let func = || -> pb::Custom {
+                        let mut blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len)
+                            .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
+                        let result = {
+                            unimplemented!("do something");
+                        };
+                        result
+                    };
+                    let result = func();
+                    substreams::output(result);
+                }
+            },
+        );
+    }
+
+    #[test]
     fn test_map_option() {
         let item = quote! {
             fn map_transfers(blk: eth::Block) -> Option<pb::Custom> {

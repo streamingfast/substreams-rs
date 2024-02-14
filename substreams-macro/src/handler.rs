@@ -99,7 +99,13 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
                     } else {
-                        proto_decodings.push(quote! { let #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
+                        let mutability = if v.mutability.is_some() {
+                            quote! { mut }
+                        } else {
+                            quote! {}
+                        };
+
+                        proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
                     }
                 }
                 _ => {
