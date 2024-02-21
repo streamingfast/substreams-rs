@@ -118,6 +118,9 @@ pub mod memory;
 
 /// Protobuf generated Substreams models
 pub mod pb;
+
+mod pbprost;
+
 pub mod proto;
 pub mod scalar;
 
