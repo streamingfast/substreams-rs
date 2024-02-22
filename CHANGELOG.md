@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## unreleased
+### Highlights
+
+- Added `bufgen.sh` to generate pb files from substreams project proto files
+- New pb files are now generated in module `pbprost` both they are exposed in mod `pb`
+- Module `pb` is now re-exporting all pb files from `pbprost` module and also expose them in submodules `substreams` for backward compatibility.
+- In your substreams you should now import substreams object like `use substreams::pb::sf::substreams::v1::Clock;` instead of `use substreams::pb::substreams::Clock;` since `substreams::pb::substreams` should is now deprecated and will be removed in the future.
 
 ## 0.5.13
 

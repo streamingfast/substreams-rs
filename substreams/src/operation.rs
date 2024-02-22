@@ -1,4 +1,4 @@
-use crate::{pb::substreams::store_delta::Operation, store::Delta};
+use crate::{pb::sf::substreams::v1::store_delta::Operation, store::Delta};
 
 pub struct OperationIs<I: Iterator> {
     operation: Operation,

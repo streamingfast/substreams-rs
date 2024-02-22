@@ -79,7 +79,7 @@
 //! use substreams::store::{DeltaBigDecimal, StoreGetProto, StoreAddInt64};
 //! # mod pb {
 //! #   use std::todo;
-//! #   use substreams::pb::substreams::StoreDelta;
+//! #   use substreams::pb::sf::substreams::v1::StoreDelta;
 //! #   use substreams::store::Delta;
 //! #   pub type Custom = ();
 //! #

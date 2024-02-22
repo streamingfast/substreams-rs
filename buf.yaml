@@ -1,8 +1,0 @@
-version: v1
-name: buf.build/streamingfast/substreams
-
-deps: []
-
-build:
-  excludes:
-#    - google

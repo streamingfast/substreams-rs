@@ -42,7 +42,7 @@
 //!
 //! ```rust
 //! use substreams::key;
-//! use substreams::pb::substreams::store_delta::Operation;
+//! use substreams::pb::sf::substreams::v1::store_delta::Operation;
 //! use substreams::store::{Delta, DeltaExt, Deltas, DeltaBigDecimal};
 //!
 //! fn db_out(store: Deltas<DeltaBigDecimal>) {
@@ -58,11 +58,11 @@
 //! ```
 use std::{io::BufRead, str};
 
-use crate::{key, operation, pb::substreams::store_delta::Operation};
+use crate::{key, operation, pb::sf::substreams::v1::store_delta::Operation};
 
 use {
     crate::{
-        pb::substreams::StoreDelta,
+        pb::sf::substreams::v1::StoreDelta,
         scalar::{BigDecimal, BigInt},
         state, {pb, proto},
     },
@@ -1156,7 +1156,7 @@ where
 
 pub trait Delta: PartialEq {
     fn get_key(&self) -> &String;
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation;
+    fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation;
 }
 
 pub trait DeltaExt: Iterator {
@@ -1257,7 +1257,7 @@ impl<T: Delta + From<StoreDelta>> Deltas<T> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaBigDecimal {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: BigDecimal,
@@ -1278,7 +1278,7 @@ impl From<StoreDelta> for DeltaBigDecimal {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaBigInt {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: BigInt,
@@ -1299,7 +1299,7 @@ impl From<StoreDelta> for DeltaBigInt {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaInt32 {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: i32,
@@ -1320,7 +1320,7 @@ impl From<StoreDelta> for DeltaInt32 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaInt64 {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: i64,
@@ -1341,7 +1341,7 @@ impl From<StoreDelta> for DeltaInt64 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaFloat64 {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: f64,
@@ -1362,7 +1362,7 @@ impl From<StoreDelta> for DeltaFloat64 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaBool {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: bool,
@@ -1383,7 +1383,7 @@ impl From<StoreDelta> for DeltaBool {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaBytes {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: Vec<u8>,
@@ -1404,7 +1404,7 @@ impl From<StoreDelta> for DeltaBytes {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaString {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: String,
@@ -1429,7 +1429,7 @@ impl From<StoreDelta> for DeltaString {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaProto<T> {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: T,
@@ -1457,7 +1457,7 @@ impl<T: Default + prost::Message + PartialEq> Delta for DeltaProto<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+    fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
         return self.operation;
     }
 }
@@ -1466,14 +1466,14 @@ impl<T: Default + prost::Message + PartialEq> Delta for &DeltaProto<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+    fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
         return self.operation;
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeltaArray<T> {
-    pub operation: pb::substreams::store_delta::Operation,
+    pub operation: pb::sf::substreams::v1::store_delta::Operation,
     pub ordinal: u64,
     pub key: String,
     pub old_value: Vec<T>,
@@ -1499,7 +1499,7 @@ impl<T: Into<String> + From<String> + PartialEq> Delta for DeltaArray<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+    fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
         return self.operation;
     }
 }
@@ -1508,7 +1508,7 @@ impl<T: Into<String> + From<String> + PartialEq> Delta for &DeltaArray<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
-    fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+    fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
         return self.operation;
     }
 }
@@ -1519,7 +1519,7 @@ macro_rules! impl_delta_ref {
             fn get_key(&self) -> &String {
                 &self.key
             }
-            fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+            fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
                 self.operation
             }
         }
@@ -1532,7 +1532,7 @@ macro_rules! impl_delta {
             fn get_key(&self) -> &String {
                 &self.key
             }
-            fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+            fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
                 self.operation
             }
         }
@@ -1540,7 +1540,7 @@ macro_rules! impl_delta {
             pub fn get_key(&self) -> &String {
                 &self.key
             }
-            pub fn get_operation(&self) -> pb::substreams::store_delta::Operation {
+            pub fn get_operation(&self) -> pb::sf::substreams::v1::store_delta::Operation {
                 self.operation
             }
         }
@@ -1565,7 +1565,7 @@ impl_delta_ref!(&DeltaBool);
 impl_delta_ref!(&DeltaBytes);
 impl_delta_ref!(&DeltaString);
 
-fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
+fn convert_i32_to_operation(operation: i32) -> pb::sf::substreams::v1::store_delta::Operation {
     Operation::from_i32(operation).unwrap_or_else(|| panic!("unhandled operation: {}", operation))
 }
 
@@ -1632,7 +1632,7 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        pb::substreams::{store_delta::Operation, StoreDelta},
+        pb::sf::substreams::v1::{store_delta::Operation, StoreDelta},
         store::{
             decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array, DeltaArray,
             Deltas,
