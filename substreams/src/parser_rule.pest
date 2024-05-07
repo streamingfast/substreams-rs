@@ -1,0 +1,12 @@
+expression = { or }
+or = { (and ~ (space? ~ ("||") ~ space? ~ and )* ) }
+and = { (value ~ ((space ~ value) | (space? ~ ("&&") ~ space? ~ value ~ space?))* ) }
+value = { (space? ~ singleQuoteKeyTerm ~ space?) | (space? ~ doubleQuoteKeyTerm ~ space?) | keyterm | (space? ~ "(" ~ space? ~ expression ~ space? ~ ")" ~ space?) }
+keyterm = { (letters | digits | symbols)+ }
+singleQuoteKeyTerm = { ("'") ~ (!"'" ~ ANY)+ ~ ("'")}
+doubleQuoteKeyTerm = { ("\"") ~ (!"\"" ~ ANY)+ ~ ("\"")}
+
+digits = _{ '0' .. '9' }
+letters = _{ 'a' .. 'z' | 'A' .. 'Z' }
+symbols = _{ "_" | ":" }
+space = _{ (" " | "\t" | "\n" )+ }

@@ -125,6 +125,7 @@ mod state;
 
 pub mod key;
 pub mod store;
+pub mod parser;
 
 mod operation;
 
