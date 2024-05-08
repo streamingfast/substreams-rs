@@ -24,6 +24,11 @@ prost = "0.11"
 prost-types = "0.11"
 substreams-macro = { workspace = true }
 thiserror = "1"
+pest= "2.7.10"
+pest_derive = "2.7.10"
+
+[dev-dependencies]
+rstest = "0.19.0" 
 
 [build-dependencies]
 prost-build = "0.11"
