@@ -1,7 +1,7 @@
-expression = { or }
+expression = { or ~ space? ~ EOI }
 or = { (and ~ (space? ~ ("||") ~ space? ~ and )* ) }
 and = { (value ~ ((space ~ value) | (space? ~ ("&&") ~ space? ~ value ~ space?))* ) }
-value = { (space? ~ singleQuoteKeyTerm ~ space?) | (space? ~ doubleQuoteKeyTerm ~ space?) | keyterm | (space? ~ "(" ~ space? ~ expression ~ space? ~ ")" ~ space?) }
+value = { (space? ~ singleQuoteKeyTerm ~ space?) | (space? ~ doubleQuoteKeyTerm ~ space?) | keyterm | (space? ~ "(" ~ space? ~ or ~ space? ~ ")" ~ space?) }
 keyterm = { (letters | digits | symbols)+ }
 singleQuoteKeyTerm = { ("'") ~ (!"'" ~ ANY)+ ~ ("'")}
 doubleQuoteKeyTerm = { ("\"") ~ (!"\"" ~ ANY)+ ~ ("\"")}
