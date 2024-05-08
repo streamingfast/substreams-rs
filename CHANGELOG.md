@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.14
+
+- Add index keys protobuf in substreams crate   
+- Add `matches_keys_in_parsed_expr` function returning a `bool`. It returns `true`, if the set of `keys` provided, matches the `expression`. 
+  (Ex: `expression: (key1 || key2)`, if the set of keys contains key1 or contains key2, `matches_keys_in_parsed_expr(keys, expression)` returns `true`, else returns `false`)
+  
 ## 0.5.13
 
 Added support for specifying `let mut <param>: <Type>` when using the `#[substreams::handlers::map]` macros, this enables in-place trimming of received data.

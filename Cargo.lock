@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "substreams"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "substreams-macro"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "pretty_assertions",
  "prettyplease",
