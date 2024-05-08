@@ -1,4 +1,3 @@
-// @generated
 pub mod sf {
     pub mod substreams {
         pub mod index {
