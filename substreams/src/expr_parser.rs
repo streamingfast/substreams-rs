@@ -172,6 +172,7 @@ mod tests {
     #[rstest]
     #[case(TEST_KEYS, "test1 *213 ", "parsing expression")]
     #[case(TEST_KEYS, "|213 test", "parsing expression")]
+    #[case(TEST_KEYS, "", "parsing expression")]
 
     fn test_matches_keys_in_parsed_expr_error(#[case] keys: &[&str], #[case] input: &str, #[case] expected_error: &str) {
         let result = matches_keys_in_parsed_expr(keys, input).expect_err("parsing is not failing");
