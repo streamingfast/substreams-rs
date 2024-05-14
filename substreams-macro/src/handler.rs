@@ -149,7 +149,7 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
     }
 }
 
-const WRITABLE_STORE: [&'static str; 27] = [
+const WRITABLE_STORE: [&'static str; 31] = [
     "StoreSetRaw",
     "StoreSetString",
     "StoreSetBigInt",
@@ -177,6 +177,10 @@ const WRITABLE_STORE: [&'static str; 27] = [
     "StoreMinFloat64",
     "StoreMinBigDecimal",
     "StoreAppend",
+    "StoreSetSumInt64",
+    "StoreSetSumFloat64",
+    "StoreSetSumBigInt",
+    "StoreSetSumBigDecimal",
 ];
 
 const READABLE_STORE: [&'static str; 8] = [
