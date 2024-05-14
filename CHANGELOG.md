@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.16
+
+- Add StoreSetSum<T> to the WRITABLE_STORE array
+
 ## 0.5.15
 
 - Add new store type StoreSetSum<T> which allows both summing and setting a value in a store. This is useful for storing aggregated values in a store.
