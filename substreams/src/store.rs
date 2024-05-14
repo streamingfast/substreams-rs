@@ -772,6 +772,85 @@ where
     }
 }
 
+// -------------------- StoreSetSum -------------------- //
+pub trait StoreSetSum<T> {
+    fn new() -> Self;
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+    fn sum<K: AsRef<str>>(&self, ord: u64, key: K, value: T);
+}
+
+pub struct StoreSetSumInt64 {}
+
+impl StoreSetSum<i64> for StoreSetSumInt64 {
+    fn new() -> Self {
+        StoreSetSumInt64 {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+        let v = format!("set:{}", value.to_string());
+        state::set_sum_int64(ord as i64, key, v);
+    }
+
+    fn sum<K: AsRef<str>>(&self, ord: u64, key: K, value: i64) {
+        let v = format!("sum:{}", value.to_string());
+        state::set_sum_int64(ord as i64, key, v);
+    }
+}
+
+pub struct StoreSetSumFloat64 {}
+
+impl StoreSetSum<f64> for StoreSetSumFloat64 {
+    fn new() -> Self {
+        StoreSetSumFloat64 {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+        let v = format!("set:{}", value.to_string());
+        state::set_sum_float64(ord as i64, key, v);
+    }
+
+    fn sum<K: AsRef<str>>(&self, ord: u64, key: K, value: f64) {
+        let v = format!("sum:{}", value.to_string());
+        state::set_sum_float64(ord as i64, key, v);
+    }
+}
+
+pub struct StoreSetSumBigInt {}
+
+impl StoreSetSum<BigInt> for StoreSetSumBigInt {
+    fn new() -> Self {
+        StoreSetSumBigInt {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigInt) {
+        let v = format!("set:{}", value.to_string());
+        state::set_sum_bigint(ord as i64, key, v);
+    }
+
+    fn sum<K: AsRef<str>>(&self, ord: u64, key: K, value: BigInt) {
+        let v = format!("sum:{}", value.to_string());
+        state::set_sum_bigint(ord as i64, key, v);
+    }
+}
+
+pub struct StoreSetSumBigDecimal {}
+
+impl StoreSetSum<BigDecimal> for StoreSetSumBigDecimal {
+    fn new() -> Self {
+        StoreSetSumBigDecimal {}
+    }
+
+    fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: BigDecimal) {
+        let v = format!("set:{}", value.to_string());
+        state::set_sum_bigdecimal(ord as i64, key, v);
+    }
+
+    fn sum<K: AsRef<str>>(&self, ord: u64, key: K, value: BigDecimal) {
+        let v = format!("sum:{}", value.to_string());
+        state::set_sum_bigdecimal(ord as i64, key, v);
+    }
+}
+
 // -------------------- StoreGet -------------------- //
 /// StoreGet is a trait which is implemented on any type of typed StoreGet
 pub trait StoreGet<T> {
