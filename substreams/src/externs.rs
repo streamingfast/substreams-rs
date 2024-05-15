@@ -104,33 +104,5 @@ pub mod state {
             value_ptr: *const u8,
             value_len: u32,
         );
-        pub fn set_sum_bigint(
-            ord: i64,
-            key_ptr: *const u8,
-            key_len: u32,
-            value_ptr: *const u8,
-            value_len: u32,
-        );
-        pub fn set_sum_bigdecimal(
-            ord: i64,
-            key_ptr: *const u8,
-            key_len: u32,
-            value_ptr: *const u8,
-            value_len: u32,
-        );
-        pub fn set_sum_int64(
-            ord: i64,
-            key_ptr: *const u8,
-            key_len: u32,
-            value_ptr: *const u8,
-            value_len: u32,
-        );
-        pub fn set_sum_float64(
-            ord: i64,
-            key_ptr: *const u8,
-            key_len: u32,
-            value_ptr: *const u8,
-            value_len: u32,
-        );
     }
 }

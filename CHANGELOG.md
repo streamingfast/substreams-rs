@@ -4,10 +4,6 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
-
-- Add new store type StoreSetSum<T> which allows both summing and setting a value in a store. This is useful for storing aggregated values in a store.
-
 ## 0.5.14
 
 - Add index keys protobuf in substreams crate   
