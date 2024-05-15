@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.5.14"
+version = "0.5.17"
 description = "Substreams SDK - A streaming data engine for The Graph - by StreamingFast"
 edition = "2018"
 homepage = "https://substreams.streamingfast.io/"
@@ -17,7 +17,7 @@ categories = ["api-bindings", "external-ffi-bindings", "wasm"]
 rust-version = "1.60"
 
 [workspace.dependencies]
-substreams-macro = { version = "0.5.14", path = "./substreams-macro" }
+substreams-macro = { version = "0.5.17", path = "./substreams-macro" }
 
 [profile.release]
 lto = true
