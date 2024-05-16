@@ -4,21 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- The return of store type StoreSetSum<T> which allows both summing and setting a value in a store. This is useful for storing aggregated values in a store. Note: to read deltas from this store, you will need to use the Deltas<DeltaBytes> type.  The delta values will come prefixed with "set:" or "sum:" depending on the operation, followed by the string representation of the value.  It is up to the user to decode the values as necessary.
+
 ## 0.5.18
 
 - Accept all characters within index keys except `-`,`'`, `"`, `&&`, `||`, `)`, `(` and spaces of all kind.
 
 ## 0.5.17
 
-- Removed a store type added in 0.5.15 and 0.5.16 which added a store type which has been cancelled due to a design issue.
+- Removed StoreSetSum<T>. (Reverted changes from 0.5.16 and 0.5.15)
 
 ## 0.5.16
 
-- reverted
+- Add StoreSetSum<T> to the WRITABLE_STORE array
 
 ## 0.5.15
 
-- reverted
+- Add new store type StoreSetSum<T> which allows both summing and setting a value in a store. This is useful for storing aggregated values in a store.
 
 ## 0.5.14
 
