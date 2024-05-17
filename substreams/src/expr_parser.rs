@@ -139,6 +139,8 @@ mod tests {
     #[case(TEST_KEYS, "test10 && test:8", false)]
     #[case(TEST_KEYS, "(test10 && test_9) || (test.7 && test:8)", true)]
     #[case(TEST_KEYS, "(test10 && test_9) || (test.7 && test*19z_|)", true)]
+    #[case(TEST_KEYS, "(test10 && test_9) || test*19z || (test.7 && test*19z_|)", true)]
+    #[case(TEST_KEYS, "(test10 && test_9) || test*19z && (test.7 && test*19z_|)", false)]
 
     #[case(TEST_KEYS, "test1 || test", true)]
     #[case(TEST_KEYS, "test1 || test6", true)]
