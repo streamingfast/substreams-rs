@@ -10,7 +10,6 @@ fn parsing(input: &str) -> Result<Pair<Rule>, Error> {
     let pairs = EParser::parse(Rule::expression, input)
         .context("parsing input based on the expression rule")?;
 
-    println!("{:?}", pairs.clone().collect::<Vec<_>>()); 
     match pairs.into_iter().next() {
         Some(pair) => Ok(pair),
         None => Err(anyhow::Error::msg("no pairs found in input"))
