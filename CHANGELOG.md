@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## 0.5.18
 
-- Accept all characters within index keys except `-`,`'`, `"`, `&&`, `||`, `)`, `()` and spaces of all kind.
+- Accept all characters within index keys except `-`,`'`, `"`, `&&`, `||`, `)`, `(` and spaces of all kind.
 
 ## 0.5.17
 
