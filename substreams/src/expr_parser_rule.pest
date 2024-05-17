@@ -8,5 +8,5 @@ doubleQuoteKeyTerm = { ("\"") ~ (!"\"" ~ ANY)+ ~ ("\"")}
 
 digits = _{ '0' .. '9' }
 letters = _{ 'a' .. 'z' | 'A' .. 'Z' }
-symbols = _{ "_" | ":" }
+symbols = _{ "_" | ":" | "." }
 space = _{ (" " | "\t" | "\n" )+ }
