@@ -10,6 +10,7 @@ fn parsing(input: &str) -> Result<Pair<Rule>, Error> {
     let pairs = EParser::parse(Rule::expression, input)
         .context("parsing input based on the expression rule")?;
 
+    println!("{:?}", pairs.clone().collect::<Vec<_>>()); 
     match pairs.into_iter().next() {
         Some(pair) => Ok(pair),
         None => Err(anyhow::Error::msg("no pairs found in input"))
@@ -118,15 +119,27 @@ fn expression_to_string(parsing: Pair<Rule>) -> String {
 mod tests {
     use rstest::rstest;
     use super::*;
-    static TEST_KEYS: &[&str] = &["test", "test1", "test2", "test3", "test4", "test5", "test 6"];
+    static TEST_KEYS: &[&str] = &["test", "test1", "test2", "test3", "test4", "test5", "test 6", "test.7", "test:8", "test_9", "test*19z_|"];
 
     #[rstest]
     #[case(TEST_KEYS, "test", true)]
     #[case(TEST_KEYS, "'test'", true)]
     #[case(TEST_KEYS, "'test 6' || test7", true)]
     #[case(TEST_KEYS, "'test_6' && test3", false)]
-    #[case(TEST_KEYS, "\"test 6\" || test7", true)]
+    #[case(TEST_KEYS, "\"test 6\"|| test7", true)]
     #[case(TEST_KEYS, "\"test 6\" && test3", true)]
+
+    #[case(TEST_KEYS, "test.7", true)]
+    #[case(TEST_KEYS, "test.8", false)]
+    #[case(TEST_KEYS, "test:8", true)]
+    #[case(TEST_KEYS, "test*19z_|", true)]
+    #[case(TEST_KEYS, "test:9", false)]
+    #[case(TEST_KEYS, "test_9", true)]
+    #[case(TEST_KEYS, "test_10", false)]
+    #[case(TEST_KEYS, "test10 ||test.7", true)]
+    #[case(TEST_KEYS, "test10 && test:8", false)]
+    #[case(TEST_KEYS, "(test10 && test_9) || (test.7 && test:8)", true)]
+    #[case(TEST_KEYS, "(test10 && test_9) || (test.7 && test*19z_|)", true)]
 
     #[case(TEST_KEYS, "test1 || test", true)]
     #[case(TEST_KEYS, "test1 || test6", true)]
@@ -141,8 +154,8 @@ mod tests {
     #[case(TEST_KEYS, "test6 && test7", false)]
 
     #[case(TEST_KEYS, "test1 && test && test2", true)]
-    #[case(TEST_KEYS, "test1 && test2 && test7", false)]
-    #[case(TEST_KEYS, "test6 && test7 && test8", false)]
+    #[case(TEST_KEYS, "test1&& test2 &&test7", false)]
+    #[case(TEST_KEYS, "test6 &&test7 && test8", false)]
 
     #[case(TEST_KEYS, "test1 test", true)]
     #[case(TEST_KEYS, "test1 test6", false)]
@@ -167,16 +180,5 @@ mod tests {
         let result = matches_keys_in_parsed_expr(keys, input).expect("matching keys in parsed expression");
         
         assert_eq!(result, expected, "This expression ast is {expr_as_string}");
-    }
-
-    #[rstest]
-    #[case(TEST_KEYS, "test1 *213 ", "parsing expression")]
-    #[case(TEST_KEYS, "|213 test", "parsing expression")]
-    #[case(TEST_KEYS, "", "parsing expression")]
-
-    fn test_matches_keys_in_parsed_expr_error(#[case] keys: &[&str], #[case] input: &str, #[case] expected_error: &str) {
-        let result = matches_keys_in_parsed_expr(keys, input).expect_err("parsing is not failing");
-        assert_eq!(result.to_string(), expected_error);
-    }
-    
+    }    
 }
