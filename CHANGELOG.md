@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## 0.5.20
 
-- Accepts `-` character in expression's parsing while the `-` is not at the beginning of it. (Ex: `-test` is failing, `test-8` is not)
+- Accepts `-` character in expression's parsing expect at the beginning of the expression. (Ex: `-test` is failing, `test-8` is not)
 
 ## 0.5.19
 
