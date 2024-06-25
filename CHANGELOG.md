@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.20
+
+- Accepts `-` character in expression's parsing while the `-` is not at the beginning of it. (Ex: `-test` is failing, `test-8` is not)
+
 ## 0.5.19
 
 - The return of store type StoreSetSum<T> which allows both summing and setting a value in a store. This is useful for storing aggregated values in a store. Note: to read deltas from this store, you will need to use the Deltas<DeltaBytes> type.  The delta values will come prefixed with "set:" or "sum:" depending on the operation, followed by the string representation of the value.  It is up to the user to decode the values as necessary.

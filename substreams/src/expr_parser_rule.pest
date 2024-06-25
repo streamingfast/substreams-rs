@@ -2,9 +2,9 @@ expression = { or ~ space? ~ EOI }
 or = { (and ~ (space? ~ ("||") ~ space? ~ and )* ) }
 and = { (value ~ ((space ~ value) | (space? ~ ("&&") ~ space? ~ value ~ space?))* ) }
 value = { (space? ~ singleQuoteKeyTerm ~ space?) | (space? ~ doubleQuoteKeyTerm ~ space?) | keyterm | (space? ~ "(" ~ space? ~ or ~ space? ~ ")" ~ space?) }
-keyterm = { (ctr_accepted)+ }
-singleQuoteKeyTerm = { ("'") ~ (!"'" ~ ANY)+ ~ ("'")}
-doubleQuoteKeyTerm = { ("\"") ~ (!"\"" ~ ANY)+ ~ ("\"")}
+keyterm = { !("-") ~ (ctr_accepted)+ }
+singleQuoteKeyTerm = { ("'") ~ !("-") ~ (!"'" ~ ANY)+ ~ ("'")}
+doubleQuoteKeyTerm = { ("\"") ~ !("-") ~ (!"\"" ~ ANY)+ ~ ("\"")}
 
-ctr_accepted = _{(!(space | "'" | "\"" | "(" | ")" | "-" | ("||") | ("&&")) ~ ANY)}
+ctr_accepted = _{(!(space | "'" | "\"" | "(" | ")" | ("||") | ("&&")) ~ ANY)}
 space = _{ (" " | "\t" | "\n" )+ }

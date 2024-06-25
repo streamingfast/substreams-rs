@@ -118,7 +118,7 @@ fn expression_to_string(parsing: Pair<Rule>) -> String {
 mod tests {
     use rstest::rstest;
     use super::*;
-    static TEST_KEYS: &[&str] = &["test", "test1", "test2", "test3", "test4", "test5", "test 6", "test.7", "test:8", "test_9", "test*19z_|"];
+    static TEST_KEYS: &[&str] = &["test", "test1", "test2", "test3", "test4", "test5", "test 6", "test.7", "test:8", "test_9", "test*19z_|", "type:wasm-MarketUpdated"];
 
     #[rstest]
     #[case(TEST_KEYS, "test", true)]
@@ -129,6 +129,8 @@ mod tests {
     #[case(TEST_KEYS, "\"test 6\" && test3", true)]
 
     #[case(TEST_KEYS, "test.7", true)]
+    #[case(TEST_KEYS, "type:wasm-MarketUpdated", true)]
+    #[case(TEST_KEYS, "type:was-mMarketUpdated", false)]
     #[case(TEST_KEYS, "test.8", false)]
     #[case(TEST_KEYS, "test:8", true)]
     #[case(TEST_KEYS, "test*19z_|", true)]
@@ -182,4 +184,26 @@ mod tests {
         
         assert_eq!(result, expected, "This expression ast is {expr_as_string}");
     }    
+
+    #[rstest]
+
+    // In the current version of the parser, - should not be supported at the beginning of the expression.
+    #[case("-test", true)]
+    #[case("'-test'", true)]
+    #[case("'test-8'", false)]
+    #[case("test-8", false)]
+
+    #[case("'te't'", true)]
+    #[case("\"te\"st\"", true)]
+
+    fn test_parsing_error(#[case] input: &str, #[case] expected: bool) {
+        let pair = parsing(input);
+
+        if expected {
+            assert!(pair.is_err());
+        } else {
+            assert!(pair.is_ok());
+        }
+    }    
 }
+
