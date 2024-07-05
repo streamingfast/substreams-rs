@@ -178,6 +178,14 @@ pub fn output<M: prost::Message>(msg: M) {
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+pub fn skip_empty_output() {
+    #[cfg(target_arch = "wasm32")]
+    unsafe {
+        externs::skip_empty_output()
+    }
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn output_raw(data: Vec<u8>) {
     #[cfg(target_arch = "wasm32")]
     unsafe {

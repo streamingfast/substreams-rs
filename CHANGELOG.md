@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Add skip_empty_output intrinsic
+
 ## 0.5.20
 
 - Accepts `-` character in expression's parsing expect at the beginning of the expression. (Ex: `-test` is failing, `test-8` is not)

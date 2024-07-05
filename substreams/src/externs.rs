@@ -1,6 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
 extern "C" {
+    pub fn skip_empty_output();
     pub fn output(ptr: *const u8, len: u32);
     pub fn register_panic(
         msg_ptr: *const u8,
