@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.5.21
 
-- Add skip_empty_output intrinsic
+- Add skip_empty_output intrinsic (requires substreams server version v1.9.0 or later)
 
 ## 0.5.20
 
