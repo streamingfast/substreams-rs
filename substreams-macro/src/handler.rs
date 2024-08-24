@@ -93,7 +93,7 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
                     if input_obj.is_deltas {
                         let raw = format_ident!("raw_{}", var_name);
                         proto_decodings.push(quote! {
-                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas;
+                                let #raw = unsafe { substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas };
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
                     } else if input_obj.is_string {
@@ -105,7 +105,7 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
                             quote! {}
                         };
 
-                        proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
+                        proto_decodings.push(quote! { let #mutability #var_name: #argument_type = unsafe { substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))) }; })
                     }
                 }
                 _ => {

@@ -39,7 +39,7 @@
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
 ///     substreams::register_panic_hook();
 ///     let func = || -> Result<proto::Custom, substreams::errors::Error> {
-///         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+///         let blk: eth::Block = unsafe { substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap() };
 ///         {
 ///             unimplemented!("do something");
 ///         }
@@ -86,7 +86,7 @@
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
 ///     substreams::register_panic_hook();
 ///     let func = || -> Option<proto::Custom> {
-///         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+///         let blk: eth::Block = unsafe { substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap() };
 ///         {
 ///             unimplemented!("do something");
 ///         }
@@ -132,7 +132,7 @@
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
 ///     substreams::register_panic_hook();
 ///     let func = || -> proto::Custom {
-///         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
+///         let blk: eth::Block = unsafe { substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap() };
 ///         {
 ///             unimplemented!("do something");
 ///         }
@@ -182,7 +182,7 @@ pub use substreams_macro::map;
 /// #[no_mangle]
 /// pub extern "C" fn build_nft_state(data_ptr: *mut u8, data_len: usize, pairs_idx: u32, tokens_idx: u32) {
 ///    substreams::register_panic_hook();
-///    let data: proto::Custom = substreams::proto::decode_ptr(data_ptr, data_len).unwrap();
+///    let data: proto::Custom = unsafe { substreams::proto::decode_ptr(data_ptr, data_len).unwrap() };
 ///    let pairs: StoreGetProto<proto::Pairs> = store::StoreGet::new(pairs_idx);
 ///    let tokens: StoreGetProto<proto::Tokens> = store::StoreGet::new(tokens_idx);
 ///    let s: store::StoreAddInt64 = store::StoreAddInt64::new();

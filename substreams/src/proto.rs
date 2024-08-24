@@ -4,6 +4,8 @@
 //! are used across Substreams
 //!
 
+use core::slice;
+
 use prost::{DecodeError, EncodeError};
 
 /// Given an array of bytes, it will decode data in a Protobuf Message
@@ -12,16 +14,11 @@ pub fn decode<T: Default + prost::Message>(buf: &Vec<u8>) -> Result<T, DecodeErr
 }
 
 /// Given a pointer to a byte array, it will read and decode the data in a Protobuf message.
-pub fn decode_ptr<T: Default + prost::Message>(
+pub unsafe fn decode_ptr<T: Default + prost::Message>(
     ptr: *mut u8,
     size: usize,
 ) -> Result<T, DecodeError> {
-    unsafe {
-        let input_data = Vec::from_raw_parts(ptr, size, size);
-        let obj = ::prost::Message::decode(&input_data[..]);
-        std::mem::forget(input_data); // otherwise tries to free that memory at the end and crashes
-        obj
-    }
+    ::prost::Message::decode(slice::from_raw_parts(ptr, size))
 }
 
 /// Given a Protobuf message it will encode it and return the byte array.

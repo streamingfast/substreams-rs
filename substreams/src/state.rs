@@ -10,16 +10,16 @@ pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>
 
         unsafe {
             let key_bytes = key.as_bytes();
-            let output_ptr = memory::alloc(8);
+            let mut output_data = [0u8; 8];
             let found = externs::state::get_at(
                 store_idx,
                 ord,
                 key_bytes.as_ptr(),
                 key_bytes.len() as u32,
-                output_ptr as u32,
+                output_data.as_mut_ptr() as u32,
             );
             return if found == 1 {
-                Some(memory::get_output_data(output_ptr))
+                Some(memory::read_output_data(&output_data))
             } else {
                 None
             };
@@ -56,16 +56,16 @@ pub fn get_last<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
 
         unsafe {
             let key_bytes = key.as_bytes();
-            let output_ptr = memory::alloc(8);
+            let mut output_data = [0u8; 8];
             let found = externs::state::get_last(
                 store_idx,
                 key_bytes.as_ptr(),
                 key_bytes.len() as u32,
-                output_ptr as u32,
+                output_data.as_mut_ptr() as u32,
             );
 
             return if found == 1 {
-                Some(memory::get_output_data(output_ptr))
+                Some(memory::read_output_data(&output_data))
             } else {
                 None
             };
@@ -102,17 +102,16 @@ pub fn get_first<K: AsRef<str>>(store_idx: u32, key: K) -> Option<Vec<u8>> {
 
         unsafe {
             let key_bytes = key.as_bytes();
-            let output_ptr = memory::alloc(8);
-
+            let mut output_data = [0u8; 8];
             let found = externs::state::get_first(
                 store_idx,
                 key_bytes.as_ptr(),
                 key_bytes.len() as u32,
-                output_ptr as u32,
+                output_data.as_mut_ptr() as u32,
             );
 
             return if found == 1 {
-                Some(memory::get_output_data(output_ptr))
+                Some(memory::read_output_data(&output_data))
             } else {
                 None
             };
@@ -426,9 +425,10 @@ where
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn set_sum_bigint<K, V>(ord: i64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<str>, String: From<V>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    String: From<V>,
 {
     #[cfg(target_arch = "wasm32")]
     {
@@ -449,9 +449,10 @@ pub fn set_sum_bigint<K, V>(ord: i64, key: K, value: V)
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn set_sum_bigdecimal<K, V>(ord: i64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<str>, String: From<V>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    String: From<V>,
 {
     #[cfg(target_arch = "wasm32")]
     {
@@ -472,9 +473,10 @@ pub fn set_sum_bigdecimal<K, V>(ord: i64, key: K, value: V)
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn set_sum_int64<K, V>(ord: i64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<str>, String: From<V>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    String: From<V>,
 {
     #[cfg(target_arch = "wasm32")]
     {
@@ -495,9 +497,10 @@ pub fn set_sum_int64<K, V>(ord: i64, key: K, value: V)
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn set_sum_float64<K, V>(ord: i64, key: K, value: V)
-    where
-        K: AsRef<str>,
-        V: AsRef<str>, String: From<V>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    String: From<V>,
 {
     #[cfg(target_arch = "wasm32")]
     {
