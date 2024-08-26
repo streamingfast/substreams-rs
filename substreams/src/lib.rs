@@ -127,7 +127,7 @@ pub mod key;
 pub mod store;
 
 pub mod expr_parser;
-pub use expr_parser::matches_keys_in_parsed_expr;
+pub use expr_parser::{expr_matcher, matches_keys_in_parsed_expr, ExprMatcher};
 
 mod operation;
 
