@@ -884,9 +884,9 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     }
 
     /// Retrieves a key from the store, like `get_at`, but querying the state of
-    /// the store as of the beginning of the block being processed, before any changes
+    /// the store as of the end of the block being processed, after all changes
     /// were applied within the current block. It does not need to rewind any changes
-    /// in the middle of the block.
+    /// as the store's state we work with is the state at the end of block already.
     fn get_last<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         state::get_last(self.idx, key)
     }
@@ -894,7 +894,7 @@ impl StoreGet<Vec<u8>> for StoreGetRaw {
     /// Retrieves a key from the store, like `get_at`, but querying the state of
     /// the store as of the beginning of the block being processed, before any changes
     /// were applied within the current block. However, it needs to unwind any keys that
-    /// would have changed mid-block, so will be slightly less performant.
+    /// would have changed in the block, so will be slightly less performant.
     fn get_first<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         state::get_first(self.idx, key)
     }
