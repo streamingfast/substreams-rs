@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Enable the 'skip_empty_output' instruction in all maps and stores by default, unless the macro is called with the keep_empty_output parameter, like this:
+  `#[substreams::handlers::map(keep_empty_output)]`
+
 ## 0.5.22
 
 - Added [ExprMatcher](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html), and constructor(s) [expr_matcher](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html#method.new) and [ExprMatcher::new](https://docs.rs/substreams/latest/substreams/fn.expr_matcher.html). This can be used to parse an expression once and re-used it to run multiple [matches_keys](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html#method.matches_keys) against different keys:

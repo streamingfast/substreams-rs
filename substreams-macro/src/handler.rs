@@ -4,7 +4,8 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
 
-pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
+pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool) -> TokenStream {
+
     let original = item.clone();
 
     let final_config = FinalConfiguration { module_type };
@@ -125,6 +126,7 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
             proto_decodings,
             read_only_stores,
             writable_store,
+            keep_empty_output,
         ),
         ModuleType::Map => {
             if output_type == OutputType::Void {
@@ -144,6 +146,7 @@ pub fn main(item: TokenStream, module_type: ModuleType) -> TokenStream {
                 proto_decodings,
                 read_only_stores,
                 writable_store,
+                keep_empty_output,
             )
         }
     }
@@ -301,6 +304,7 @@ fn build_map_handler(
     decodings: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
     writable_store: proc_macro2::TokenStream,
+    keep_empty_output: bool,
 ) -> TokenStream {
     let body = &input.block;
     let header = quote! {
@@ -356,11 +360,19 @@ fn build_map_handler(
         }
     };
 
+    let skip_empty_output = match keep_empty_output {
+        true => quote! {},
+        false => quote! {
+            substreams::skip_empty_output();
+        },
+    };
+
     let result = quote! {
         #header
         pub extern "C" fn #func_name(#(#collected_args),*){
             substreams::register_panic_hook();
             #lambda
+            #skip_empty_output
             let result = func();
             #output_handler
         }
@@ -374,12 +386,19 @@ fn build_store_handler(
     decodings: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
     writable_store: proc_macro2::TokenStream,
+    keep_empty_output: bool,
 ) -> TokenStream {
     let body = &input.block;
     let header = quote! {
         #[no_mangle]
     };
     let func_name = input.sig.ident.clone();
+    let skip_empty_output = match keep_empty_output {
+        true => quote! {},
+        false => quote! {
+            substreams::skip_empty_output();
+        },
+    };
     let result = quote! {
         #header
         pub extern "C" fn #func_name(#(#collected_args),*){
@@ -387,6 +406,7 @@ fn build_store_handler(
             #(#decodings)*
             #(#read_only_stores)*
             #writable_store
+            #skip_empty_output
             let result = #body;
             result
         }
