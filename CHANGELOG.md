@@ -71,6 +71,19 @@ note: `Timestamp` is defined in crate `prost_types`
 
 This means that one of your dependencies uses the wrong version of prost-types (0.11.9 in this example). You probably forgot to bump a dependency in one of your Cargo.toml, for example substreams-ethereum or substreams-antelope.
 
+#### Symbol multiply defined
+
+```
+warning: Linking globals named 'alloc': symbol multiply defined!
+
+error: failed to load bitcode of module "substreams-cc542fa47b990c4e.substreams.f89693ec9899ca95-cgu.05.rcgu.o": 
+
+warning: `my_project` (lib) generated 1 warning
+error: could not compile `my_project` (lib) due to 1 previous error; 1 warning emitted
+```
+
+This means that the this module (`substreams`) is linked many times with different versions. This is invalid because of the global exports, make sure that only the version 0.6.0 of substreams-rs is used by any of your dependencies.
+
 ## 0.5.22
 
 - Added [ExprMatcher](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html), and constructor(s) [expr_matcher](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html#method.new) and [ExprMatcher::new](https://docs.rs/substreams/latest/substreams/fn.expr_matcher.html). This can be used to parse an expression once and re-used it to run multiple [matches_keys](https://docs.rs/substreams/latest/substreams/struct.ExprMatcher.html#method.matches_keys) against different keys:
