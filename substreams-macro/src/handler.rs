@@ -5,7 +5,6 @@ use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
 
 pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool) -> TokenStream {
-
     let original = item.clone();
 
     let final_config = FinalConfiguration { module_type };

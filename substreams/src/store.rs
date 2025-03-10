@@ -56,7 +56,7 @@
 //!     }
 //! }
 //! ```
-use std::{io::BufRead, str};
+use std::{convert::TryFrom, io::BufRead, str};
 
 use crate::{key, operation, pb::substreams::store_delta::Operation};
 
@@ -1645,7 +1645,7 @@ impl_delta_ref!(&DeltaBytes);
 impl_delta_ref!(&DeltaString);
 
 fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
-    Operation::from_i32(operation).unwrap_or_else(|| panic!("unhandled operation: {}", operation))
+    Operation::try_from(operation).unwrap_or_else(|_| panic!("unhandled operation: {}", operation))
 }
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain

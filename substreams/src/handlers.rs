@@ -28,8 +28,8 @@
 /// #  #[derive(Debug)]
 /// #  pub struct Custom(u8);
 /// #    impl prost::Message for Custom {
-/// #  fn encode_raw<B: prost::bytes::BufMut>(&self, _: &mut B) where Self: Sized { todo!() }
-/// #  fn merge_field<B: prost::bytes::Buf>(&mut self, _: u32, _: prost::encoding::WireType, _: &mut B, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
+/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
+/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
 /// #  fn encoded_len(&self) -> usize { todo!() }
 /// #  fn clear(&mut self) { todo!() }
 /// #  }
@@ -75,8 +75,8 @@
 /// #  #[derive(Debug)]
 /// #  pub struct Custom(u8);
 /// #    impl prost::Message for Custom {
-/// #  fn encode_raw<B: prost::bytes::BufMut>(&self, _: &mut B) where Self: Sized { todo!() }
-/// #  fn merge_field<B: prost::bytes::Buf>(&mut self, _: u32, _: prost::encoding::WireType, _: &mut B, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
+/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
+/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
 /// #  fn encoded_len(&self) -> usize { todo!() }
 /// #  fn clear(&mut self) { todo!() }
 /// #  }
@@ -121,8 +121,8 @@
 /// #  #[derive(Debug)]
 /// #  pub struct Custom(u8);
 /// #    impl prost::Message for Custom {
-/// #  fn encode_raw<B: prost::bytes::BufMut>(&self, _: &mut B) where Self: Sized { todo!() }
-/// #  fn merge_field<B: prost::bytes::Buf>(&mut self, _: u32, _: prost::encoding::WireType, _: &mut B, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
+/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
+/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
 /// #  fn encoded_len(&self) -> usize { todo!() }
 /// #  fn clear(&mut self) { todo!() }
 /// #  }
