@@ -207,7 +207,7 @@ pub fn register_panic_hook() {
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
-fn hook(info: &std::panic::PanicInfo<'_>) {
+fn hook(info: &std::panic::PanicHookInfo<'_>) {
     #[cfg(target_arch = "wasm32")]
     {
         let error_msg = info

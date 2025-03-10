@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.1
+
+- Substreams `map` or `store` input that starts with `_` doesn't generate a warning about snake cases not being respected.
+
 ## 0.6.0
 
 ### List of changes
@@ -76,7 +80,7 @@ This means that one of your dependencies uses the wrong version of prost-types (
 ```
 warning: Linking globals named 'alloc': symbol multiply defined!
 
-error: failed to load bitcode of module "substreams-cc542fa47b990c4e.substreams.f89693ec9899ca95-cgu.05.rcgu.o": 
+error: failed to load bitcode of module "substreams-cc542fa47b990c4e.substreams.f89693ec9899ca95-cgu.05.rcgu.o":
 
 warning: `my_project` (lib) generated 1 warning
 error: could not compile `my_project` (lib) due to 1 previous error; 1 warning emitted

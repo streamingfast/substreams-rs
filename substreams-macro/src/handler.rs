@@ -63,15 +63,15 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                                 );
                         }
                         has_seen_writable_store = true;
-                        let store_type = format_ident!("{}", input_obj.store_type);
+                        let store_type = new_ident(input_obj.store_type);
                         writable_store =
                             quote! { let #var_name: #argument_type = #store_type::new(); };
                         continue;
                     }
 
                     if input_obj.is_readable_store {
-                        let var_idx = format_ident!("{}_idx", var_name);
-                        let store_type = format_ident!("{}", input_obj.store_type);
+                        let var_idx = suffixed_ident(&var_name, "idx");
+                        let store_type = new_ident(input_obj.store_type);
                         args.push(quote! { #var_idx: u32 });
                         read_only_stores.push(
                             quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
@@ -85,13 +85,13 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                         args.push(quote! { #pat_type });
                         continue;
                     }
-                    let var_ptr = format_ident!("{}_ptr", var_name);
-                    let var_len = format_ident!("{}_len", var_name);
+                    let var_ptr = suffixed_ident(&var_name, "ptr");
+                    let var_len = suffixed_ident(&var_name, "len");
                     args.push(quote! { #var_ptr: *mut u8 });
                     args.push(quote! { #var_len: usize });
 
                     if input_obj.is_deltas {
-                        let raw = format_ident!("raw_{}", var_name);
+                        let raw = prefixed_ident("raw", &var_name);
                         proto_decodings.push(quote! {
                                 let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas;
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
@@ -416,4 +416,20 @@ fn build_store_handler(
 fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenStream {
     tokens.extend(TokenStream::from(error.into_compile_error()));
     tokens
+}
+
+fn new_ident<S: AsRef<str>>(from: S) -> syn::Ident {
+    format_ident!("{}", from.as_ref())
+}
+
+fn prefixed_ident(prefix: &str, ident: &syn::Ident) -> syn::Ident {
+    if ident.to_string().starts_with("_") {
+        return format_ident!("_{}{}", prefix, ident);
+    }
+
+    format_ident!("{}_{}", prefix, ident)
+}
+
+fn suffixed_ident(ident: &syn::Ident, suffix: &str) -> syn::Ident {
+    format_ident!("{}_{}", ident, suffix)
 }
