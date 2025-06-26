@@ -42,6 +42,17 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                     let var_name = v.ident.clone();
 
                     let argument_type = &*pat_type.ty;
+
+                    if let syn::Type::Path(p) = argument_type {
+                        if p.path.segments.last().unwrap().ident == "FoundationalStore" {
+                            args.push(quote! { block_number: u64 });
+                            proto_decodings.push(quote! {
+                                let #var_name = FoundationalStore::new(block_number);
+                            });
+                            continue;
+                        }
+                    }
+
                     let input_obj = match parse_input_type(argument_type) {
                         Ok(t) => t,
                         Err(e) => {

@@ -10,9 +10,9 @@ mod store;
 pub fn map(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut keep_empty_output = false;
     match args.to_string().as_str() {
-        "" => {},
-        "keep_empty_output" => {keep_empty_output = true},
-        _ => panic!("Invalid argument '{}' for map macro", args)
+        "" => {}
+        "keep_empty_output" => keep_empty_output = true,
+        _ => panic!("Invalid argument '{}' for map macro", args),
     }
     handler::main(item.into(), config::ModuleType::Map, keep_empty_output).into()
 }
@@ -21,9 +21,9 @@ pub fn map(args: TokenStream, item: TokenStream) -> TokenStream {
 pub fn store(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut keep_empty_output = false;
     match args.to_string().as_str() {
-        "" => {},
-        "keep_empty_output" => {keep_empty_output = true},
-        _ => panic!("Invalid argument '{}' for store macro", args)
+        "" => {}
+        "keep_empty_output" => keep_empty_output = true,
+        _ => panic!("Invalid argument '{}' for store macro", args),
     }
     handler::main(item.into(), config::ModuleType::Store, keep_empty_output).into()
 }
@@ -203,7 +203,7 @@ mod test {
                         result
                     };
 
-                    substreams :: skip_empty_output () ; 
+                    substreams :: skip_empty_output () ;
                     let result = func();
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
@@ -214,7 +214,6 @@ mod test {
                 }
             },
         );
-
     }
 
     #[test]
@@ -261,7 +260,7 @@ mod test {
                             )
                         );
                     let store: StoreAddInt64 = StoreAddInt64::new();
-                    substreams :: skip_empty_output () ; 
+                    substreams :: skip_empty_output () ;
                     let result = {
                         unimplemented!("do something");
                     };
@@ -269,6 +268,5 @@ mod test {
                 }
             },
         );
-
     }
 }

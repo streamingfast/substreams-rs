@@ -66,6 +66,8 @@ pub mod state {
     #[cfg(target_arch = "wasm32")]
     #[link(wasm_import_module = "state")]
     extern "C" {
+        pub fn fstore_get(req_ptr: u32, req_len: u32) -> u64;
+        pub fn fstore_get_all(req_ptr: u32, req_len: u32) -> u64;
         pub fn get_first(store_idx: u32, key_ptr: *const u8, key_len: u32, output_ptr: u32) -> u32;
         pub fn get_last(store_idx: u32, key_ptr: *const u8, key_len: u32, output_ptr: u32) -> u32;
         pub fn get_at(

@@ -59,7 +59,6 @@
 use std::{convert::TryFrom, io::BufRead, str};
 
 use crate::{key, operation, pb::substreams::store_delta::Operation};
-
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -1624,6 +1623,70 @@ macro_rules! impl_delta {
             }
         }
     };
+}
+
+pub struct FoundationalStore {
+    block_number: u64,
+}
+
+impl FoundationalStore {
+    pub fn new(block_number: u64) -> Self {
+        Self {
+            block_number: block_number,
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<Vec<u8>> {
+        let req = pb::foundational_store::GetRequest {
+            block_number: self.block_number,
+            omit_deleted: true,
+            key: key.as_bytes().to_vec(),
+        };
+
+        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+
+        let packed = state::fstore_get(ptr as u32, len as u32);
+        let resp_ptr = (packed >> 32) as *mut u8;
+        let resp_len = (packed & 0xFFFF_FFFF) as usize;
+
+        let resp: pb::foundational_store::GetResponse =
+            proto::decode_ptr(resp_ptr, resp_len).unwrap();
+
+        if resp.response == pb::foundational_store::ResponseCode::Found as i32 {
+            resp.value.map(|any| any.value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_all(&self, keys: &[&str]) -> Vec<Option<Vec<u8>>> {
+        let req = pb::foundational_store::GetAllRequest {
+            block_number: self.block_number,
+            omit_deleted: true,
+            keys: keys.iter().map(|k| k.as_bytes().to_vec()).collect(),
+        };
+        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+        let packed = state::fstore_get_all(ptr as u32, len as u32);
+        let resp_ptr = (packed >> 32) as *mut u8;
+        let resp_len = (packed & 0xFFFF_FFFF) as usize;
+
+        let resp: pb::foundational_store::GetAllResponse =
+            proto::decode_ptr(resp_ptr, resp_len).unwrap();
+        resp.entries
+            .into_iter()
+            .map(|e| {
+                if let Some(r) = e.response {
+                    if r.response == pb::foundational_store::ResponseCode::Found as i32 {
+                        r.value.map(|any| any.value)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 impl_delta!(DeltaBigDecimal);
