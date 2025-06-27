@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "substreams-macro",
-    "substreams",
-]
+members = ["substreams-macro", "substreams"]
 
 [workspace.package]
 version = "0.6.1"
@@ -12,7 +9,7 @@ homepage = "https://substreams.streamingfast.io/"
 repository = "https://github.com/streamingfast/substreams-rs"
 license = "Apache-2.0"
 readme = "./README.md"
-keywords = [ "substreams", "streamingfast", "firehose", "thegraph"]
+keywords = ["substreams", "streamingfast", "firehose", "thegraph"]
 categories = ["api-bindings", "external-ffi-bindings", "wasm"]
 rust-version = "1.60"
 

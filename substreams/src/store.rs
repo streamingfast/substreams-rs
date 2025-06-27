@@ -1625,6 +1625,13 @@ macro_rules! impl_delta {
     };
 }
 
+// Returns a `u64` whose high 32 bits are the pointer and low 32 bits are the length.
+fn unpack_ptr_len(packed: u64) -> (*mut u8, usize) {
+    let ptr = (packed >> 32) as u32 as usize as *mut u8;
+    let len = packed as u32 as usize;
+    (ptr, len)
+}
+
 pub struct FoundationalStore {
     block_number: u64,
 }
@@ -1637,6 +1644,9 @@ impl FoundationalStore {
     }
 
     pub fn get(&self, key: &str) -> Option<Vec<u8>> {
+        if cfg!(not(target_arch = "wasm32")) {
+            return None;
+        }
         let req = pb::foundational_store::GetRequest {
             block_number: self.block_number,
             omit_deleted: true,
@@ -1646,8 +1656,8 @@ impl FoundationalStore {
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
 
         let packed = state::fstore_get(ptr as u32, len as u32);
-        let resp_ptr = (packed >> 32) as *mut u8;
-        let resp_len = (packed & 0xFFFF_FFFF) as usize;
+
+        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
         let resp: pb::foundational_store::GetResponse =
             proto::decode_ptr(resp_ptr, resp_len).unwrap();
@@ -1660,6 +1670,12 @@ impl FoundationalStore {
     }
 
     pub fn get_all(&self, keys: &[&str]) -> Vec<Option<Vec<u8>>> {
+        if keys.is_empty() {
+            return Vec::new();
+        }
+        if cfg!(not(target_arch = "wasm32")) {
+            return keys.iter().map(|_| None).collect();
+        }
         let req = pb::foundational_store::GetAllRequest {
             block_number: self.block_number,
             omit_deleted: true,
@@ -1667,8 +1683,8 @@ impl FoundationalStore {
         };
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
         let packed = state::fstore_get_all(ptr as u32, len as u32);
-        let resp_ptr = (packed >> 32) as *mut u8;
-        let resp_len = (packed & 0xFFFF_FFFF) as usize;
+
+        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
         let resp: pb::foundational_store::GetAllResponse =
             proto::decode_ptr(resp_ptr, resp_len).unwrap();
@@ -1774,10 +1790,12 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 #[cfg(test)]
 mod tests {
     use crate::{
+        pb::foundational_store::{GetAllRequest, GetRequest},
         pb::substreams::{store_delta::Operation, StoreDelta},
+        proto::{decode_ptr, encode_to_ptr},
         store::{
-            decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array, DeltaArray,
-            Deltas,
+            decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array,
+            unpack_ptr_len, DeltaArray, Deltas, FoundationalStore,
         },
     };
 
@@ -1911,5 +1929,71 @@ mod tests {
         let actual_value = split_array::<String>(bytes.to_vec());
 
         assert_eq!(expected_value, actual_value)
+    }
+
+    #[test]
+    fn unpack_ptr_len_roundtrip() {
+        // random pointer
+        let ptr_orig = 0x1234_5678usize as *mut u8;
+        let len_orig: usize = 0x9ABC_DEFusize;
+
+        let packed: u64 = ((ptr_orig as u64) << 32) | (len_orig as u64 & 0xFFFF_FFFF);
+
+        let (ptr_unpacked, len_unpacked) = unpack_ptr_len(packed);
+
+        assert_eq!(ptr_unpacked, ptr_orig);
+        assert_eq!(len_unpacked, len_orig as u32 as usize);
+    }
+
+    #[test]
+    fn unpack_ptr_len_zero() {
+        let packed = 0u64;
+        let (ptr, len) = unpack_ptr_len(packed);
+        assert!(ptr.is_null());
+        assert_eq!(len, 0);
+    }
+
+    #[test]
+    fn get_non_wasm_returns_none() {
+        let store = FoundationalStore::new(999);
+        assert_eq!(store.get("some_key"), None);
+    }
+
+    #[test]
+    fn get_all_non_wasm_returns_all_none() {
+        let store = FoundationalStore::new(0);
+        let keys = &["test1", "test2", "test3"];
+        assert_eq!(store.get_all(keys), vec![None, None, None]);
+    }
+
+    #[test]
+    fn get_all_empty_keys() {
+        let store = FoundationalStore::new(42);
+        let empty: &[&str] = &[];
+        let out = store.get_all(empty);
+        assert!(out.is_empty());
+    }
+    #[test]
+    fn proto_roundtrip_get_request() {
+        let req = GetRequest {
+            block_number: 123,
+            omit_deleted: false,
+            key: b"hello".to_vec(),
+        };
+        let (ptr, len, buf) = encode_to_ptr(&req).unwrap();
+        let decoded: GetRequest = decode_ptr(ptr as *mut u8, len).unwrap();
+        assert_eq!(decoded, req);
+    }
+
+    #[test]
+    fn proto_roundtrip_get_all_request() {
+        let original = GetAllRequest {
+            block_number: 321,
+            omit_deleted: true,
+            keys: vec![b"k1".to_vec(), b"k2".to_vec()],
+        };
+        let (ptr, len, _buf) = encode_to_ptr(&original).unwrap();
+        let decoded: GetAllRequest = decode_ptr(ptr as *mut u8, len).unwrap();
+        assert_eq!(decoded, original);
     }
 }
