@@ -1628,6 +1628,7 @@ macro_rules! impl_delta {
 // Returns a `u64` whose high 32 bits are the pointer and low 32 bits are the length.
 fn unpack_ptr_len(packed: u64) -> (*mut u8, u32) {
     let ptr32 = (packed >> 32) as u32;
+
     let len32 = packed as u32;
     let ptr = ptr32 as usize as *mut u8;
     (ptr, len32)
