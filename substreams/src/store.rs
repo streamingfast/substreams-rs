@@ -1626,10 +1626,11 @@ macro_rules! impl_delta {
 }
 
 // Returns a `u64` whose high 32 bits are the pointer and low 32 bits are the length.
-fn unpack_ptr_len(packed: u64) -> (*mut u8, usize) {
-    let ptr = (packed >> 32) as u32 as usize as *mut u8;
-    let len = packed as u32 as usize;
-    (ptr, len)
+fn unpack_ptr_len(packed: u64) -> (*mut u8, u32) {
+    let ptr32 = (packed >> 32) as u32;
+    let len32 = packed as u32;
+    let ptr = ptr32 as usize as *mut u8;
+    (ptr, len32)
 }
 
 pub struct FoundationalStore {
@@ -1643,14 +1644,15 @@ impl FoundationalStore {
         }
     }
 
-    pub fn get(&self, key: &str) -> Option<Vec<u8>> {
+    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
         if cfg!(not(target_arch = "wasm32")) {
             return None;
         }
+        let key_ref = key.as_ref();
         let req = pb::foundational_store::GetRequest {
             block_number: self.block_number,
             omit_deleted: true,
-            key: key.as_bytes().to_vec(),
+            key: key_ref.as_bytes().to_vec(),
         };
 
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
@@ -1660,7 +1662,7 @@ impl FoundationalStore {
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
         let resp: pb::foundational_store::GetResponse =
-            proto::decode_ptr(resp_ptr, resp_len).unwrap();
+            proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
 
         if resp.response == pb::foundational_store::ResponseCode::Found as i32 {
             resp.value.map(|any| any.value)
@@ -1669,7 +1671,7 @@ impl FoundationalStore {
         }
     }
 
-    pub fn get_all(&self, keys: &[&str]) -> Vec<Option<Vec<u8>>> {
+    pub fn get_all<K: AsRef<str>>(&self, keys: &[K]) -> Vec<Option<Vec<u8>>> {
         if keys.is_empty() {
             return Vec::new();
         }
@@ -1679,7 +1681,10 @@ impl FoundationalStore {
         let req = pb::foundational_store::GetAllRequest {
             block_number: self.block_number,
             omit_deleted: true,
-            keys: keys.iter().map(|k| k.as_bytes().to_vec()).collect(),
+            keys: keys
+                .iter()
+                .map(|k| k.as_ref().as_bytes().to_vec())
+                .collect(),
         };
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
         let packed = state::fstore_get_all(ptr as u32, len as u32);
@@ -1687,7 +1692,7 @@ impl FoundationalStore {
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
         let resp: pb::foundational_store::GetAllResponse =
-            proto::decode_ptr(resp_ptr, resp_len).unwrap();
+            proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
         resp.entries
             .into_iter()
             .map(|e| {
@@ -1942,7 +1947,7 @@ mod tests {
         let (ptr_unpacked, len_unpacked) = unpack_ptr_len(packed);
 
         assert_eq!(ptr_unpacked, ptr_orig);
-        assert_eq!(len_unpacked, len_orig as u32 as usize);
+        assert_eq!(len_unpacked, len_orig as u32);
     }
 
     #[test]
