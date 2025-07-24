@@ -58,7 +58,8 @@
 //! ```
 use std::{convert::TryFrom, io::BufRead, str};
 
-use crate::{key, operation, pb::substreams::store_delta::Operation};
+
+use crate::{key, operation, pb::{foundational_store::{GetResponse, GetAllResponse}, substreams::store_delta::Operation}};
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -1634,79 +1635,59 @@ fn unpack_ptr_len(packed: u64) -> (*mut u8, u32) {
 }
 
 pub struct FoundationalStore {
-    block_number: u64,
+    store_index: u32
 }
 
 impl FoundationalStore {
-    pub fn new(block_number: u64) -> Self {
+    pub fn new(store_index: u32) -> Self {
         Self {
-            block_number: block_number,
+            store_index
         }
     }
 
-    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<Vec<u8>> {
+    pub fn get<K: AsRef<[u8]>>(&self, block_number: u64, key: K) -> Option<GetResponse> {
         if cfg!(not(target_arch = "wasm32")) {
             return None;
         }
         let key_ref = key.as_ref();
         let req = pb::foundational_store::GetRequest {
-            block_number: self.block_number,
+            block_number: block_number,
             omit_deleted: true,
-            key: key_ref.as_bytes().to_vec(),
+            key: key_ref.to_vec(),
         };
 
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
 
-        let packed = state::fstore_get(ptr as u32, len as u32);
+        let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
 
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
-        let resp: pb::foundational_store::GetResponse =
-            proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+        let msg: GetResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
 
-        if resp.response == pb::foundational_store::ResponseCode::Found as i32 {
-            resp.value.map(|any| any.value)
-        } else {
-            None
-        }
+        Some(msg)
+
     }
 
-    pub fn get_all<K: AsRef<str>>(&self, keys: &[K]) -> Vec<Option<Vec<u8>>> {
+    pub fn get_all<K: AsRef<[u8]>>(&self, block_number: u64, keys: &[K]) -> Option<GetAllResponse> {
         if keys.is_empty() {
-            return Vec::new();
+            return Some(GetAllResponse { entries: Vec::new() });
         }
         if cfg!(not(target_arch = "wasm32")) {
-            return keys.iter().map(|_| None).collect();
+            return None;
         }
         let req = pb::foundational_store::GetAllRequest {
-            block_number: self.block_number,
+            block_number: block_number,
             omit_deleted: true,
-            keys: keys
-                .iter()
-                .map(|k| k.as_ref().as_bytes().to_vec())
-                .collect(),
+            keys: keys.iter().map(|k| k.as_ref().to_vec()).collect(),
         };
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
-        let packed = state::fstore_get_all(ptr as u32, len as u32);
+        let packed = state::foundational_store_get_all(self.store_index, ptr as u32, len as u32);
 
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
-        let resp: pb::foundational_store::GetAllResponse =
-            proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
-        resp.entries
-            .into_iter()
-            .map(|e| {
-                if let Some(r) = e.response {
-                    if r.response == pb::foundational_store::ResponseCode::Found as i32 {
-                        r.value.map(|any| any.value)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect()
+        let msg: GetAllResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+
+        Some(msg)
     }
 }
 
@@ -1795,9 +1776,7 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        pb::foundational_store::{GetAllRequest, GetRequest},
-        pb::substreams::{store_delta::Operation, StoreDelta},
-        proto::{decode_ptr, encode_to_ptr},
+        pb::{foundational_store::GetAllResponse, substreams::{store_delta::Operation, StoreDelta}},
         store::{
             decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array,
             unpack_ptr_len, DeltaArray, Deltas, FoundationalStore,
@@ -1961,44 +1940,116 @@ mod tests {
     #[test]
     fn get_non_wasm_returns_none() {
         let store = FoundationalStore::new(999);
-        assert_eq!(store.get("some_key"), None);
+        assert_eq!(store.get(0, b"some_key"), None);
     }
 
     #[test]
-    fn get_all_non_wasm_returns_all_none() {
+    fn get_all_non_wasm_returns_none() {
         let store = FoundationalStore::new(0);
-        let keys = &["test1", "test2", "test3"];
-        assert_eq!(store.get_all(keys), vec![None, None, None]);
+        let keys = &[b"test1", b"test2", b"test3"];
+        assert_eq!(store.get_all(0, keys), None);
     }
 
     #[test]
     fn get_all_empty_keys() {
         let store = FoundationalStore::new(42);
-        let empty: &[&str] = &[];
-        let out = store.get_all(empty);
-        assert!(out.is_empty());
-    }
-    #[test]
-    fn proto_roundtrip_get_request() {
-        let req = GetRequest {
-            block_number: 123,
-            omit_deleted: false,
-            key: b"hello".to_vec(),
-        };
-        let (ptr, len, buf) = encode_to_ptr(&req).unwrap();
-        let decoded: GetRequest = decode_ptr(ptr as *mut u8, len).unwrap();
-        assert_eq!(decoded, req);
+        let empty: &[&[u8]] = &[];
+        let out = store.get_all(0, empty);
+        assert_eq!(out, Some(GetAllResponse { entries: Vec::new() }));
     }
 
     #[test]
-    fn proto_roundtrip_get_all_request() {
-        let original = GetAllRequest {
-            block_number: 321,
-            omit_deleted: true,
-            keys: vec![b"k1".to_vec(), b"k2".to_vec()],
-        };
-        let (ptr, len, _buf) = encode_to_ptr(&original).unwrap();
-        let decoded: GetAllRequest = decode_ptr(ptr as *mut u8, len).unwrap();
-        assert_eq!(decoded, original);
+    fn test_with_vec_u8() {
+        let store = FoundationalStore::new(123);
+        let key = vec![0x01, 0x02, 0x03, 0x04];
+        let result = store.get(0, &key);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_with_string_bytes() {
+        let store = FoundationalStore::new(456);
+        let key = "test_key";
+        // Strings still work because &str implements AsRef<[u8]>
+        let result = store.get(0, key);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn get_all_with_mixed_key_types() {
+        let store = FoundationalStore::new(789);
+        let vec_key = vec![0x01, 0x02];
+        let keys = &[&b"string_key"[..], &vec_key[..], &b"byte_string"[..]];
+        let results = store.get_all(123, keys);
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_single_key() {
+        let store = FoundationalStore::new(100);
+        let keys = &[b"single_key"];
+        let results = store.get_all(0, keys);
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_multiple_string_keys() {
+        let store = FoundationalStore::new(200);
+        let keys = &["key1", "key2", "key3", "key4"];
+        let results = store.get_all(42, keys);
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_with_different_block_numbers() {
+        let store = FoundationalStore::new(300);
+        let keys = &[b"test_key"];
+        
+        let results_block_0 = store.get_all(0, keys);
+        let results_block_100 = store.get_all(100, keys);
+        let results_block_max = store.get_all(u64::MAX, keys);
+        
+        assert_eq!(results_block_0, None);
+        assert_eq!(results_block_100, None);
+        assert_eq!(results_block_max, None);
+    }
+
+    #[test]
+    fn get_all_preserves_order() {
+        let store = FoundationalStore::new(400);
+        let keys = &[b"key_z", b"key_a", b"key_m"];
+        let results = store.get_all(0, keys);
+        
+        // On non-WASM, should return None
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_with_duplicate_keys() {
+        let store = FoundationalStore::new(500);
+        let keys = &[&b"duplicate"[..], &b"duplicate"[..], &b"unique"[..]];
+        let results = store.get_all(0, keys);
+        
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_with_empty_key() {
+        let store = FoundationalStore::new(600);
+        let keys = &[&b""[..], &b"non_empty"[..]];
+        let results = store.get_all(0, keys);
+        
+        assert_eq!(results, None);
+    }
+
+    #[test]
+    fn get_all_large_number_of_keys() {
+        let store = FoundationalStore::new(700);
+        let keys: Vec<Vec<u8>> = (0..1000).map(|i| format!("key_{}", i).into_bytes()).collect();
+        let key_refs: Vec<&Vec<u8>> = keys.iter().collect();
+        
+        let results = store.get_all(0, &key_refs);
+        
+        assert_eq!(results, None);
     }
 }

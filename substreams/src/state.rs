@@ -3,22 +3,22 @@ use crate::scalar::{BigDecimal, BigInt};
 use crate::{externs, memory};
 
 #[cfg(target_arch = "wasm32")]
-pub fn fstore_get(req_ptr: u32, req_len: u32) -> u64 {
-    unsafe { externs::state::fstore_get(req_ptr, req_len) }
+pub fn foundational_store_get(store_index: u32, req_ptr: u32, req_len: u32) -> u64 {
+    unsafe { externs::state::foundational_store_get(store_index, req_ptr, req_len) }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn fstore_get_all(req_ptr: u32, req_len: u32) -> u64 {
-    unsafe { externs::state::fstore_get_all(req_ptr, req_len) }
+pub fn foundational_store_get_all(store_index:u32, req_ptr: u32, req_len: u32) -> u64 {
+    unsafe { externs::state::foundational_store_get_all(store_index, req_ptr, req_len) }
 }
 
 // noop
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fstore_get(_: u32, _: u32) -> u64 {
+pub fn foundational_store_get(_:u32, _: u32, _: u32) -> u64 {
     0
 }
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fstore_get_all(_: u32, _: u32) -> u64 {
+pub fn foundational_store_get_all(_:u32, _: u32, _: u32) -> u64 {
     0
 }
 
