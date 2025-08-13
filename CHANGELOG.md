@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+- Added bidirectional conversion between `scalar::BigInt` and `substreams_ethereum::pb::eth::v2::BigInt` via the `From` trait
+- Added new optional `ethereum` feature to enable Ethereum-specific functionality
+
 ## 0.6.1
 
 - Substreams `map` or `store` input that starts with `_` doesn't generate a warning about snake cases not being respected.
