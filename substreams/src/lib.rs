@@ -121,6 +121,10 @@ pub mod pb;
 pub mod proto;
 pub mod scalar;
 
+/// Conversions between different BigInt implementations
+#[cfg(feature = "ethereum")]
+pub mod conversions;
+
 mod state;
 
 pub mod key;
