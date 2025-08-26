@@ -13,5 +13,5 @@ pub mod sf {
 #[path = "./sf.substreams.v1.rs"]
 pub mod substreams;
 
-#[path = "./foundational_store.rs"]
+#[path = "./sf.substreams.foundational_store.v1.rs"]
 pub mod foundational_store;
