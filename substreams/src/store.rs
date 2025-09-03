@@ -61,7 +61,7 @@ use std::{convert::TryFrom, io::BufRead, str};
 use crate::{
     key, operation,
     pb::{
-        foundational_store::{GetAllResponse, GetResponse},
+        sf::substreams::foundational_store::v1::{GetAllResponse, GetResponse},
         substreams::store_delta::Operation,
     },
 };
@@ -1653,7 +1653,7 @@ impl FoundationalStore {
             panic!("foundational_store::get called outside wasm32 target");
         }
         let key_ref = key.as_ref();
-        let req = pb::foundational_store::GetRequest {
+        let req = pb::sf::substreams::foundational_store::v1::GetRequest {
             block_number: 0,
             block_hash: vec![],
             omit_deleted: true,
@@ -1680,7 +1680,7 @@ impl FoundationalStore {
         if cfg!(not(target_arch = "wasm32")) {
             panic!("foundational_store::get_all called outside wasm32 target");
         }
-        let req = pb::foundational_store::GetAllRequest {
+        let req = pb::sf::substreams::foundational_store::v1::GetAllRequest {
             block_number: 0,
             block_hash: vec![],
             omit_deleted: true,
@@ -1783,7 +1783,7 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 mod tests {
     use crate::{
         pb::{
-            foundational_store::GetAllResponse,
+            sf::substreams::foundational_store::v1::GetAllResponse,
             substreams::{store_delta::Operation, StoreDelta},
         },
         store::{

@@ -41,41 +41,6 @@ pub struct GetAllResponse {
     #[prost(message, repeated, tag="1")]
     pub entries: ::prost::alloc::vec::Vec<ResponseEntry>,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum ResponseCode {
-    Unset = 0,
-    Found = 1,
-    NotFound = 2,
-    NotFoundFinalize = 4,
-    NotFoundBlockNotReached = 5,
-}
-impl ResponseCode {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unset => "UNSET",
-            Self::Found => "FOUND",
-            Self::NotFound => "NOT_FOUND",
-            Self::NotFoundFinalize => "NOT_FOUND_FINALIZE",
-            Self::NotFoundBlockNotReached => "NOT_FOUND_BLOCK_NOT_REACHED",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "UNSET" => Some(Self::Unset),
-            "FOUND" => Some(Self::Found),
-            "NOT_FOUND" => Some(Self::NotFound),
-            "NOT_FOUND_FINALIZE" => Some(Self::NotFoundFinalize),
-            "NOT_FOUND_BLOCK_NOT_REACHED" => Some(Self::NotFoundBlockNotReached),
-            _ => None,
-        }
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Entry {
     #[prost(bytes="vec", tag="2")]
@@ -88,11 +53,39 @@ pub struct Entries {
     #[prost(message, repeated, tag="1")]
     pub entries: ::prost::alloc::vec::Vec<Entry>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct AccountOwner {
-    #[prost(bytes="vec", tag="1")]
-    pub mint: ::prost::alloc::vec::Vec<u8>,
-    #[prost(bytes="vec", tag="2")]
-    pub owner: ::prost::alloc::vec::Vec<u8>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ResponseCode {
+    Unspecified = 0,
+    Found = 1,
+    NotFound = 2,
+    NotFoundFinalize = 4,
+    NotFoundBlockNotReached = 5,
+}
+impl ResponseCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "RESPONSE_CODE_UNSPECIFIED",
+            Self::Found => "RESPONSE_CODE_FOUND",
+            Self::NotFound => "RESPONSE_CODE_NOT_FOUND",
+            Self::NotFoundFinalize => "RESPONSE_CODE_NOT_FOUND_FINALIZE",
+            Self::NotFoundBlockNotReached => "RESPONSE_CODE_NOT_FOUND_BLOCK_NOT_REACHED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "RESPONSE_CODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "RESPONSE_CODE_FOUND" => Some(Self::Found),
+            "RESPONSE_CODE_NOT_FOUND" => Some(Self::NotFound),
+            "RESPONSE_CODE_NOT_FOUND_FINALIZE" => Some(Self::NotFoundFinalize),
+            "RESPONSE_CODE_NOT_FOUND_BLOCK_NOT_REACHED" => Some(Self::NotFoundBlockNotReached),
+            _ => None,
+        }
+    }
 }
 // @@protoc_insertion_point(module)
