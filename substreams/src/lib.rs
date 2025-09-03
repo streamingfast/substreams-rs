@@ -142,8 +142,8 @@ pub mod prelude {
     pub use crate::scalar::{BigDecimal, BigInt};
     pub use crate::store::{
         Appender, Delta, DeltaArray, DeltaBigDecimal, DeltaBigInt, DeltaBool, DeltaBytes,
-        DeltaFloat64, DeltaInt32, DeltaInt64, DeltaProto, DeltaString, Deltas, StoreAdd,
-        StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
+        DeltaFloat64, DeltaInt32, DeltaInt64, DeltaProto, DeltaString, Deltas, FoundationalStore,
+        StoreAdd, StoreAddBigDecimal, StoreAddBigInt, StoreAddFloat64, StoreAddInt64, StoreAppend,
         StoreDelete, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetFloat64, StoreGetInt64,
         StoreGetProto, StoreGetRaw, StoreGetString, StoreMax, StoreMaxBigDecimal, StoreMaxBigInt,
         StoreMaxFloat64, StoreMaxInt64, StoreMin, StoreMinBigDecimal, StoreMinBigInt,
@@ -156,6 +156,7 @@ pub mod prelude {
 }
 
 pub use crate::hex::Hex;
+// pub use crate::store::FoundationalStore;
 pub use hex_literal::hex;
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]

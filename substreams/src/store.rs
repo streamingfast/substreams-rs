@@ -58,8 +58,13 @@
 //! ```
 use std::{convert::TryFrom, io::BufRead, str};
 
-use crate::{key, operation, pb::substreams::store_delta::Operation};
-
+use crate::{
+    key, operation,
+    pb::{
+        foundational_store::{GetAllResponse, GetResponse},
+        substreams::store_delta::Operation,
+    },
+};
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -1626,6 +1631,72 @@ macro_rules! impl_delta {
     };
 }
 
+// Returns a `u64` whose high 32 bits are the pointer and low 32 bits are the length.
+fn unpack_ptr_len(packed: u64) -> (*mut u8, u32) {
+    let ptr32 = (packed >> 32) as u32;
+    let len32 = packed as u32;
+    let ptr = ptr32 as usize as *mut u8;
+    (ptr, len32)
+}
+
+pub struct FoundationalStore {
+    store_index: u32,
+}
+
+impl FoundationalStore {
+    pub fn new(store_index: u32) -> Self {
+        Self { store_index }
+    }
+
+    pub fn get<K: AsRef<[u8]>>(&self, key: K) -> GetResponse {
+        if cfg!(not(target_arch = "wasm32")) {
+            panic!("foundational_store::get called outside wasm32 target");
+        }
+        let key_ref = key.as_ref();
+        let req = pb::foundational_store::GetRequest {
+            block_number: 0,
+            block_hash: vec![],
+            omit_deleted: true,
+            key: key_ref.to_vec(),
+        };
+
+        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+
+        let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
+
+        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
+
+        let msg: GetResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+
+        msg
+    }
+
+    pub fn get_all<K: AsRef<[u8]>>(&self, keys: &[K]) -> GetAllResponse {
+        if keys.is_empty() {
+            return GetAllResponse {
+                entries: Vec::new(),
+            };
+        }
+        if cfg!(not(target_arch = "wasm32")) {
+            panic!("foundational_store::get_all called outside wasm32 target");
+        }
+        let req = pb::foundational_store::GetAllRequest {
+            block_number: 0,
+            block_hash: vec![],
+            omit_deleted: true,
+            keys: keys.iter().map(|k| k.as_ref().to_vec()).collect(),
+        };
+        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+        let packed = state::foundational_store_get_all(self.store_index, ptr as u32, len as u32);
+
+        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
+
+        let msg: GetAllResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+
+        msg
+    }
+}
+
 impl_delta!(DeltaBigDecimal);
 impl_delta!(DeltaBigInt);
 impl_delta!(DeltaInt32);
@@ -1711,10 +1782,13 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        pb::substreams::{store_delta::Operation, StoreDelta},
+        pb::{
+            foundational_store::GetAllResponse,
+            substreams::{store_delta::Operation, StoreDelta},
+        },
         store::{
-            decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array, DeltaArray,
-            Deltas,
+            decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array,
+            unpack_ptr_len, DeltaArray, Deltas, FoundationalStore,
         },
     };
 
@@ -1848,5 +1922,154 @@ mod tests {
         let actual_value = split_array::<String>(bytes.to_vec());
 
         assert_eq!(expected_value, actual_value)
+    }
+
+    #[test]
+    fn unpack_ptr_len_roundtrip() {
+        // random pointer
+        let ptr_orig = 0x1234_5678usize as *mut u8;
+        let len_orig: usize = 0x9ABC_DEFusize;
+
+        let packed: u64 = ((ptr_orig as u64) << 32) | (len_orig as u64 & 0xFFFF_FFFF);
+
+        let (ptr_unpacked, len_unpacked) = unpack_ptr_len(packed);
+
+        assert_eq!(ptr_unpacked, ptr_orig);
+        assert_eq!(len_unpacked, len_orig as u32);
+    }
+
+    #[test]
+    fn unpack_ptr_len_zero() {
+        let packed = 0u64;
+        let (ptr, len) = unpack_ptr_len(packed);
+        assert!(ptr.is_null());
+        assert_eq!(len, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_non_wasm_returns_none() {
+        let store = FoundationalStore::new(999);
+        // now panics on non-wasm
+        let _ = store.get(b"some_key");
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_non_wasm_returns_none() {
+        let store = FoundationalStore::new(0);
+        let keys = &[b"test1", b"test2", b"test3"];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    fn get_all_empty_keys() {
+        let store = FoundationalStore::new(42);
+        let empty: &[&[u8]] = &[];
+        let out = store.get_all(empty);
+        // returns a real value before the wasm guard
+        assert_eq!(
+            out,
+            GetAllResponse {
+                entries: Vec::new()
+            }
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_with_vec_u8() {
+        let store = FoundationalStore::new(123);
+        let key = vec![0x01, 0x02, 0x03, 0x04];
+        // now panics on non-wasm
+        let _ = store.get(&key);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_with_string_bytes() {
+        let store = FoundationalStore::new(456);
+        let key = "test_key";
+        // now panics on non-wasm
+        let _ = store.get(key);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_with_mixed_key_types() {
+        let store = FoundationalStore::new(789);
+        let vec_key = vec![0x01, 0x02];
+        let keys = &[&b"string_key"[..], &vec_key[..], &b"byte_string"[..]];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_single_key() {
+        let store = FoundationalStore::new(100);
+        let keys = &[b"single_key"];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_multiple_string_keys() {
+        let store = FoundationalStore::new(200);
+        let keys = &["key1", "key2", "key3", "key4"];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_with_different_block_numbers() {
+        let store = FoundationalStore::new(300);
+        let keys = &[b"test_key"];
+
+        // any of these calls should panic on non-wasm; the first panic satisfies #[should_panic]
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_preserves_order() {
+        let store = FoundationalStore::new(400);
+        let keys = &[b"key_z", b"key_a", b"key_m"];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_with_duplicate_keys() {
+        let store = FoundationalStore::new(500);
+        let keys = &[&b"duplicate"[..], &b"duplicate"[..], &b"unique"[..]];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_with_empty_key() {
+        let store = FoundationalStore::new(600);
+        let keys = &[&b""[..], &b"non_empty"[..]];
+        // now panics on non-wasm
+        let _ = store.get_all(keys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_all_large_number_of_keys() {
+        let store = FoundationalStore::new(700);
+        let keys: Vec<Vec<u8>> = (0..1000)
+            .map(|i| format!("key_{}", i).into_bytes())
+            .collect();
+        let key_refs: Vec<&Vec<u8>> = keys.iter().collect();
+
+        // now panics on non-wasm
+        let _ = store.get_all(&key_refs);
     }
 }

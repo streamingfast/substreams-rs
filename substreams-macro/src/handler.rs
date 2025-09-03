@@ -42,6 +42,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                     let var_name = v.ident.clone();
 
                     let argument_type = &*pat_type.ty;
+
                     let input_obj = match parse_input_type(argument_type) {
                         Ok(t) => t,
                         Err(e) => {
@@ -70,8 +71,18 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                     }
 
                     if input_obj.is_readable_store {
-                        let var_idx = suffixed_ident(&var_name, "idx");
+                        let var_idx: syn::Ident = suffixed_ident(&var_name, "idx");
                         let store_type = new_ident(input_obj.store_type);
+                        args.push(quote! { #var_idx: u32 });
+                        read_only_stores.push(
+                            quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
+                        );
+                        continue;
+                    }
+
+                    if input_obj.is_foundational_store {
+                        let var_idx: syn::Ident = suffixed_ident(&var_name, "idx");
+                        let store_type = new_ident("FoundationalStore");
                         args.push(quote! { #var_idx: u32 });
                         read_only_stores.push(
                             quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
@@ -200,6 +211,7 @@ const READABLE_STORE: [&'static str; 8] = [
 struct Input {
     is_writable_store: bool,
     is_readable_store: bool,
+    is_foundational_store: bool,
     is_deltas: bool,
     is_string: bool,
     resolved_ty: String,
@@ -212,6 +224,7 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             let mut input = Input {
                 is_writable_store: false,
                 is_readable_store: false,
+                is_foundational_store: false,
                 is_deltas: false,
                 is_string: false,
                 resolved_ty: "".to_owned(),
@@ -240,6 +253,9 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             if last_type == "Deltas".to_owned() {
                 // todo: should check that it's fully qualified to be our `store::Deltas`
                 input.is_deltas = true;
+            }
+            if last_type == "FoundationalStore".to_owned() {
+                input.is_foundational_store = true;
             }
             Ok(input)
         }
