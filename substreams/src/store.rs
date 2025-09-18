@@ -1675,6 +1675,7 @@ impl FoundationalStore {
         if keys.is_empty() {
             return GetAllResponse {
                 entries: Vec::new(),
+                block_reached: true,
             };
         }
         if cfg!(not(target_arch = "wasm32")) {
@@ -1972,7 +1973,8 @@ mod tests {
         assert_eq!(
             out,
             GetAllResponse {
-                entries: Vec::new()
+                entries: Vec::new(),
+                block_reached: true,
             }
         );
     }
