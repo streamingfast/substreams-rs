@@ -1639,6 +1639,7 @@ fn unpack_ptr_len(packed: u64) -> (*mut u8, u32) {
     (ptr, len32)
 }
 
+// Interface to query data from foundational stores within Substreams modules
 pub struct FoundationalStore {
     store_index: u32,
 }
@@ -1648,11 +1649,14 @@ impl FoundationalStore {
         Self { store_index }
     }
 
+    // Retrieves a single value by key from the foundational store
+    // Returns a GetResponse with status code indicating if the key was found
     pub fn get<K: AsRef<[u8]>>(&self, key: K) -> GetResponse {
         if cfg!(not(target_arch = "wasm32")) {
             panic!("foundational_store::get called outside wasm32 target");
         }
         let key_ref = key.as_ref();
+
         let req = pb::sf::substreams::foundational_store::v1::GetRequest {
             block_number: 0,
             block_hash: vec![],
@@ -1662,16 +1666,21 @@ impl FoundationalStore {
 
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
 
+        // Call host function to query foundational store
         let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
 
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
+        // Decode response from memory
         let msg: GetResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
 
         msg
     }
 
+    // Retrieves multiple values by their keys in a single batch operation
+    // More efficient than multiple get() calls when querying multiple keys
     pub fn get_all<K: AsRef<[u8]>>(&self, keys: &[K]) -> GetAllResponse {
+
         if keys.is_empty() {
             return GetAllResponse {
                 entries: Vec::new(),
@@ -1681,17 +1690,23 @@ impl FoundationalStore {
         if cfg!(not(target_arch = "wasm32")) {
             panic!("foundational_store::get_all called outside wasm32 target");
         }
+
+        // Build batch request with all keys
         let req = pb::sf::substreams::foundational_store::v1::GetAllRequest {
             block_number: 0,
             block_hash: vec![],
             omit_deleted: true,
             keys: keys.iter().map(|k| k.as_ref().to_vec()).collect(),
         };
+
         let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+
+        // Call host function to query multiple keys at once
         let packed = state::foundational_store_get_all(self.store_index, ptr as u32, len as u32);
 
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
+        // Decode batch response from host memory
         let msg: GetAllResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
 
         msg

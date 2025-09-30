@@ -22,7 +22,7 @@ pub struct GetRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetResponse {
     #[prost(enumeration="ResponseCode", tag="1")]
-    pub response_code: i32,
+    pub code: i32,
     /// The stored value (only present when response = FOUND)
     #[prost(message, optional, tag="2")]
     pub value: ::core::option::Option<::prost_types::Any>,
