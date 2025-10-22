@@ -4,11 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.6.3
+## 0.6.4
 
 - Updated foundational store protobuf definitions:
   - `GetResponse`: Renamed `response` field to `code`, added `block_reached` field (tag 3)
   - `GetAllResponse`: Added `block_reached` field
+  - `GetAllRequest`: Removed `omit_deleted` field
+  - `GetRequest`: Removed `omit_deleted` field
+
+## 0.6.3
+
+> [!WARNING]
+> This release has been removed and should not be used. Please use a different version.
 
 ## 0.6.2
 

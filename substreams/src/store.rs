@@ -1660,7 +1660,6 @@ impl FoundationalStore {
         let req = pb::sf::substreams::foundational_store::v1::GetRequest {
             block_number: 0,
             block_hash: vec![],
-            omit_deleted: true,
             key: key_ref.to_vec(),
         };
 
@@ -1695,7 +1694,6 @@ impl FoundationalStore {
         let req = pb::sf::substreams::foundational_store::v1::GetAllRequest {
             block_number: 0,
             block_hash: vec![],
-            omit_deleted: true,
             keys: keys.iter().map(|k| k.as_ref().to_vec()).collect(),
         };
 
