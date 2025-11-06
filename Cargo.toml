@@ -14,7 +14,7 @@ categories = ["api-bindings", "external-ffi-bindings", "wasm"]
 rust-version = "1.82"
 
 [workspace.dependencies]
-substreams-macro = { version = "0.6.4", path = "./substreams-macro" }
+substreams-macro = { version = "0.7.0", path = "./substreams-macro" }
 
 [profile.release]
 lto = true
