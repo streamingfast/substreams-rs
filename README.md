@@ -36,11 +36,6 @@ Full documentation is accessible at https://docs.substreams.dev.
 
 #### Protobuf Generation
 
-It seems that the way we used to generate the Protobuf bindings hasn't been properly documented. It seems that for now, a manual generation of Protobuf needs to be done:
-
-```
-# Working directory at root of project
-
-cd substreams
-protoc --prost_out=src/pb --proto_path=../../substreams-foundational-store/proto ../../substreams-foundational-store/proto/sf/substreams/foundational-store/v1/*.proto
+``` shell
+buf generate buf.build/streamingfast/substreams-foundational-store
 ```

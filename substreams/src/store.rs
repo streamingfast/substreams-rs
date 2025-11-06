@@ -58,13 +58,9 @@
 //! ```
 use std::{convert::TryFrom, io::BufRead, str};
 
-use crate::{
-    key, operation,
-    pb::{
-        sf::substreams::foundational_store::v1::{GetAllResponse, GetResponse},
-        substreams::store_delta::Operation,
-    },
-};
+use crate::pb::sf::substreams::foundational_store::model::v2::{Key, Keys, QueriedEntries};
+use crate::pb::sf::substreams::foundational_store::service::v2::GetResponse;
+use crate::{key, operation, pb::substreams::store_delta::Operation};
 use {
     crate::{
         pb::substreams::StoreDelta,
@@ -1649,63 +1645,62 @@ impl FoundationalStore {
         Self { store_index }
     }
 
-    // Retrieves a single value by key from the foundational store
-    // Returns a GetResponse with status code indicating if the key was found
-    pub fn get<K: AsRef<[u8]>>(&self, key: K) -> GetResponse {
-        if cfg!(not(target_arch = "wasm32")) {
-            panic!("foundational_store::get called outside wasm32 target");
-        }
-        let key_ref = key.as_ref();
-
-        let req = pb::sf::substreams::foundational_store::v1::GetRequest {
-            block_number: 0,
-            block_hash: vec![],
-            key: key_ref.to_vec(),
-        };
-
-        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
-
-        // Call host function to query foundational store
-        let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
-
-        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
-
-        // Decode response from memory
-        let msg: GetResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
-
-        msg
-    }
-
-    // Retrieves multiple values by their keys in a single batch operation
-    // More efficient than multiple get() calls when querying multiple keys
-    pub fn get_all<K: AsRef<[u8]>>(&self, keys: &[K]) -> GetAllResponse {
-
+    pub fn get<K: AsRef<[u8]>>(&self, keys: &[K]) -> QueriedEntries {
         if keys.is_empty() {
-            return GetAllResponse {
-                entries: Vec::new(),
-                block_reached: true,
-            };
+            return QueriedEntries { entries: vec![] };
         }
         if cfg!(not(target_arch = "wasm32")) {
             panic!("foundational_store::get_all called outside wasm32 target");
         }
 
-        // Build batch request with all keys
-        let req = pb::sf::substreams::foundational_store::v1::GetAllRequest {
-            block_number: 0,
-            block_hash: vec![],
-            keys: keys.iter().map(|k| k.as_ref().to_vec()).collect(),
+        let pb_keys = Keys {
+            keys: keys
+                .iter()
+                .map(|k| Key {
+                    bytes: k.as_ref().to_vec(),
+                })
+                .collect(),
         };
 
-        let (ptr, len, _buf) = proto::encode_to_ptr(&req).unwrap();
+        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys).unwrap();
 
         // Call host function to query multiple keys at once
-        let packed = state::foundational_store_get_all(self.store_index, ptr as u32, len as u32);
+        let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
 
         let (resp_ptr, resp_len) = unpack_ptr_len(packed);
 
         // Decode batch response from host memory
-        let msg: GetAllResponse = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+        let msg: QueriedEntries = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
+
+        msg
+    }
+
+    pub fn get_first<K: AsRef<[u8]>>(&self, keys: &[K]) -> QueriedEntries {
+        if keys.is_empty() {
+            return QueriedEntries { entries: vec![] };
+        }
+        if cfg!(not(target_arch = "wasm32")) {
+            panic!("foundational_store::get_all called outside wasm32 target");
+        }
+
+        let pb_keys = Keys {
+            keys: keys
+                .iter()
+                .map(|k| Key {
+                    bytes: k.as_ref().to_vec(),
+                })
+                .collect(),
+        };
+
+        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys).unwrap();
+
+        // Call host function to query multiple keys at once
+        let packed = state::foundational_store_get_first(self.store_index, ptr as u32, len as u32);
+
+        let (resp_ptr, resp_len) = unpack_ptr_len(packed);
+
+        // Decode batch response from host memory
+        let msg: QueriedEntries = proto::decode_ptr(resp_ptr, resp_len as usize).unwrap();
 
         msg
     }
@@ -1739,7 +1734,7 @@ fn decode_bytes_to_i32(bytes: &Vec<u8>) -> i32 {
         return 0;
     }
 
-    // FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
+    // `FIXME: If we are ready to accept the fact that `bytes` is always valid UTF-8, we could even use
     //        the unsafe `from_utf8_unchecked` version, we would need first to measure the impact and
     //        better understand implication of an invalid UTF-8 &str with `from_str` call.
     let int_as_str =
@@ -1795,11 +1790,9 @@ fn decode_bytes_to_f64(bytes: &Vec<u8>) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::pb::sf::substreams::foundational_store::model::v2::QueriedEntries;
     use crate::{
-        pb::{
-            sf::substreams::foundational_store::v1::GetAllResponse,
-            substreams::{store_delta::Operation, StoreDelta},
-        },
+        pb::substreams::{store_delta::Operation, StoreDelta},
         store::{
             decode_bytes_to_f64, decode_bytes_to_i32, decode_bytes_to_i64, split_array,
             unpack_ptr_len, DeltaArray, Deltas, FoundationalStore,
@@ -1965,7 +1958,7 @@ mod tests {
     fn get_non_wasm_returns_none() {
         let store = FoundationalStore::new(999);
         // now panics on non-wasm
-        let _ = store.get(b"some_key");
+        let _ = store.get(&[b"some_key"]);
     }
 
     #[test]
@@ -1974,22 +1967,16 @@ mod tests {
         let store = FoundationalStore::new(0);
         let keys = &[b"test1", b"test2", b"test3"];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
     fn get_all_empty_keys() {
         let store = FoundationalStore::new(42);
         let empty: &[&[u8]] = &[];
-        let out = store.get_all(empty);
+        let out = store.get(empty);
         // returns a real value before the wasm guard
-        assert_eq!(
-            out,
-            GetAllResponse {
-                entries: Vec::new(),
-                block_reached: true,
-            }
-        );
+        assert_eq!(out, QueriedEntries { entries: vec![] });
     }
 
     #[test]
@@ -1998,7 +1985,7 @@ mod tests {
         let store = FoundationalStore::new(123);
         let key = vec![0x01, 0x02, 0x03, 0x04];
         // now panics on non-wasm
-        let _ = store.get(&key);
+        let _ = store.get(&[&key[..]]);
     }
 
     #[test]
@@ -2007,7 +1994,7 @@ mod tests {
         let store = FoundationalStore::new(456);
         let key = "test_key";
         // now panics on non-wasm
-        let _ = store.get(key);
+        let _ = store.get(&[key]);
     }
 
     #[test]
@@ -2017,7 +2004,7 @@ mod tests {
         let vec_key = vec![0x01, 0x02];
         let keys = &[&b"string_key"[..], &vec_key[..], &b"byte_string"[..]];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2026,7 +2013,7 @@ mod tests {
         let store = FoundationalStore::new(100);
         let keys = &[b"single_key"];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2035,7 +2022,7 @@ mod tests {
         let store = FoundationalStore::new(200);
         let keys = &["key1", "key2", "key3", "key4"];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2045,7 +2032,7 @@ mod tests {
         let keys = &[b"test_key"];
 
         // any of these calls should panic on non-wasm; the first panic satisfies #[should_panic]
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2054,7 +2041,7 @@ mod tests {
         let store = FoundationalStore::new(400);
         let keys = &[b"key_z", b"key_a", b"key_m"];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2063,7 +2050,7 @@ mod tests {
         let store = FoundationalStore::new(500);
         let keys = &[&b"duplicate"[..], &b"duplicate"[..], &b"unique"[..]];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2072,7 +2059,7 @@ mod tests {
         let store = FoundationalStore::new(600);
         let keys = &[&b""[..], &b"non_empty"[..]];
         // now panics on non-wasm
-        let _ = store.get_all(keys);
+        let _ = store.get(keys);
     }
 
     #[test]
@@ -2085,6 +2072,6 @@ mod tests {
         let key_refs: Vec<&Vec<u8>> = keys.iter().collect();
 
         // now panics on non-wasm
-        let _ = store.get_all(&key_refs);
+        let _ = store.get(&key_refs);
     }
 }

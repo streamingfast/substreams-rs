@@ -66,8 +66,8 @@ pub mod state {
     #[cfg(target_arch = "wasm32")]
     #[link(wasm_import_module = "state")]
     extern "C" {
-        pub fn foundational_store_get(store_index:u32, req_ptr: u32, req_len: u32) -> u64;
-        pub fn foundational_store_get_all(store_index: u32, req_ptr: u32, req_len: u32) -> u64;
+        pub fn foundational_store_get_entries(store_index:u32, req_ptr: u32, req_len: u32) -> u64;
+        pub fn foundational_store_get_first_entries(store_index:u32, req_ptr: u32, req_len: u32) -> u64;
         pub fn get_first(store_idx: u32, key_ptr: *const u8, key_len: u32, output_ptr: u32) -> u32;
         pub fn get_last(store_idx: u32, key_ptr: *const u8, key_len: u32, output_ptr: u32) -> u32;
         pub fn get_at(

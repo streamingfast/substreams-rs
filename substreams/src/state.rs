@@ -4,13 +4,14 @@ use crate::{externs, memory};
 
 #[cfg(target_arch = "wasm32")]
 pub fn foundational_store_get(store_index: u32, req_ptr: u32, req_len: u32) -> u64 {
-    unsafe { externs::state::foundational_store_get(store_index, req_ptr, req_len) }
+    unsafe { externs::state::foundational_store_get_entries(store_index, req_ptr, req_len) }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn foundational_store_get_all(store_index:u32, req_ptr: u32, req_len: u32) -> u64 {
-    unsafe { externs::state::foundational_store_get_all(store_index, req_ptr, req_len) }
+pub fn foundational_store_get_first(store_index: u32, req_ptr: u32, req_len: u32) -> u64 {
+    unsafe { externs::state::foundational_store_get_first_entries(store_index, req_ptr, req_len) }
 }
+
 
 // noop
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,9 +19,7 @@ pub fn foundational_store_get(_:u32, _: u32, _: u32) -> u64 {
     0
 }
 #[cfg(not(target_arch = "wasm32"))]
-pub fn foundational_store_get_all(_:u32, _: u32, _: u32) -> u64 {
-    0
-}
+pub fn foundational_store_get_first(_:u32, _: u32, _: u32) -> u64 { 0 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn get_at<K: AsRef<str>>(store_idx: u32, ord: i64, key: K) -> Option<Vec<u8>> {

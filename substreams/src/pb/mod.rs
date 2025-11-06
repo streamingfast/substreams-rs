@@ -14,6 +14,22 @@ pub mod sf {
                 include!("sf.substreams.foundational_store.v1.rs");
                 // @@protoc_insertion_point(sf.substreams.foundational_store.v1)
             }
+
+            pub mod model {
+                // @@protoc_insertion_point(attribute:sf.substreams.foundational_store.model.v2)
+                pub mod v2 {
+                    include!("sf.substreams.foundational_store.model.v2.rs");
+                    // @@protoc_insertion_point(sf.substreams.foundational_store.model.v2)
+                }
+            }
+
+            pub mod service {
+                // @@protoc_insertion_point(attribute:sf.substreams.foundational_store.service.v2)
+                pub mod v2 {
+                    include!("sf.substreams.foundational_store.service.v2.rs");
+                    // @@protoc_insertion_point(sf.substreams.foundational_store.service.v2)
+                }
+            }
         }
     }
 }
