@@ -34,7 +34,15 @@ Full documentation is accessible at https://docs.substreams.dev.
 
 #### Development
 
-#### Protobuf Generation
+##### Release
+
+```bash
+sfreleaser release
+```
+
+Follow instructions the CLI is asking, the process is now automatic and version bump and Substreams package building is now all done automatically.
+
+##### Protobuf Generation
 
 ``` shell
 buf generate buf.build/streamingfast/substreams-foundational-store
