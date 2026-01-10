@@ -11,7 +11,7 @@ license = "Apache-2.0"
 readme = "./README.md"
 keywords = ["substreams", "streamingfast", "firehose", "thegraph"]
 categories = ["api-bindings", "external-ffi-bindings", "wasm"]
-rust-version = "1.82"
+rust-version = "1.83"
 
 [workspace.dependencies]
 substreams-macro = { version = "0.7.1", path = "./substreams-macro" }

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## 0.7.1
 
+### Changed
+
+- Bumped minimum Rust version to 1.83.
+
 ### Added
 
 - Added `AddAssign` (`+=`) and `SubAssign` (`-=`) trait implementations for `BigDecimal` and `BigInt`, enabling in-place mutation operations.
