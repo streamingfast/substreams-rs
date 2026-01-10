@@ -59,7 +59,6 @@
 use std::{convert::TryFrom, io::BufRead, str};
 
 use crate::pb::sf::substreams::foundational_store::model::v2::{Key, Keys, QueriedEntries};
-use crate::pb::sf::substreams::foundational_store::service::v2::GetResponse;
 use crate::{key, operation, pb::substreams::store_delta::Operation};
 use {
     crate::{

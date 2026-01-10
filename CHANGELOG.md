@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 0.7.1
+
+### Added
+
+- Added `AddAssign` (`+=`) and `SubAssign` (`-=`) trait implementations for `BigDecimal` and `BigInt`, enabling in-place mutation operations.
+  - **For `BigDecimal`:**
+    - `AddAssign` and `SubAssign` for `BigDecimal`, `&BigDecimal`, and `BigInt`
+    - Specialized implementations for all primitive integer types (`i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `u8`, `u16`, `u32`, `u64`, `u128`, `usize`)
+  - **For `BigInt`:**
+    - `AddAssign` and `SubAssign` for `BigInt` and `&BigInt`
+    - Specialized implementations for all primitive integer types
+  - Example usage:
+    ```rust
+    let mut balance = BigDecimal::from(100);
+    balance += 50;                    // Primitive integers
+    balance -= BigInt::from(25);      // BigInt values
+
+    let mut count = BigInt::from(1000);
+    count += 100;                     // Works for BigInt too
+    count -= BigInt::from(50);
+    ```
+
 ## 0.7.0
 
 ### Changed

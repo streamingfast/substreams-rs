@@ -1,6 +1,6 @@
 use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Rem, Shl, ShlAssign, Shr,
-    ShrAssign,
+    AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Rem, Shl,
+    ShlAssign, Shr, ShrAssign, SubAssign,
 };
 
 use num_bigint::{Sign, ToBigInt};
@@ -290,6 +290,126 @@ where
 
     fn sub(self, other: T) -> BigDecimal {
         BigDecimal(self.0 - other.into().0)
+    }
+}
+
+/// Implements in-place addition (`+=`) for `BigDecimal`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigDecimal;
+/// let mut a = BigDecimal::from(100);
+/// let b = BigDecimal::from(50);
+/// a += b;
+/// assert_eq!(a, BigDecimal::from(150));
+/// ```
+impl AddAssign<BigDecimal> for BigDecimal {
+    fn add_assign(&mut self, other: BigDecimal) {
+        self.0 += other.0;
+    }
+}
+
+/// Implements in-place addition (`+=`) for `BigDecimal` with a borrowed reference.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigDecimal;
+/// let mut a = BigDecimal::from(100);
+/// let b = BigDecimal::from(50);
+/// a += &b;
+/// assert_eq!(a, BigDecimal::from(150));
+/// assert_eq!(b, BigDecimal::from(50)); // b is not moved
+/// ```
+impl AddAssign<&BigDecimal> for BigDecimal {
+    fn add_assign(&mut self, other: &BigDecimal) {
+        self.0 += &other.0;
+    }
+}
+
+/// Implements in-place addition (`+=`) for `BigDecimal` with a `BigInt`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::{BigDecimal, BigInt};
+/// let mut a = BigDecimal::from(100);
+/// a += BigInt::from(50);
+/// assert_eq!(a, BigDecimal::from(150));
+/// ```
+impl AddAssign<BigInt> for BigDecimal {
+    fn add_assign(&mut self, other: BigInt) {
+        self.0 += other.0;
+    }
+}
+
+/// Macro to implement AddAssign and SubAssign for primitive integer types.
+/// This reduces boilerplate by generating specialized implementations that convert
+/// integers directly to BigInt, avoiding the overhead of creating an intermediate BigDecimal.
+macro_rules! impl_assign_ops_for_primitives {
+    ($($t:ty),*) => {
+        $(
+            impl AddAssign<$t> for BigDecimal {
+                fn add_assign(&mut self, other: $t) {
+                    self.0 += num_bigint::BigInt::from(other);
+                }
+            }
+
+            impl SubAssign<$t> for BigDecimal {
+                fn sub_assign(&mut self, other: $t) {
+                    self.0 -= num_bigint::BigInt::from(other);
+                }
+            }
+        )*
+    };
+}
+
+// Generate implementations for all primitive integer types
+impl_assign_ops_for_primitives!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+/// Implements in-place subtraction (`-=`) for `BigDecimal`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigDecimal;
+/// let mut a = BigDecimal::from(100);
+/// let b = BigDecimal::from(30);
+/// a -= b;
+/// assert_eq!(a, BigDecimal::from(70));
+/// ```
+impl SubAssign<BigDecimal> for BigDecimal {
+    fn sub_assign(&mut self, other: BigDecimal) {
+        self.0 -= other.0;
+    }
+}
+
+/// Implements in-place subtraction (`-=`) for `BigDecimal` with a borrowed reference.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigDecimal;
+/// let mut a = BigDecimal::from(100);
+/// let b = BigDecimal::from(30);
+/// a -= &b;
+/// assert_eq!(a, BigDecimal::from(70));
+/// assert_eq!(b, BigDecimal::from(30)); // b is not moved
+/// ```
+impl SubAssign<&BigDecimal> for BigDecimal {
+    fn sub_assign(&mut self, other: &BigDecimal) {
+        self.0 -= &other.0;
+    }
+}
+
+/// Implements in-place subtraction (`-=`) for `BigDecimal` with a `BigInt`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::{BigDecimal, BigInt};
+/// let mut a = BigDecimal::from(100);
+/// a -= BigInt::from(30);
+/// assert_eq!(a, BigDecimal::from(70));
+/// ```
+impl SubAssign<BigInt> for BigDecimal {
+    fn sub_assign(&mut self, other: BigInt) {
+        self.0 -= other.0;
     }
 }
 
@@ -621,6 +741,96 @@ impl Into<BigDecimal> for &BigInt {
         BigDecimal(bigdecimal::BigDecimal::from(self.0.clone()))
     }
 }
+
+/// Implements in-place addition (`+=`) for `BigInt`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigInt;
+/// let mut a = BigInt::from(100);
+/// let b = BigInt::from(50);
+/// a += b;
+/// assert_eq!(a, BigInt::from(150));
+/// ```
+impl AddAssign<BigInt> for BigInt {
+    fn add_assign(&mut self, other: BigInt) {
+        self.0 += other.0;
+    }
+}
+
+/// Implements in-place addition (`+=`) for `BigInt` with a borrowed reference.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigInt;
+/// let mut a = BigInt::from(100);
+/// let b = BigInt::from(50);
+/// a += &b;
+/// assert_eq!(a, BigInt::from(150));
+/// assert_eq!(b, BigInt::from(50)); // b is not moved
+/// ```
+impl AddAssign<&BigInt> for BigInt {
+    fn add_assign(&mut self, other: &BigInt) {
+        self.0 += &other.0;
+    }
+}
+
+/// Implements in-place subtraction (`-=`) for `BigInt`.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigInt;
+/// let mut a = BigInt::from(100);
+/// let b = BigInt::from(30);
+/// a -= b;
+/// assert_eq!(a, BigInt::from(70));
+/// ```
+impl SubAssign<BigInt> for BigInt {
+    fn sub_assign(&mut self, other: BigInt) {
+        self.0 -= other.0;
+    }
+}
+
+/// Implements in-place subtraction (`-=`) for `BigInt` with a borrowed reference.
+///
+/// # Example
+/// ```
+/// # use substreams::scalar::BigInt;
+/// let mut a = BigInt::from(100);
+/// let b = BigInt::from(30);
+/// a -= &b;
+/// assert_eq!(a, BigInt::from(70));
+/// assert_eq!(b, BigInt::from(30)); // b is not moved
+/// ```
+impl SubAssign<&BigInt> for BigInt {
+    fn sub_assign(&mut self, other: &BigInt) {
+        self.0 -= &other.0;
+    }
+}
+
+/// Macro to implement AddAssign and SubAssign for primitive integer types on BigInt.
+/// This reduces boilerplate by generating specialized implementations that convert
+/// integers directly to the underlying num_bigint::BigInt.
+macro_rules! impl_assign_ops_for_primitives_bigint {
+    ($($t:ty),*) => {
+        $(
+            impl AddAssign<$t> for BigInt {
+                fn add_assign(&mut self, other: $t) {
+                    self.0 += other;
+                }
+            }
+
+            impl SubAssign<$t> for BigInt {
+                fn sub_assign(&mut self, other: $t) {
+                    self.0 -= other;
+                }
+            }
+        )*
+    };
+}
+
+// Generate implementations for all primitive integer types
+impl_assign_ops_for_primitives_bigint!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 impl Add<BigDecimal> for BigInt {
     type Output = BigDecimal;
@@ -1318,6 +1528,70 @@ mod tests {
         assert_eq!(big_decimal(1.0) - big_int(1), big_decimal(0.0));
         assert_eq!(big_decimal(2.0) * big_int(2), big_decimal(4.0));
         assert_eq!(big_decimal(4.0) / big_int(2), big_decimal(2.0));
+    }
+
+    #[test]
+    fn bigdecimal_add_assign() {
+        let mut a = big_decimal(100.0);
+        let b = big_decimal(50.0);
+        a += b;
+        assert_eq!(a, big_decimal(150.0));
+    }
+
+    #[test]
+    fn bigdecimal_add_assign_ref() {
+        let mut a = big_decimal(100.0);
+        let b = big_decimal(50.0);
+        a += &b;
+        assert_eq!(a, big_decimal(150.0));
+        assert_eq!(b, big_decimal(50.0)); // Verify b wasn't moved
+    }
+
+    #[test]
+    fn bigdecimal_sub_assign() {
+        let mut a = big_decimal(100.0);
+        let b = big_decimal(30.0);
+        a -= b;
+        assert_eq!(a, big_decimal(70.0));
+    }
+
+    #[test]
+    fn bigdecimal_sub_assign_ref() {
+        let mut a = big_decimal(100.0);
+        let b = big_decimal(30.0);
+        a -= &b;
+        assert_eq!(a, big_decimal(70.0));
+        assert_eq!(b, big_decimal(30.0)); // Verify b wasn't moved
+    }
+
+    #[test]
+    fn bigdecimal_add_assign_int() {
+        let mut a = big_decimal(100.0);
+        a += 50;
+        assert_eq!(a, big_decimal(150.0));
+    }
+
+    #[test]
+    fn bigdecimal_sub_assign_int() {
+        let mut a = big_decimal(100.0);
+        a -= 30;
+        assert_eq!(a, big_decimal(70.0));
+    }
+
+    #[test]
+    fn bigdecimal_add_assign_bigint() {
+        let mut a = big_decimal(100.0);
+        let b = big_int(50);
+        a += b;
+        assert_eq!(a, big_decimal(150.0));
+    }
+
+    #[test]
+    fn bigdecimal_sub_assign_bigint() {
+        let mut a = big_decimal(100.0);
+        let b = big_int(30);
+        a -= b;
+        assert_eq!(a, big_decimal(70.0));
     }
 
     #[test]
