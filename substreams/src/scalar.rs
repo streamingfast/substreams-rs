@@ -452,6 +452,49 @@ impl Div<&BigDecimal> for BigDecimal {
     }
 }
 
+/// Implements unary negation (`-`) for `BigDecimal`.
+///
+/// # Examples
+/// ```
+/// use substreams::scalar::BigDecimal;
+///
+/// let positive = BigDecimal::from(42);
+/// let negative = -positive;
+/// assert_eq!(negative, BigDecimal::from(-42));
+///
+/// let negative = BigDecimal::from(-100);
+/// let positive = -negative;
+/// assert_eq!(positive, BigDecimal::from(100));
+/// ```
+impl Neg for BigDecimal {
+    type Output = BigDecimal;
+
+    fn neg(self) -> BigDecimal {
+        BigDecimal(self.0.neg())
+    }
+}
+
+/// Implements unary negation (`-`) for `&BigDecimal`.
+///
+/// This allows negating a borrowed reference without consuming the original value.
+///
+/// # Examples
+/// ```
+/// use substreams::scalar::BigDecimal;
+///
+/// let original = BigDecimal::from(42);
+/// let negated = -&original;
+/// assert_eq!(negated, BigDecimal::from(-42));
+/// assert_eq!(original, BigDecimal::from(42)); // original is still available
+/// ```
+impl Neg for &BigDecimal {
+    type Output = BigDecimal;
+
+    fn neg(self) -> BigDecimal {
+        BigDecimal(self.0.clone().neg())
+    }
+}
+
 // ---------- BigInt ---------- //
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BigInt(num_bigint::BigInt);
@@ -831,6 +874,49 @@ macro_rules! impl_assign_ops_for_primitives_bigint {
 
 // Generate implementations for all primitive integer types
 impl_assign_ops_for_primitives_bigint!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+/// Implements unary negation (`-`) for `BigInt`.
+///
+/// # Examples
+/// ```
+/// use substreams::scalar::BigInt;
+///
+/// let positive = BigInt::from(42);
+/// let negative = -positive;
+/// assert_eq!(negative, BigInt::from(-42));
+///
+/// let negative = BigInt::from(-100);
+/// let positive = -negative;
+/// assert_eq!(positive, BigInt::from(100));
+/// ```
+impl Neg for BigInt {
+    type Output = BigInt;
+
+    fn neg(self) -> BigInt {
+        BigInt(self.0.neg())
+    }
+}
+
+/// Implements unary negation (`-`) for `&BigInt`.
+///
+/// This allows negating a borrowed reference without consuming the original value.
+///
+/// # Examples
+/// ```
+/// use substreams::scalar::BigInt;
+///
+/// let original = BigInt::from(42);
+/// let negated = -&original;
+/// assert_eq!(negated, BigInt::from(-42));
+/// assert_eq!(original, BigInt::from(42)); // original is still available
+/// ```
+impl Neg for &BigInt {
+    type Output = BigInt;
+
+    fn neg(self) -> BigInt {
+        BigInt(self.0.clone().neg())
+    }
+}
 
 impl Add<BigDecimal> for BigInt {
     type Output = BigDecimal;
@@ -1648,5 +1734,63 @@ mod tests {
             BigDecimal::divide_by_decimals(big_decimal(11205450180000000000.51), 20),
             big_decimal(0.1120545018)
         );
+    }
+
+    #[test]
+    fn bigdecimal_neg() {
+        let a = big_decimal(42.0);
+        let b = -a;
+        assert_eq!(b, big_decimal(-42.0));
+    }
+
+    #[test]
+    fn bigdecimal_neg_ref() {
+        let a = big_decimal(42.0);
+        let b = -&a;
+        assert_eq!(b, big_decimal(-42.0));
+        assert_eq!(a, big_decimal(42.0)); // Verify a wasn't moved
+    }
+
+    #[test]
+    fn bigdecimal_neg_negative() {
+        let a = big_decimal(-100.5);
+        let b = -a;
+        assert_eq!(b, big_decimal(100.5));
+    }
+
+    #[test]
+    fn bigdecimal_neg_zero() {
+        let a = big_decimal(0.0);
+        let b = -a;
+        assert_eq!(b, big_decimal(0.0));
+    }
+
+    #[test]
+    fn bigint_neg() {
+        let a = big_int(42);
+        let b = -a;
+        assert_eq!(b, big_int(-42));
+    }
+
+    #[test]
+    fn bigint_neg_ref() {
+        let a = big_int(42);
+        let b = -&a;
+        assert_eq!(b, big_int(-42));
+        assert_eq!(a, big_int(42)); // Verify a wasn't moved
+    }
+
+    #[test]
+    fn bigint_neg_negative() {
+        let a = big_int(-100);
+        let b = -a;
+        assert_eq!(b, big_int(100));
+    }
+
+    #[test]
+    fn bigint_neg_zero() {
+        let a = big_int(0);
+        let b = -a;
+        assert_eq!(b, big_int(0));
     }
 }

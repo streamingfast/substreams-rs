@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added `Neg` (unary `-`) trait implementations for `BigDecimal`, `&BigDecimal`, `BigInt`, and `&BigInt`, enabling negation operations.
+  - **For `BigDecimal`:**
+    - `impl Neg for BigDecimal` - Consumes the value and returns its negation
+    - `impl Neg for &BigDecimal` - Works with borrowed references without consuming the original value
+  - **For `BigInt`:**
+    - `impl Neg for BigInt` - Consumes the value and returns its negation
+    - `impl Neg for &BigInt` - Works with borrowed references without consuming the original value
+  - Example usage:
+    ```rust
+    let positive = BigInt::from(42);
+    let negative = -positive;              // BigInt(-42)
+
+    let value = BigDecimal::from(100);
+    let negated = -&value;                 // BigDecimal(-100), value is still available
+    ```
+
 ## 0.7.1
 
 ### Changed
