@@ -1,2 +1,3 @@
 - Use `cargo test --target <user-platform-triplet>` to run the tests in this repository.
 - Use macros implement redundant traits implementations for where the same implementation is needed for 2 types or more
+- Optimize for speed and minimize allocations - prefer references over `.clone()` when possible

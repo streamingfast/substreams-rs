@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added `PartialEq` and `PartialOrd` trait implementations for cross-type comparisons:
+  - **For `BigDecimal`:**
+    - `PartialEq<bigdecimal::BigDecimal>` and `PartialOrd<bigdecimal::BigDecimal>` - Compare with the underlying wrapped type
+    - Reverse implementations allowing `bigdecimal::BigDecimal` to compare with `BigDecimal`
+    - `PartialEq` and `PartialOrd` for all primitive integer types (`i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `u8`, `u16`, `u32`, `u64`, `u128`, `usize`)
+  - **For `BigInt`:**
+    - `PartialEq<num_bigint::BigInt>` and `PartialOrd<num_bigint::BigInt>` - Compare with the underlying wrapped type
+    - Reverse implementations allowing `num_bigint::BigInt` to compare with `BigInt`
+    - `PartialEq` and `PartialOrd` for all primitive integer types (`i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `u8`, `u16`, `u32`, `u64`, `u128`, `usize`)
+  - Example usage:
+    ```rust
+    let a = BigInt::from(100);
+    assert!(a > 50i32);
+    assert!(a < 150u64);
+    assert!(50isize < a);
+
+    let b = BigDecimal::from(100);
+    assert!(b > 50i32);
+    assert!(150u64 > b);
+    ```
+
+### Changed
+
+- Optimized `BigInt::to_decimal` to use a pre-computed lookup table for powers of 10 (decimals 0-18), avoiding repeated `BigDecimal` allocations for common token decimal values like ETH (18 decimals).
+
 ## [0.7.2](https://github.com/streamingfast/substreams-ethereum/releases/tag/v0.7.2)
 
 ### Added

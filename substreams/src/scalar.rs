@@ -1,7 +1,8 @@
 use std::ops::{
-    AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Rem, Shl,
-    ShlAssign, Shr, ShrAssign, SubAssign,
+    AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Rem, Shl, ShlAssign,
+    Shr, ShrAssign, SubAssign,
 };
+use std::sync::OnceLock;
 
 use num_bigint::{Sign, ToBigInt};
 use num_integer::Integer;
@@ -268,6 +269,112 @@ impl Into<String> for BigDecimal {
 impl Into<bigdecimal::BigDecimal> for BigDecimal {
     fn into(self) -> bigdecimal::BigDecimal {
         self.0
+    }
+}
+
+impl PartialEq<bigdecimal::BigDecimal> for BigDecimal {
+    fn eq(&self, other: &bigdecimal::BigDecimal) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<BigDecimal> for bigdecimal::BigDecimal {
+    fn eq(&self, other: &BigDecimal) -> bool {
+        self.eq(&other.0)
+    }
+}
+
+impl PartialOrd<bigdecimal::BigDecimal> for BigDecimal {
+    fn partial_cmp(&self, other: &bigdecimal::BigDecimal) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl PartialOrd<BigDecimal> for bigdecimal::BigDecimal {
+    fn partial_cmp(&self, other: &BigDecimal) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(&other.0)
+    }
+}
+
+/// Macro to implement PartialEq and PartialOrd between BigDecimal and primitive integer types.
+/// This allows comparing BigDecimal with primitives like `big_decimal > 5` or `10 < big_decimal`.
+macro_rules! impl_partial_cmp_bigdecimal_primitives {
+    ($($t:ty),*) => {
+        $(
+            impl PartialEq<$t> for BigDecimal {
+                fn eq(&self, other: &$t) -> bool {
+                    self.0 == *other
+                }
+            }
+
+            impl PartialEq<BigDecimal> for $t {
+                fn eq(&self, other: &BigDecimal) -> bool {
+                    other.0 == *self
+                }
+            }
+
+            impl PartialOrd<$t> for BigDecimal {
+                fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                    self.0.partial_cmp(other)
+                }
+            }
+
+            impl PartialOrd<BigDecimal> for $t {
+                fn partial_cmp(&self, other: &BigDecimal) -> Option<std::cmp::Ordering> {
+                    other.0.partial_cmp(self).map(|o| o.reverse())
+                }
+            }
+        )*
+    };
+}
+
+impl_partial_cmp_bigdecimal_primitives!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
+
+impl PartialEq<isize> for BigDecimal {
+    fn eq(&self, other: &isize) -> bool {
+        self.0 == (*other as i64)
+    }
+}
+
+impl PartialEq<BigDecimal> for isize {
+    fn eq(&self, other: &BigDecimal) -> bool {
+        other.0 == (*self as i64)
+    }
+}
+
+impl PartialOrd<isize> for BigDecimal {
+    fn partial_cmp(&self, other: &isize) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&(*other as i64))
+    }
+}
+
+impl PartialOrd<BigDecimal> for isize {
+    fn partial_cmp(&self, other: &BigDecimal) -> Option<std::cmp::Ordering> {
+        other.0.partial_cmp(&(*self as i64)).map(|o| o.reverse())
+    }
+}
+
+impl PartialEq<usize> for BigDecimal {
+    fn eq(&self, other: &usize) -> bool {
+        self.0 == (*other as u64)
+    }
+}
+
+impl PartialEq<BigDecimal> for usize {
+    fn eq(&self, other: &BigDecimal) -> bool {
+        other.0 == (*self as u64)
+    }
+}
+
+impl PartialOrd<usize> for BigDecimal {
+    fn partial_cmp(&self, other: &usize) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&(*other as u64))
+    }
+}
+
+impl PartialOrd<BigDecimal> for usize {
+    fn partial_cmp(&self, other: &BigDecimal) -> Option<std::cmp::Ordering> {
+        other.0.partial_cmp(&(*self as u64)).map(|o| o.reverse())
     }
 }
 
@@ -626,12 +733,6 @@ impl BigInt {
             .unwrap_or_else(|_| panic!("Invalid store BigInt string '{}'", bytes_as_str))
     }
 
-    pub fn to_decimal(&self, decimals: u64) -> BigDecimal {
-        // FIXME: Should we think about using a table of pre-made BigDecimal for a range of decimals between 0 -> 20?
-        let big_decimal_amount: BigDecimal = self.into();
-        return big_decimal_amount.div(BigDecimal::new(BigInt::one(), decimals as i64));
-    }
-
     pub fn absolute(&self) -> BigInt {
         BigInt::from(self.0.abs())
     }
@@ -640,6 +741,29 @@ impl BigInt {
         let (quotient, remainder) = num_bigint::BigInt::div_rem(&self.0, &other.0);
         return (BigInt(quotient), BigInt(remainder));
     }
+
+    pub fn to_decimal(&self, decimals: u64) -> BigDecimal {
+        if decimals <= 18 {
+            Into::<BigDecimal>::into(self).div(&get_powers_of_10()[decimals as usize])
+        } else {
+            Into::<BigDecimal>::into(self).div(BigDecimal::new(BigInt::one(), decimals as i64))
+        }
+    }
+}
+
+/// Pre-computed powers of 10 as BigDecimal for efficient `to_decimal` lookups.
+/// Covers decimals 0-18 which handles most common token decimals (ETH has 18).
+static POWERS_OF_10: OnceLock<[BigDecimal; 19]> = OnceLock::new();
+
+fn get_powers_of_10() -> &'static [BigDecimal; 19] {
+    POWERS_OF_10.get_or_init(|| {
+        macro_rules! make_power_of_10 {
+            ($($exp:literal),*) => {
+                [$(BigDecimal::new(BigInt::one(), $exp)),*]
+            };
+        }
+        make_power_of_10!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+    })
 }
 
 impl Default for BigInt {
@@ -719,6 +843,64 @@ impl Into<num_bigint::BigInt> for BigInt {
         self.0
     }
 }
+
+impl PartialEq<num_bigint::BigInt> for BigInt {
+    fn eq(&self, other: &num_bigint::BigInt) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<BigInt> for num_bigint::BigInt {
+    fn eq(&self, other: &BigInt) -> bool {
+        self.eq(&other.0)
+    }
+}
+
+impl PartialOrd<num_bigint::BigInt> for BigInt {
+    fn partial_cmp(&self, other: &num_bigint::BigInt) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl PartialOrd<BigInt> for num_bigint::BigInt {
+    fn partial_cmp(&self, other: &BigInt) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(&other.0)
+    }
+}
+
+/// Macro to implement PartialEq and PartialOrd between BigInt and primitive integer types.
+/// This allows comparing BigInt with primitives like `big_int > 5` or `10 < big_int`.
+macro_rules! impl_partial_cmp_bigint_primitives {
+    ($($t:ty),*) => {
+        $(
+            impl PartialEq<$t> for BigInt {
+                fn eq(&self, other: &$t) -> bool {
+                    self.0.eq(&num_bigint::BigInt::from(*other))
+                }
+            }
+
+            impl PartialEq<BigInt> for $t {
+                fn eq(&self, other: &BigInt) -> bool {
+                    num_bigint::BigInt::from(*self).eq(&other.0)
+                }
+            }
+
+            impl PartialOrd<$t> for BigInt {
+                fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                    self.0.partial_cmp(&num_bigint::BigInt::from(*other))
+                }
+            }
+
+            impl PartialOrd<BigInt> for $t {
+                fn partial_cmp(&self, other: &BigInt) -> Option<std::cmp::Ordering> {
+                    num_bigint::BigInt::from(*self).partial_cmp(&other.0)
+                }
+            }
+        )*
+    };
+}
+
+impl_partial_cmp_bigint_primitives!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 impl TryFrom<BigInt> for u64 {
     type Error = BigIntOutOfRangeError;
@@ -873,7 +1055,9 @@ macro_rules! impl_assign_ops_for_primitives_bigint {
 }
 
 // Generate implementations for all primitive integer types
-impl_assign_ops_for_primitives_bigint!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_assign_ops_for_primitives_bigint!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
 
 /// Implements unary negation (`-`) for `BigInt`.
 ///
@@ -1792,5 +1976,77 @@ mod tests {
         let a = big_int(0);
         let b = -a;
         assert_eq!(b, big_int(0));
+    }
+
+    #[test]
+    fn bigdecimal_partial_ord_with_wrapped() {
+        let a = big_decimal(100.0);
+        let b = bigdecimal::BigDecimal::from(50);
+
+        assert!(a > b);
+        assert!(b < a);
+        assert!(a >= b);
+        assert!(b <= a);
+
+        let c = bigdecimal::BigDecimal::from(100);
+        assert!(a >= c);
+        assert!(a <= c);
+    }
+
+    #[test]
+    fn bigint_partial_ord_with_wrapped() {
+        let a = big_int(100);
+        let b = num_bigint::BigInt::from(50);
+
+        assert!(a > b);
+        assert!(b < a);
+        assert!(a >= b);
+        assert!(b <= a);
+
+        let c = num_bigint::BigInt::from(100);
+        assert!(a >= c);
+        assert!(a <= c);
+    }
+
+    #[test]
+    fn bigint_partial_ord_with_primitives() {
+        let a = big_int(100);
+
+        // BigInt compared to primitives
+        assert!(a > 50i32);
+        assert!(a < 150i64);
+        assert!(a >= 100u32);
+        assert!(a <= 100u64);
+        assert!(a > 50isize);
+        assert!(a < 150usize);
+
+        // Primitives compared to BigInt
+        assert!(50i32 < a);
+        assert!(150i64 > a);
+        assert!(100u32 <= a);
+        assert!(100u64 >= a);
+        assert!(50isize < a);
+        assert!(150usize > a);
+    }
+
+    #[test]
+    fn bigdecimal_partial_ord_with_primitives() {
+        let a = big_decimal(100.0);
+
+        // BigDecimal compared to primitives
+        assert!(a > 50i32);
+        assert!(a < 150i64);
+        assert!(a >= 100u32);
+        assert!(a <= 100u64);
+        assert!(a > 50isize);
+        assert!(a < 150usize);
+
+        // Primitives compared to BigDecimal
+        assert!(50i32 < a);
+        assert!(150i64 > a);
+        assert!(100u32 <= a);
+        assert!(100u64 >= a);
+        assert!(50isize < a);
+        assert!(150usize > a);
     }
 }
