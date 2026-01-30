@@ -35,7 +35,7 @@ pub fn expr_matcher(input: &'_ str) -> ExprMatcher<'_> {
 #[grammar = "expr_parser_rule.pest"]
 struct EParser;
 
-fn parsing(input: &str) -> Result<Pair<Rule>, Error> {
+fn parsing(input: &str) -> Result<Pair<'_, Rule>, Error> {
     let pairs = EParser::parse(Rule::expression, input)
         .context("parsing input based on the expression rule")?;
 

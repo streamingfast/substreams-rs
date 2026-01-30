@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Experimental**: Added `substreams::sqe` module with a high-performance expression parser that will replace `expr_parser` in a future release:
+  - **Parsing: 5-9x faster** across all expression types
+  - **Matching: 3-14x faster** with zero allocations (no more cloning on every match!)
+  - **Repeated matching: 9-14x faster** - the main use case sees the biggest wins
+  - Fully compatible with the existing expression syntax
+  - Zero-copy parsing and zero-allocation matching
+  - Available at `substreams::sqe::{parse, ExprMatcher, expr_matcher, matches_keys_in_parsed_expr}`
+
 ## [0.7.3](https://github.com/streamingfast/substreams-ethereum/releases/tag/v0.7.3)
 
 ### Added

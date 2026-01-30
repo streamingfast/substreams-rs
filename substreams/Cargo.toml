@@ -29,6 +29,11 @@ pest_derive = "2.7.10"
 
 [dev-dependencies]
 rstest = "0.19.0"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "expr_parser_bench"
+harness = false
 
 [build-dependencies]
 prost-build = "0.13.3"

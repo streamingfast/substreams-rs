@@ -129,6 +129,12 @@ pub mod store;
 pub mod expr_parser;
 pub use expr_parser::{expr_matcher, matches_keys_in_parsed_expr, ExprMatcher};
 
+/// Experimental high-performance expression parser.
+///
+/// This module provides a faster alternative to [`expr_parser`] and will replace it in a future release.
+/// See the module documentation for details.
+pub mod sqe;
+
 mod operation;
 
 /// A prelude that makes all store traits available.
