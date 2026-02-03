@@ -249,10 +249,10 @@ pub struct SpannedToken<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::error::ParseErrorKind;
+    use super::*;
 
-    fn tokens(input: &str) -> Result<Vec<Token>, ParseError> {
+    fn tokens(input: &str) -> Result<Vec<Token<'_>>, ParseError> {
         let mut lexer = Lexer::new(input);
         let mut tokens = Vec::new();
         loop {

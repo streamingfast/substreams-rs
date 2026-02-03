@@ -61,16 +61,28 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             ParseErrorKind::UnexpectedChar(c) => {
-                write!(f, "unexpected character '{}' at position {}", c, self.span.start)
+                write!(
+                    f,
+                    "unexpected character '{}' at position {}",
+                    c, self.span.start
+                )
             }
             ParseErrorKind::UnexpectedEof => {
                 write!(f, "unexpected end of input at position {}", self.span.start)
             }
             ParseErrorKind::KeyStartsWithDash => {
-                write!(f, "key cannot start with '-' at position {}", self.span.start)
+                write!(
+                    f,
+                    "key cannot start with '-' at position {}",
+                    self.span.start
+                )
             }
             ParseErrorKind::UnclosedQuote(q) => {
-                write!(f, "unclosed {} quote starting at position {}", q, self.span.start)
+                write!(
+                    f,
+                    "unclosed {} quote starting at position {}",
+                    q, self.span.start
+                )
             }
             ParseErrorKind::UnclosedParen => {
                 write!(f, "unclosed parenthesis at position {}", self.span.start)
@@ -82,7 +94,11 @@ impl fmt::Display for ParseError {
                 write!(f, "expected value at position {}", self.span.start)
             }
             ParseErrorKind::UnmatchedCloseParen => {
-                write!(f, "unmatched closing parenthesis at position {}", self.span.start)
+                write!(
+                    f,
+                    "unmatched closing parenthesis at position {}",
+                    self.span.start
+                )
             }
         }
     }

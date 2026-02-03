@@ -137,6 +137,15 @@ pub mod sqe;
 
 mod operation;
 
+/// Testing utilities for Substreams handlers.
+///
+/// **Experimental API**: This module is under active development. While we aim to
+/// minimize breaking changes, we reserve the right to modify the API as needed.
+///
+/// This module is only compiled when running tests (`#[cfg(test)]`).
+#[cfg(test)]
+pub mod testing;
+
 /// A prelude that makes all store traits available.
 ///
 /// Add the following code to import all traits listed below at once.

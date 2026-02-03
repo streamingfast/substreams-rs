@@ -173,9 +173,7 @@ impl<'a> Parser<'a> {
 
                 Ok(inner)
             }
-            Token::CloseParen => {
-                Err(ParseError::unmatched_close_paren(self.lexer.position() - 1))
-            }
+            Token::CloseParen => Err(ParseError::unmatched_close_paren(self.lexer.position() - 1)),
             Token::Eof => Err(ParseError::unexpected_eof(self.lexer.position())),
             _ => Err(ParseError::expected_value(self.lexer.position())),
         }
@@ -248,7 +246,10 @@ mod tests {
 
     #[test]
     fn test_special_chars() {
-        assert!(matches("type:wasm-MarketUpdated", &["type:wasm-MarketUpdated"]));
+        assert!(matches(
+            "type:wasm-MarketUpdated",
+            &["type:wasm-MarketUpdated"]
+        ));
         assert!(matches("test.7", &["test.7"]));
         assert!(matches("test:8", &["test:8"]));
         assert!(matches("test_9", &["test_9"]));
@@ -316,8 +317,14 @@ mod tests {
         assert!(!matches("test_10", TEST_KEYS));
         assert!(matches("test10 ||test.7", TEST_KEYS));
         assert!(!matches("test10 && test:8", TEST_KEYS));
-        assert!(matches("(test10 && test_9) || (test.7 && test:8)", TEST_KEYS));
-        assert!(matches("(test10 && test_9) || (test.7 && test*19z_|)", TEST_KEYS));
+        assert!(matches(
+            "(test10 && test_9) || (test.7 && test:8)",
+            TEST_KEYS
+        ));
+        assert!(matches(
+            "(test10 && test_9) || (test.7 && test*19z_|)",
+            TEST_KEYS
+        ));
         assert!(matches(
             "(test10 && test_9) || test*19z || (test.7 && test*19z_|)",
             TEST_KEYS

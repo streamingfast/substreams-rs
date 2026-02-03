@@ -1,20 +1,50 @@
-// use proc_macro2::{Span};
-// type AttributeArgs = syn::punctuated::Punctuated<syn::NestedMeta, syn::Token![,]>;
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum ModuleType {
     Store,
     Map,
 }
 
-impl ModuleType {
-    // fn from_str(s: &str) -> Result<ModuleType, String> {
-    //     match s {
-    //         "store" => Ok(ModuleType::Store),
-    //         "map" => Ok(ModuleType::Map),
-    //         _ => Err(format!("No such module type `{}`. The modules types are `store` and `map`.", s)),
-    //     }
-    // }
+/// Configuration options parsed from macro attributes.
+#[derive(Clone, Copy, Default)]
+pub struct HandlerOptions {
+    /// When true, skip calling `substreams::skip_empty_output()`.
+    pub keep_empty_output: bool,
+    /// When true, disable generation of the testable `__impl_<name>` function.
+    /// By default (false), the macro generates both the testable function and the WASM export.
+    pub no_testable: bool,
+}
+
+impl HandlerOptions {
+    /// Parse options from a comma-separated attribute string.
+    /// Supported options: `no_testable`, `keep_empty_output`
+    ///
+    /// Examples:
+    /// - `""` -> defaults (testable enabled)
+    /// - `"no_testable"` -> disable testable function generation
+    /// - `"keep_empty_output"` -> keep_empty_output = true
+    /// - `"no_testable, keep_empty_output"` -> both options set
+    pub fn parse(args: &str) -> Result<Self, String> {
+        let mut options = Self::default();
+
+        if args.is_empty() {
+            return Ok(options);
+        }
+
+        for part in args.split(',') {
+            match part.trim() {
+                "no_testable" => options.no_testable = true,
+                "keep_empty_output" => options.keep_empty_output = true,
+                other => {
+                    return Err(format!(
+                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output",
+                        other
+                    ))
+                }
+            }
+        }
+
+        Ok(options)
+    }
 }
 
 pub struct FinalConfiguration {

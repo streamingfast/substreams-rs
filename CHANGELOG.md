@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Map handlers now generate testable `__impl_<name>` functions by default for easier unit testing:
+  - The macro now generates a testable `__impl_<name>` function alongside the WASM export
+  - Use `#[substreams::handlers::map(no_testable)]` to opt-out and get the legacy behavior
+  - Supports all input types: protobuf messages, `String` params, store inputs (readable and writable), and `Deltas`
+
+- **Experimental**: Added `substreams::testing` module with utilities for unit testing handlers (only available in `#[cfg(test)]` builds):
+  - `map!` macro to conveniently call testable handler functions
+  - `clock()` function to create `Clock` instances from string specifications for testing
+  - Example usage:
+    ```rust
+    use substreams::testing::{map, clock};
+
+    #[substreams::handlers::map]
+    fn map_transfers(clock: Clock, blk: eth::Block) -> Result<Events, Error> {
+        // handler logic
+    }
+
+    #[test]
+    fn test_map_transfers() {
+        let clock = clock("12345@1609459200000"); // block 12345 with timestamp
+        let blk = eth::Block::default();
+        let result = map!(map_transfers(clock, blk));
+        assert!(result.is_ok());
+    }
+    ```
+
+   **Note**: This module is experimental. While we aim to minimize breaking changes, we reserve the right to modify the API as needed.
+
 - **Experimental**: Added `substreams::sqe` module with a high-performance expression parser that will replace `expr_parser` in a future release:
   - **Parsing: 5-9x faster** across all expression types
   - **Matching: 3-14x faster** with zero allocations (no more cloning on every match!)

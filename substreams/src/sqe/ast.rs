@@ -142,8 +142,8 @@ mod tests {
         // Manually construct: "a || b"
         let input = "a || b";
         let nodes = vec![
-            Node::Key { start: 0, end: 1 },  // "a" at index 0
-            Node::Key { start: 5, end: 6 },  // "b" at index 1
+            Node::Key { start: 0, end: 1 }, // "a" at index 0
+            Node::Key { start: 5, end: 6 }, // "b" at index 1
             Node::Or {
                 children_start: 0,
                 children_count: 2,
@@ -162,8 +162,8 @@ mod tests {
         // Manually construct: "a && b"
         let input = "a && b";
         let nodes = vec![
-            Node::Key { start: 0, end: 1 },  // "a" at index 0
-            Node::Key { start: 5, end: 6 },  // "b" at index 1
+            Node::Key { start: 0, end: 1 }, // "a" at index 0
+            Node::Key { start: 5, end: 6 }, // "b" at index 1
             Node::And {
                 children_start: 0,
                 children_count: 2,

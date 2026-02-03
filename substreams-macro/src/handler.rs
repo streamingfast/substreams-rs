@@ -1,10 +1,10 @@
-use crate::config::{FinalConfiguration, ModuleType};
+use crate::config::{FinalConfiguration, HandlerOptions, ModuleType};
 use crate::errors;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::spanned::Spanned;
 
-pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool) -> TokenStream {
+pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions) -> TokenStream {
     let original = item.clone();
 
     let final_config = FinalConfiguration { module_type };
@@ -25,6 +25,11 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
     let mut read_only_stores: Vec<proc_macro2::TokenStream> =
         Vec::with_capacity(input.sig.inputs.len());
     let mut writable_store: proc_macro2::TokenStream = quote! {};
+    // For testable mode: collect original function arguments
+    let mut original_args: Vec<proc_macro2::TokenStream> =
+        Vec::with_capacity(input.sig.inputs.len());
+    let mut impl_call_args: Vec<proc_macro2::TokenStream> =
+        Vec::with_capacity(input.sig.inputs.len());
 
     for i in (&input.sig.inputs).into_iter() {
         match i {
@@ -64,19 +69,25 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                                 );
                         }
                         has_seen_writable_store = true;
-                        let store_type = new_ident(input_obj.store_type);
+                        let store_type = new_ident(input_obj.store_type.clone());
                         writable_store =
                             quote! { let #var_name: #argument_type = #store_type::new(); };
+                        // For testable mode: add store to original_args and impl_call_args
+                        original_args.push(quote! { #var_name: #argument_type });
+                        impl_call_args.push(quote! { #var_name });
                         continue;
                     }
 
                     if input_obj.is_readable_store {
                         let var_idx: syn::Ident = suffixed_ident(&var_name, "idx");
-                        let store_type = new_ident(input_obj.store_type);
+                        let store_type = new_ident(input_obj.store_type.clone());
                         args.push(quote! { #var_idx: u32 });
                         read_only_stores.push(
                             quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
                         );
+                        // For testable mode: add store to original_args and impl_call_args
+                        original_args.push(quote! { #var_name: #argument_type });
+                        impl_call_args.push(quote! { #var_name });
                         continue;
                     }
 
@@ -87,6 +98,9 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                         read_only_stores.push(
                             quote! { let #var_name: #argument_type = #store_type::new(#var_idx); },
                         );
+                        // For testable mode: add store to original_args and impl_call_args
+                        original_args.push(quote! { #var_name: #argument_type });
+                        impl_call_args.push(quote! { #var_name });
                         continue;
                     }
 
@@ -101,6 +115,15 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                     args.push(quote! { #var_ptr: *mut u8 });
                     args.push(quote! { #var_len: usize });
 
+                    // For testable mode: collect original argument and call argument
+                    let mutability = if v.mutability.is_some() {
+                        quote! { mut }
+                    } else {
+                        quote! {}
+                    };
+                    original_args.push(quote! { #mutability #var_name: #argument_type });
+                    impl_call_args.push(quote! { #var_name });
+
                     if input_obj.is_deltas {
                         let raw = prefixed_ident("raw", &var_name);
                         proto_decodings.push(quote! {
@@ -110,12 +133,6 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
                     } else {
-                        let mutability = if v.mutability.is_some() {
-                            quote! { mut }
-                        } else {
-                            quote! {}
-                        };
-
                         proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
                     }
                 }
@@ -136,7 +153,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
             proto_decodings,
             read_only_stores,
             writable_store,
-            keep_empty_output,
+            options.keep_empty_output,
         ),
         ModuleType::Map => {
             if output_type == OutputType::Void {
@@ -156,7 +173,9 @@ pub fn main(item: TokenStream, module_type: ModuleType, keep_empty_output: bool)
                 proto_decodings,
                 read_only_stores,
                 writable_store,
-                keep_empty_output,
+                original_args,
+                impl_call_args,
+                options,
             )
         }
     }
@@ -319,22 +338,18 @@ fn build_map_handler(
     decodings: Vec<proc_macro2::TokenStream>,
     read_only_stores: Vec<proc_macro2::TokenStream>,
     writable_store: proc_macro2::TokenStream,
-    keep_empty_output: bool,
+    original_args: Vec<proc_macro2::TokenStream>,
+    impl_call_args: Vec<proc_macro2::TokenStream>,
+    options: HandlerOptions,
 ) -> TokenStream {
     let body = &input.block;
-    let header = quote! {
-        #[no_mangle]
-    };
     let func_name = input.sig.ident.clone();
     let lambda_return = input.sig.output.clone();
-    let lambda = quote! {
-        let func = || #lambda_return {
-            #(#decodings)*
-            #(#read_only_stores)*
-            #writable_store
-            let result = #body;
-            result
-        };
+
+    let skip_empty_output = if options.keep_empty_output {
+        quote! {}
+    } else {
+        quote! { substreams::skip_empty_output(); }
     };
 
     let output_handler = match output_type {
@@ -343,7 +358,6 @@ fn build_map_handler(
                 if result.is_err() {
                     panic!("{:?}", result.unwrap_err())
                 }
-
                 substreams::output(result.expect("already checked that result is not an error"));
             }
         }
@@ -352,7 +366,6 @@ fn build_map_handler(
                 if result.is_err() {
                     panic!("{:?}", result.unwrap_err())
                 }
-
                 if let Some(inner) = result.expect("already checked that result is not an error") {
                     substreams::output(inner);
                 }
@@ -375,24 +388,56 @@ fn build_map_handler(
         }
     };
 
-    let skip_empty_output = match keep_empty_output {
-        true => quote! {},
-        false => quote! {
-            substreams::skip_empty_output();
-        },
-    };
+    if !options.no_testable {
+        // Generate dual functions: __impl_<name> (testable) + <name> (WASM export)
+        let impl_func_name = format_ident!("__impl_{}", func_name);
+        // Extract statements from block to avoid extra braces
+        let body_stmts = &input.block.stmts;
 
-    let result = quote! {
-        #header
-        pub extern "C" fn #func_name(#(#collected_args),*){
-            substreams::register_panic_hook();
-            #lambda
-            #skip_empty_output
-            let result = func();
-            #output_handler
-        }
-    };
-    result.into()
+        let result = quote! {
+            // Testable function with original signature (always generated)
+            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
+                #(#body_stmts)*
+            }
+
+            // WASM export (only on wasm32)
+            #[cfg(target_arch = "wasm32")]
+            #[no_mangle]
+            pub extern "C" fn #func_name(#(#collected_args),*) {
+                substreams::register_panic_hook();
+                #(#decodings)*
+                #(#read_only_stores)*
+                #writable_store
+                #skip_empty_output
+                let result = #impl_func_name(#(#impl_call_args),*);
+                #output_handler
+            }
+        };
+        result.into()
+    } else {
+        // Original behavior: single WASM export function
+        let lambda = quote! {
+            let func = || #lambda_return {
+                #(#decodings)*
+                #(#read_only_stores)*
+                #writable_store
+                let result = #body;
+                result
+            };
+        };
+
+        let result = quote! {
+            #[no_mangle]
+            pub extern "C" fn #func_name(#(#collected_args),*) {
+                substreams::register_panic_hook();
+                #lambda
+                #skip_empty_output
+                let result = func();
+                #output_handler
+            }
+        };
+        result.into()
+    }
 }
 
 fn build_store_handler(

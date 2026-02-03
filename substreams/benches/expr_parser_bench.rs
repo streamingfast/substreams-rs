@@ -127,5 +127,10 @@ fn bench_repeated_matching(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_parsing, bench_matching, bench_repeated_matching);
+criterion_group!(
+    benches,
+    bench_parsing,
+    bench_matching,
+    bench_repeated_matching
+);
 criterion_main!(benches);
