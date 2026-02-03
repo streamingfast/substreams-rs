@@ -263,11 +263,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(blk: eth::Block) -> pb::Custom {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
@@ -275,6 +270,10 @@ mod test {
                         .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                     let result = __impl_map_transfers(blk);
                     substreams::output(result);
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> pb::Custom {
+                    unimplemented!("do something");
                 }
             },
         );
@@ -291,11 +290,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(mut blk: eth::Block) -> pb::Custom {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
@@ -303,6 +297,10 @@ mod test {
                         .unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", blk_len, stringify!(eth::Block)));
                     let result = __impl_map_transfers(blk);
                     substreams::output(result);
+                }
+
+                pub fn __impl_map_transfers(mut blk: eth::Block) -> pb::Custom {
+                    unimplemented!("do something");
                 }
             },
         );
@@ -319,11 +317,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
@@ -334,6 +327,10 @@ mod test {
                         panic!("{:?}", result.unwrap_err())
                     }
                     substreams::output(result.expect("already checked that result is not an error"));
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
+                    unimplemented!("do something");
                 }
             },
         );
@@ -350,11 +347,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(params: String, blk: eth::Block) -> Result<pb::Custom, Error> {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(params_ptr: *mut u8, params_len: usize, blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
@@ -366,6 +358,10 @@ mod test {
                         panic!("{:?}", result.unwrap_err())
                     }
                     substreams::output(result.expect("already checked that result is not an error"));
+                }
+
+                pub fn __impl_map_transfers(params: String, blk: eth::Block) -> Result<pb::Custom, Error> {
+                    unimplemented!("do something");
                 }
             },
         );
@@ -382,11 +378,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(blk: eth::Block, store: StoreGetProto<pb::Pairs>) -> Result<pb::Custom, Error> {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, store_idx: u32) {
                     substreams::register_panic_hook();
@@ -398,6 +389,10 @@ mod test {
                         panic!("{:?}", result.unwrap_err())
                     }
                     substreams::output(result.expect("already checked that result is not an error"));
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block, store: StoreGetProto<pb::Pairs>) -> Result<pb::Custom, Error> {
+                    unimplemented!("do something");
                 }
             },
         );
@@ -414,11 +409,6 @@ mod test {
         assert_ast_eq(
             main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
-                pub fn __impl_map_transfers(blk: eth::Block, output: StoreAddInt64) -> Result<pb::Custom, Error> {
-                    unimplemented!("do something");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
@@ -430,6 +420,10 @@ mod test {
                         panic!("{:?}", result.unwrap_err())
                     }
                     substreams::output(result.expect("already checked that result is not an error"));
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block, output: StoreAddInt64) -> Result<pb::Custom, Error> {
+                    unimplemented!("do something");
                 }
             },
         );
