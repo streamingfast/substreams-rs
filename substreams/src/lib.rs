@@ -143,7 +143,6 @@ mod operation;
 /// minimize breaking changes, we reserve the right to modify the API as needed.
 ///
 /// This module is only compiled when running tests (`#[cfg(test)]`).
-#[cfg(test)]
 pub mod testing;
 
 /// A prelude that makes all store traits available.
