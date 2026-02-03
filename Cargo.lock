@@ -967,7 +967,7 @@ checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
 name = "substreams"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "bigdecimal",
@@ -990,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "substreams-macro"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "pretty_assertions",
  "prettyplease 0.1.25",
