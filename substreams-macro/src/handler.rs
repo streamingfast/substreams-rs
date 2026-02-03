@@ -395,13 +395,6 @@ fn build_map_handler(
         let body_stmts = &input.block.stmts;
 
         let result = quote! {
-            // Testable function with original signature (always generated)
-            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
-                #(#body_stmts)*
-            }
-
-            // WASM export (only on wasm32)
-            #[cfg(target_arch = "wasm32")]
             #[no_mangle]
             pub extern "C" fn #func_name(#(#collected_args),*) {
                 substreams::register_panic_hook();
@@ -411,6 +404,11 @@ fn build_map_handler(
                 #skip_empty_output
                 let result = #impl_func_name(#(#impl_call_args),*);
                 #output_handler
+            }
+
+            // Testable function with original signature (always generated)
+            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
+                #(#body_stmts)*
             }
         };
         result.into()
