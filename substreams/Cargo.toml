@@ -11,6 +11,10 @@ keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
 
+[features]
+default = []
+quick-protobuf = ["dep:quick-protobuf"]
+
 [dependencies]
 anyhow = "1"
 bigdecimal = "0.4"
@@ -22,6 +26,7 @@ num-integer = "0.1.45"
 pad = "0.1"
 prost = "0.13.3"
 prost-types = "0.13.3"
+quick-protobuf = { version = "0.8", optional = true }
 substreams-macro = { workspace = true }
 thiserror = "1"
 pest = "2.7.10"

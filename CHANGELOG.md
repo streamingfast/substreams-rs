@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## 0.7.6
 
+### Added
+
+- **Experimental**: Added support for [quick-protobuf](https://github.com/tafia/quick-protobuf) as an alternative protobuf library. This is useful for projects that prefer quick-protobuf over prost for code generation.
+
+  To use quick-protobuf, enable the feature in your `Cargo.toml`:
+  ```toml
+  [dependencies]
+  substreams = { version = "0.7", features = ["quick-protobuf"] }
+  ```
+
+  Then use the `quick_protobuf` option in your handler macros:
+  ```rust
+  #[substreams::handlers::map(quick_protobuf)]
+  fn map_transfers(blk: eth::Block) -> Result<MyOutput, Error> {
+      // Your handler logic using quick-protobuf generated types
+  }
+  ```
+
+  New APIs added (all in the `substreams::quick` module):
+  - `substreams::quick::output()` - Output a quick-protobuf message
+  - `substreams::quick::decode()` - Decode quick-protobuf message from bytes
+  - `substreams::quick::decode_ptr()` - Decode quick-protobuf message from raw pointer (for WASM interop)
+
+  **Note**: This feature is experimental. The API may change in future releases based on user feedback.
+
 ### Changed
 
 - Removed conditional compilation of WASM entrypoint which is causing a bunch of unused warnings in default editor configuration.

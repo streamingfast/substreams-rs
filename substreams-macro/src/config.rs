@@ -12,16 +12,20 @@ pub struct HandlerOptions {
     /// When true, disable generation of the testable `__impl_<name>` function.
     /// By default (false), the macro generates both the testable function and the WASM export.
     pub no_testable: bool,
+    /// When true, use quick-protobuf instead of prost for encoding/decoding.
+    /// Requires the `quick-protobuf` feature to be enabled on the substreams crate.
+    pub quick_protobuf: bool,
 }
 
 impl HandlerOptions {
     /// Parse options from a comma-separated attribute string.
-    /// Supported options: `no_testable`, `keep_empty_output`
+    /// Supported options: `no_testable`, `keep_empty_output`, `quick_protobuf`
     ///
     /// Examples:
-    /// - `""` -> defaults (testable enabled)
+    /// - `""` -> defaults (testable enabled, prost)
     /// - `"no_testable"` -> disable testable function generation
     /// - `"keep_empty_output"` -> keep_empty_output = true
+    /// - `"quick_protobuf"` -> use quick-protobuf instead of prost
     /// - `"no_testable, keep_empty_output"` -> both options set
     pub fn parse(args: &str) -> Result<Self, String> {
         let mut options = Self::default();
@@ -34,9 +38,10 @@ impl HandlerOptions {
             match part.trim() {
                 "no_testable" => options.no_testable = true,
                 "keep_empty_output" => options.keep_empty_output = true,
+                "quick_protobuf" => options.quick_protobuf = true,
                 other => {
                     return Err(format!(
-                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output",
+                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, quick_protobuf",
                         other
                     ))
                 }

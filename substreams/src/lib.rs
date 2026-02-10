@@ -208,6 +208,62 @@ pub fn output_raw(data: Vec<u8>) {
     }
 }
 
+/// Quick-protobuf support module.
+///
+/// This module provides helpers for encoding and decoding quick-protobuf messages.
+/// Only available when the `quick-protobuf` feature is enabled.
+#[cfg(feature = "quick-protobuf")]
+pub mod quick {
+    use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Result as QpResult};
+
+    /// Output a quick-protobuf message.
+    ///
+    /// This function serializes the message using quick-protobuf and outputs it via the WASM host.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+    pub fn output<M: MessageWrite>(msg: &M) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use quick_protobuf::Writer;
+            let size = msg.get_size();
+            let mut buffer = Vec::with_capacity(size);
+            {
+                let mut writer = Writer::new(&mut buffer);
+                msg.write_message(&mut writer).unwrap_or_else(|_| {
+                    panic!(
+                        "Unable to encode '{}' message's struct to Protobuf data",
+                        std::any::type_name::<M>()
+                    )
+                });
+            }
+            let ptr = buffer.as_ptr();
+            let len = buffer.len();
+            std::mem::forget(buffer);
+            unsafe { crate::externs::output(ptr, len as u32) }
+        }
+    }
+
+    /// Decode a quick-protobuf message from a byte slice.
+    pub fn decode<'a, T: MessageRead<'a>>(bytes: &'a [u8]) -> QpResult<T> {
+        let mut reader = BytesReader::from_bytes(bytes);
+        T::from_reader(&mut reader, bytes)
+    }
+
+    /// Decode a quick-protobuf message from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `ptr` is valid for `size` bytes and that
+    /// the memory remains valid for the lifetime of the returned message.
+    pub unsafe fn decode_ptr<T: for<'a> MessageRead<'a>>(
+        ptr: *mut u8,
+        size: usize,
+    ) -> QpResult<T> {
+        let bytes = std::slice::from_raw_parts(ptr, size);
+        let mut reader = BytesReader::from_bytes(bytes);
+        T::from_reader(&mut reader, bytes)
+    }
+}
+
 /// Registers a Substreams custom panic hook. The panic hook is invoked when then handler panics
 
 pub fn register_panic_hook() {

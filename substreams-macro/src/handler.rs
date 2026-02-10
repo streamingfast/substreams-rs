@@ -125,6 +125,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                     impl_call_args.push(quote! { #var_name });
 
                     if input_obj.is_deltas {
+                        // Deltas are always decoded using prost since they're internal substreams types
                         let raw = prefixed_ident("raw", &var_name);
                         proto_decodings.push(quote! {
                                 let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas;
@@ -132,7 +133,18 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                             })
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
+                    } else if options.quick_protobuf {
+                        // Use quick-protobuf for decoding
+                        proto_decodings.push(quote! {
+                            let #mutability #var_name: #argument_type = unsafe {
+                                substreams::quick::decode_ptr(#var_ptr, #var_len)
+                            }.unwrap_or_else(|_| panic!(
+                                "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                                #var_len, stringify!(#argument_type)
+                            ));
+                        });
                     } else {
+                        // Default: use prost for decoding
                         proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
                     }
                 }
@@ -352,39 +364,78 @@ fn build_map_handler(
         quote! { substreams::skip_empty_output(); }
     };
 
-    let output_handler = match output_type {
-        OutputType::Result => {
-            quote! {
-                if result.is_err() {
-                    panic!("{:?}", result.unwrap_err())
-                }
-                substreams::output(result.expect("already checked that result is not an error"));
-            }
-        }
-        OutputType::ResultOption => {
-            quote! {
-                if result.is_err() {
-                    panic!("{:?}", result.unwrap_err())
-                }
-                if let Some(inner) = result.expect("already checked that result is not an error") {
-                    substreams::output(inner);
+    // Choose output function based on quick_protobuf option
+    let output_handler = if options.quick_protobuf {
+        match output_type {
+            OutputType::Result => {
+                quote! {
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    substreams::quick::output(&result.expect("already checked that result is not an error"));
                 }
             }
-        }
-        OutputType::Option => {
-            quote! {
-                if let Some(value) = result {
-                    substreams::output(value);
+            OutputType::ResultOption => {
+                quote! {
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    if let Some(ref inner) = result.expect("already checked that result is not an error") {
+                        substreams::quick::output(inner);
+                    }
                 }
             }
-        }
-        OutputType::Value => {
-            quote! {
-                substreams::output(result);
+            OutputType::Option => {
+                quote! {
+                    if let Some(ref value) = result {
+                        substreams::quick::output(value);
+                    }
+                }
+            }
+            OutputType::Value => {
+                quote! {
+                    substreams::quick::output(&result);
+                }
+            }
+            OutputType::Void => {
+                quote! {}
             }
         }
-        OutputType::Void => {
-            quote! {}
+    } else {
+        match output_type {
+            OutputType::Result => {
+                quote! {
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    substreams::output(result.expect("already checked that result is not an error"));
+                }
+            }
+            OutputType::ResultOption => {
+                quote! {
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    if let Some(inner) = result.expect("already checked that result is not an error") {
+                        substreams::output(inner);
+                    }
+                }
+            }
+            OutputType::Option => {
+                quote! {
+                    if let Some(value) = result {
+                        substreams::output(value);
+                    }
+                }
+            }
+            OutputType::Value => {
+                quote! {
+                    substreams::output(result);
+                }
+            }
+            OutputType::Void => {
+                quote! {}
+            }
         }
     };
 

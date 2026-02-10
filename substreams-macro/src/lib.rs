@@ -248,6 +248,15 @@ mod test {
         HandlerOptions {
             keep_empty_output,
             no_testable,
+            quick_protobuf: false,
+        }
+    }
+
+    fn opts_quick_protobuf(keep_empty_output: bool, no_testable: bool) -> HandlerOptions {
+        HandlerOptions {
+            keep_empty_output,
+            no_testable,
+            quick_protobuf: true,
         }
     }
 
@@ -596,6 +605,172 @@ mod test {
                         unimplemented!("do something");
                     };
                     result
+                }
+            },
+        );
+    }
+
+    // Tests for quick_protobuf option
+    #[test]
+    fn test_map_quick_protobuf_plain() {
+        let item = quote! {
+            fn map_transfers(blk: eth::Block) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let blk: eth::Block = unsafe {
+                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    }.unwrap_or_else(|_| panic!(
+                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                        blk_len, stringify!(eth::Block)
+                    ));
+                    let result = __impl_map_transfers(blk);
+                    substreams::quick::output(&result);
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> pb::Custom {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_quick_protobuf_result() {
+        let item = quote! {
+            fn map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let blk: eth::Block = unsafe {
+                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    }.unwrap_or_else(|_| panic!(
+                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                        blk_len, stringify!(eth::Block)
+                    ));
+                    let result = __impl_map_transfers(blk);
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    substreams::quick::output(&result.expect("already checked that result is not an error"));
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_quick_protobuf_option() {
+        let item = quote! {
+            fn map_transfers(blk: eth::Block) -> Option<pb::Custom> {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let blk: eth::Block = unsafe {
+                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    }.unwrap_or_else(|_| panic!(
+                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                        blk_len, stringify!(eth::Block)
+                    ));
+                    let result = __impl_map_transfers(blk);
+                    if let Some(ref value) = result {
+                        substreams::quick::output(value);
+                    }
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> Option<pb::Custom> {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_quick_protobuf_result_option() {
+        let item = quote! {
+            fn map_transfers(blk: eth::Block) -> Result<Option<pb::Custom> > {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let blk: eth::Block = unsafe {
+                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    }.unwrap_or_else(|_| panic!(
+                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                        blk_len, stringify!(eth::Block)
+                    ));
+                    let result = __impl_map_transfers(blk);
+                    if result.is_err() {
+                        panic!("{:?}", result.unwrap_err())
+                    }
+                    if let Some(ref inner) = result.expect("already checked that result is not an error") {
+                        substreams::quick::output(inner);
+                    }
+                }
+
+                pub fn __impl_map_transfers(blk: eth::Block) -> Result<Option<pb::Custom> > {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_quick_protobuf_no_testable() {
+        let item = quote! {
+            fn map_transfers(blk: eth::Block) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_quick_protobuf(true, true)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let func = || -> pb::Custom {
+                        let blk: eth::Block = unsafe {
+                            substreams::quick::decode_ptr(blk_ptr, blk_len)
+                        }.unwrap_or_else(|_| panic!(
+                            "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
+                            blk_len, stringify!(eth::Block)
+                        ));
+                        let result = { unimplemented!("do something"); };
+                        result
+                    };
+                    let result = func();
+                    substreams::quick::output(&result);
                 }
             },
         );
