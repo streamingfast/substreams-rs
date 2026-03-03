@@ -173,22 +173,18 @@ pub use crate::hex::Hex;
 // pub use crate::store::FoundationalStore;
 pub use hex_literal::hex;
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn output<M: prost::Message>(msg: M) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        // Need to return the buffer and forget about it issue occurred when trying to write large data
-        // wasm was "dropping" the data before we could write to it, which causes us to have garbage
-        // value. By forgetting the data we can properly call external output function to write the
-        // msg to heap.
-        let (ptr, len, buffer) = proto::encode_to_ptr(&msg).unwrap_or_else(|_| {
-            panic!(
-                "Unable to encode '{}' message's struct to Protobuf data",
-                stringify!(M)
-            )
-        });
-        std::mem::forget(buffer);
-        unsafe { externs::output(ptr, len as u32) }
+    let (ptr, len, buffer) = proto::encode_to_ptr(&msg).unwrap_or_else(|_| {
+        panic!(
+            "Unable to encode '{}' message's struct to Protobuf data",
+            std::any::type_name::<M>()
+        )
+    });
+    // On wasm32: buffer is passed to host, we must forget it to prevent deallocation
+    // On other platforms: externs::output copies the data, so forget is harmless
+    std::mem::forget(buffer);
+    unsafe {
+        externs::output(ptr, len as u32);
     }
 }
 
@@ -200,11 +196,9 @@ pub fn skip_empty_output() {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
 pub fn output_raw(data: Vec<u8>) {
-    #[cfg(target_arch = "wasm32")]
     unsafe {
-        externs::output(data.as_ptr(), data.len() as u32)
+        externs::output(data.as_ptr(), data.len() as u32);
     }
 }
 
@@ -218,27 +212,23 @@ pub mod quick {
 
     /// Output a quick-protobuf message.
     ///
-    /// This function serializes the message using quick-protobuf and outputs it via the WASM host.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+    /// This function serializes the message using quick-protobuf and outputs it.
     pub fn output<M: MessageWrite>(msg: &M) {
-        #[cfg(target_arch = "wasm32")]
+        use quick_protobuf::Writer;
+        let size = msg.get_size();
+        let mut buffer = Vec::with_capacity(size);
         {
-            use quick_protobuf::Writer;
-            let size = msg.get_size();
-            let mut buffer = Vec::with_capacity(size);
-            {
-                let mut writer = Writer::new(&mut buffer);
-                msg.write_message(&mut writer).unwrap_or_else(|_| {
-                    panic!(
-                        "Unable to encode '{}' message's struct to Protobuf data",
-                        std::any::type_name::<M>()
-                    )
-                });
-            }
-            let ptr = buffer.as_ptr();
-            let len = buffer.len();
-            std::mem::forget(buffer);
-            unsafe { crate::externs::output(ptr, len as u32) }
+            let mut writer = Writer::new(&mut buffer);
+            msg.write_message(&mut writer).unwrap_or_else(|_| {
+                panic!(
+                    "Unable to encode '{}' message's struct to Protobuf data",
+                    std::any::type_name::<M>()
+                )
+            });
+        }
+
+        unsafe {
+            crate::externs::output(buffer.as_ptr(), buffer.len() as u32);
         }
     }
 
@@ -254,10 +244,7 @@ pub mod quick {
     ///
     /// The caller must ensure that `ptr` is valid for `size` bytes and that
     /// the memory remains valid for the lifetime of the returned message.
-    pub unsafe fn decode_ptr<T: for<'a> MessageRead<'a>>(
-        ptr: *mut u8,
-        size: usize,
-    ) -> QpResult<T> {
+    pub unsafe fn decode_ptr<T: for<'a> MessageRead<'a>>(ptr: *mut u8, size: usize) -> QpResult<T> {
         let bytes = std::slice::from_raw_parts(ptr, size);
         let mut reader = BytesReader::from_bytes(bytes);
         T::from_reader(&mut reader, bytes)

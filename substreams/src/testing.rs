@@ -4,8 +4,6 @@
 //! minimize breaking changes, we reserve the right to modify the API as needed.
 //! Please provide feedback on the API design.
 //!
-//! This module is only available in test builds (`#[cfg(test)]`).
-//!
 //! # Overview
 //!
 //! This module provides utilities for testing Substreams handlers without the
@@ -13,6 +11,8 @@
 //!
 //! - [`map!`] - Macro for calling testable handler functions
 //! - [`clock`] - Helper function to create [`Clock`] instances for testing
+//! - [`take_output`], [`clear`], [`has_output`] - Output capture utilities
+//!   (available on non-wasm32 platforms)
 //!
 //! # Example
 //!
@@ -36,6 +36,72 @@
 //! [`Clock`]: crate::pb::substreams::Clock
 
 use crate::pb::substreams::Clock;
+
+// ============================================================================
+// Output Capture (non-wasm32 only)
+// ============================================================================
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::cell::RefCell;
+
+#[cfg(not(target_arch = "wasm32"))]
+thread_local! {
+    static CAPTURED_OUTPUT: RefCell<Option<Vec<u8>>> = const { RefCell::new(None) };
+}
+
+/// Capture output bytes. Called by output functions on non-wasm32 platforms.
+///
+/// This function is used internally by the output functions to store the
+/// serialized protobuf bytes for later verification in tests.
+pub fn capture(data: Vec<u8>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    CAPTURED_OUTPUT.with(|cell| {
+        *cell.borrow_mut() = Some(data);
+    });
+}
+
+/// Take the captured output, clearing the storage.
+///
+/// Returns `None` if no output was captured since the last call to [`clear`]
+/// or [`take_output`].
+///
+/// # Example
+///
+/// ```ignore
+/// use substreams::testing::take_output;
+///
+/// // After calling a handler that produces output...
+/// let output_bytes = take_output().expect("Handler should produce output");
+/// // Decode and verify output_bytes
+/// ```
+pub fn take_output() -> Option<Vec<u8>> {
+    #[cfg(not(target_arch = "wasm32"))]
+    return CAPTURED_OUTPUT.with(|cell| cell.borrow_mut().take());
+
+    #[cfg(target_arch = "wasm32")]
+    return None;
+}
+
+/// Clear any captured output without returning it.
+///
+/// Call this before running a handler to ensure you're capturing fresh output.
+pub fn clear() {
+    CAPTURED_OUTPUT.with(|cell| {
+        *cell.borrow_mut() = None;
+    });
+}
+
+/// Check if output was captured.
+///
+/// Returns `true` if a handler has produced output since the last call to
+/// [`clear`] or [`take_output`].
+pub fn has_output() -> bool {
+    CAPTURED_OUTPUT.with(|cell| cell.borrow().is_some())
+}
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
 
 /// Test helper macro that transforms a handler call to use the `__impl_` testable function.
 ///

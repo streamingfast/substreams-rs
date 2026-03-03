@@ -1,0 +1,16 @@
+[package]
+name = "substreams-macro-tests"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Functional tests for substreams-macro"
+
+# This crate is test-only, no library
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+substreams = { path = "../substreams", features = ["quick-protobuf"] }
+quick-protobuf = "0.8"
+
+[dev-dependencies]

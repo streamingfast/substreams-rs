@@ -1,5 +1,5 @@
 [workspace]
-members = ["substreams-macro", "substreams"]
+members = ["substreams-macro", "substreams", "substreams-macro-tests"]
 resolver = "2"
 
 [workspace.package]
