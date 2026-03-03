@@ -36,15 +36,8 @@
 //! [`Clock`]: crate::pb::substreams::Clock
 
 use crate::pb::substreams::Clock;
-
-// ============================================================================
-// Output Capture (non-wasm32 only)
-// ============================================================================
-
-#[cfg(not(target_arch = "wasm32"))]
 use std::cell::RefCell;
 
-#[cfg(not(target_arch = "wasm32"))]
 thread_local! {
     static CAPTURED_OUTPUT: RefCell<Option<Vec<u8>>> = const { RefCell::new(None) };
 }
@@ -53,14 +46,15 @@ thread_local! {
 ///
 /// This function is used internally by the output functions to store the
 /// serialized protobuf bytes for later verification in tests.
-pub fn capture(data: Vec<u8>) {
-    #[cfg(not(target_arch = "wasm32"))]
+pub fn capture_output(data: Vec<u8>) {
     CAPTURED_OUTPUT.with(|cell| {
         *cell.borrow_mut() = Some(data);
     });
 }
 
-/// Take the captured output, clearing the storage.
+/// Take the last captured output, clearing the storage. The output is captured when:
+/// - A handler produces output (e.g. via `output` function on non-wasm32 platforms)
+/// - Code is run on non-wasm32 platforms, which is the case for unit tests
 ///
 /// Returns `None` if no output was captured since the last call to [`clear`]
 /// or [`take_output`].
@@ -75,11 +69,7 @@ pub fn capture(data: Vec<u8>) {
 /// // Decode and verify output_bytes
 /// ```
 pub fn take_output() -> Option<Vec<u8>> {
-    #[cfg(not(target_arch = "wasm32"))]
-    return CAPTURED_OUTPUT.with(|cell| cell.borrow_mut().take());
-
-    #[cfg(target_arch = "wasm32")]
-    return None;
+    CAPTURED_OUTPUT.with(|cell| cell.borrow_mut().take())
 }
 
 /// Clear any captured output without returning it.

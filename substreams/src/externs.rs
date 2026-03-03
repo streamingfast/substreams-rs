@@ -13,11 +13,6 @@ extern "C" {
     );
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub fn output(ptr: *const u8, len: u32) {
-    crate::testing::capture(unsafe { std::slice::from_raw_parts(ptr, len as usize) }.to_vec());
-}
-
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "logger")]
 extern "C" {

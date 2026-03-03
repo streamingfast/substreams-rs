@@ -173,18 +173,28 @@ pub use crate::hex::Hex;
 // pub use crate::store::FoundationalStore;
 pub use hex_literal::hex;
 
-pub fn output<M: prost::Message>(msg: M) {
+pub fn output<M: ::prost::Message>(msg: M) {
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
     let (ptr, len, buffer) = proto::encode_to_ptr(&msg).unwrap_or_else(|_| {
         panic!(
             "Unable to encode '{}' message's struct to Protobuf data",
             std::any::type_name::<M>()
         )
     });
-    // On wasm32: buffer is passed to host, we must forget it to prevent deallocation
-    // On other platforms: externs::output copies the data, so forget is harmless
-    std::mem::forget(buffer);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // On non-wasm32 platforms, capture the output for testing verification
+        crate::testing::capture_output(buffer.clone());
+    }
+
+    #[cfg(target_arch = "wasm32")]
     unsafe {
-        externs::output(ptr, len as u32);
+        // On wasm32: buffer is passed to host, we must forget it to prevent deallocation
+        // On other platforms: externs::output copies the data, so forget is harmless
+        std::mem::forget(buffer);
+
+        crate::externs::output(ptr, len as u32);
     }
 }
 
@@ -192,13 +202,46 @@ pub fn output<M: prost::Message>(msg: M) {
 pub fn skip_empty_output() {
     #[cfg(target_arch = "wasm32")]
     unsafe {
-        externs::skip_empty_output()
+        crate::externs::skip_empty_output()
     }
 }
 
 pub fn output_raw(data: Vec<u8>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // On non-wasm32 platforms, capture the output for testing verification
+        crate::testing::capture_output(data.clone());
+    }
+
+    #[cfg(target_arch = "wasm32")]
     unsafe {
-        externs::output(data.as_ptr(), data.len() as u32);
+        crate::externs::output(data.as_ptr(), data.len() as u32);
+    }
+}
+
+pub mod prost {
+    pub fn output<M: ::prost::Message>(msg: M) {
+        #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+        let (ptr, len, buffer) = crate::proto::encode_to_ptr(&msg).unwrap_or_else(|_| {
+            panic!(
+                "Unable to encode '{}' message's struct to Protobuf data",
+                std::any::type_name::<M>()
+            )
+        });
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // On non-wasm32 platforms, capture the output for testing verification
+            crate::testing::capture_output(buffer.clone());
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        unsafe {
+            // On wasm32: buffer is passed to host, we must forget it to prevent deallocation
+            // On other platforms: externs::output copies the data, so forget is harmless
+            std::mem::forget(buffer);
+            crate::externs::output(ptr, len as u32);
+        }
     }
 }
 
@@ -227,8 +270,20 @@ pub mod quick {
             });
         }
 
+        #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+        let (ptr, len) = (buffer.as_ptr(), buffer.len() as u32);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // On non-wasm32 platforms, capture the output for testing verification
+            crate::testing::capture_output(buffer.clone());
+        }
+
+        #[cfg(target_arch = "wasm32")]
         unsafe {
-            crate::externs::output(buffer.as_ptr(), buffer.len() as u32);
+            // On wasm32: buffer is passed to host, we must forget it to prevent deallocation
+            std::mem::forget(buffer);
+            crate::externs::output(ptr, len);
         }
     }
 

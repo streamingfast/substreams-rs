@@ -16,7 +16,6 @@
 pub mod pb;
 
 /// Test utilities for running handler functions with raw pointer inputs.
-#[cfg(not(target_arch = "wasm32"))]
 pub mod harness {
     use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Writer};
 
