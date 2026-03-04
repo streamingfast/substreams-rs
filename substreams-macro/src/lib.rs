@@ -625,11 +625,13 @@ mod test {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    let bytes_blk = unsafe { std::slice::from_raw_parts(blk_ptr, blk_len) };
+                    let blk = {
+                        let mut reader = quick_protobuf::BytesReader::from_bytes(bytes_blk);
+                        quick_protobuf::MessageRead::from_reader(&mut reader, bytes_blk)
                     }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
+                        "Unable to decode quick-protobuf data ({} bytes)",
+                        blk_len
                     ));
                     let result = __impl_map_transfers(blk);
                     substreams::quick::output(&result);
@@ -656,11 +658,13 @@ mod test {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    let bytes_blk = unsafe { std::slice::from_raw_parts(blk_ptr, blk_len) };
+                    let blk = {
+                        let mut reader = quick_protobuf::BytesReader::from_bytes(bytes_blk);
+                        quick_protobuf::MessageRead::from_reader(&mut reader, bytes_blk)
                     }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
+                        "Unable to decode quick-protobuf data ({} bytes)",
+                        blk_len
                     ));
                     let result = __impl_map_transfers(blk);
                     if result.is_err() {
@@ -690,11 +694,13 @@ mod test {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    let bytes_blk = unsafe { std::slice::from_raw_parts(blk_ptr, blk_len) };
+                    let blk = {
+                        let mut reader = quick_protobuf::BytesReader::from_bytes(bytes_blk);
+                        quick_protobuf::MessageRead::from_reader(&mut reader, bytes_blk)
                     }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
+                        "Unable to decode quick-protobuf data ({} bytes)",
+                        blk_len
                     ));
                     let result = __impl_map_transfers(blk);
                     if let Some(ref value) = result {
@@ -723,11 +729,13 @@ mod test {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
+                    let bytes_blk = unsafe { std::slice::from_raw_parts(blk_ptr, blk_len) };
+                    let blk = {
+                        let mut reader = quick_protobuf::BytesReader::from_bytes(bytes_blk);
+                        quick_protobuf::MessageRead::from_reader(&mut reader, bytes_blk)
                     }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
+                        "Unable to decode quick-protobuf data ({} bytes)",
+                        blk_len
                     ));
                     let result = __impl_map_transfers(blk);
                     if result.is_err() {
@@ -760,11 +768,13 @@ mod test {
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
                     let func = || -> pb::Custom {
-                        let blk: eth::Block = unsafe {
-                            substreams::quick::decode_ptr(blk_ptr, blk_len)
+                        let bytes_blk = unsafe { std::slice::from_raw_parts(blk_ptr, blk_len) };
+                    let blk = {
+                            let mut reader = quick_protobuf::BytesReader::from_bytes(bytes_blk);
+                        quick_protobuf::MessageRead::from_reader(&mut reader, bytes_blk)
                         }.unwrap_or_else(|_| panic!(
-                            "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                            blk_len, stringify!(eth::Block)
+                            "Unable to decode quick-protobuf data ({} bytes)",
+                            blk_len
                         ));
                         let result = { unimplemented!("do something"); };
                         result

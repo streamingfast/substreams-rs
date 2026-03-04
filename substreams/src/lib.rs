@@ -299,7 +299,14 @@ pub mod quick {
     ///
     /// The caller must ensure that `ptr` is valid for `size` bytes and that
     /// the memory remains valid for the lifetime of the returned message.
-    pub unsafe fn decode_ptr<T: for<'a> MessageRead<'a>>(ptr: *mut u8, size: usize) -> QpResult<T> {
+    ///
+    /// # Lifetimes
+    ///
+    /// The returned message has a lifetime tied to the input buffer created from `ptr`.
+    /// For types that own their data (e.g., using String instead of &str), this lifetime
+    /// is not restrictive. For types that borrow from the input buffer (e.g., using Cow
+    /// or &[u8]), the lifetime ensures memory safety.
+    pub unsafe fn decode_ptr<'a, T: MessageRead<'a>>(ptr: *mut u8, size: usize) -> QpResult<T> {
         let bytes = std::slice::from_raw_parts(ptr, size);
         let mut reader = BytesReader::from_bytes(bytes);
         T::from_reader(&mut reader, bytes)

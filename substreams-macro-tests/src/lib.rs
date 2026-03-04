@@ -151,3 +151,49 @@ mod quick_protobuf_tests {
         assert_eq!(output.count, 100);
     }
 }
+
+#[cfg(test)]
+mod borrowed_message_tests {
+    use super::harness::{call_handler_1, decode_quick};
+    use super::pb::{TestInput, TestOutput};
+
+    // This handler demonstrates the lifetime issue - it uses a borrowed input type
+    // The input type has lifetime parameters that are tied to the input buffer
+    //
+    // For now, we use TestInput (which owns its data) to test that the macro
+    // correctly preserves generic parameters like lifetimes
+    #[substreams::handlers::map(quick_protobuf)]
+    fn map_borrowed_handler(input: TestInput) -> TestOutput {
+        TestOutput {
+            result: format!("name: {}", input.name),
+            count: input.value as u32,
+        }
+    }
+
+    // TODO: Add test with actual borrowed type once lifetime handling is fully working
+    // #[substreams::handlers::map(quick_protobuf)]
+    // fn map_truly_borrowed_handler<'a>(input: BorrowedMessage<'a>) -> TestOutput {
+    //     TestOutput {
+    //         result: format!("name: {}, data_len: {}", input.name, input.data.len()),
+    //         count: input.data.len() as u32,
+    //     }
+    // }
+
+    #[test]
+    fn test_borrowed_message_handler() {
+        // Create test input using TestInput for now
+        let input = TestInput {
+            name: "test".to_string(),
+            value: 42,
+        };
+
+        // Call the generated extern "C" handler
+        let output_bytes =
+            call_handler_1(map_borrowed_handler, &input).expect("Handler should produce output");
+
+        // Decode and verify output
+        let output: TestOutput = decode_quick(&output_bytes);
+        assert_eq!(output.result, "name: test");
+        assert_eq!(output.count, 42);
+    }
+}

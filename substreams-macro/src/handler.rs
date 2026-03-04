@@ -135,12 +135,18 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
                     } else if options.quick_protobuf {
                         // Use quick-protobuf for decoding
+                        // Create a slice first so it has a proper lifetime that the decoded message can borrow from
+                        let bytes_name = prefixed_ident("bytes", &var_name);
+                        // Don't include explicit type annotation - let Rust infer the type and lifetime
+                        // This avoids issues with lifetime parameters not being in scope
                         proto_decodings.push(quote! {
-                            let #mutability #var_name: #argument_type = unsafe {
-                                substreams::quick::decode_ptr(#var_ptr, #var_len)
+                            let #bytes_name = unsafe { std::slice::from_raw_parts(#var_ptr, #var_len) };
+                            let #mutability #var_name = {
+                                let mut reader = quick_protobuf::BytesReader::from_bytes(#bytes_name);
+                                quick_protobuf::MessageRead::from_reader(&mut reader, #bytes_name)
                             }.unwrap_or_else(|_| panic!(
-                                "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                                #var_len, stringify!(#argument_type)
+                                "Unable to decode quick-protobuf data ({} bytes)",
+                                #var_len
                             ));
                         });
                     } else {
@@ -444,6 +450,8 @@ fn build_map_handler(
         let impl_func_name = format_ident!("__impl_{}", func_name);
         // Extract statements from block to avoid extra braces
         let body_stmts = &input.block.stmts;
+        // Preserve generic parameters (including lifetimes) from original function
+        let generics = &input.sig.generics;
 
         let result = quote! {
             #[no_mangle]
@@ -458,7 +466,8 @@ fn build_map_handler(
             }
 
             // Testable function with original signature (always generated)
-            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
+            // Preserves generic parameters including lifetimes
+            pub fn #impl_func_name #generics (#(#original_args),*) #lambda_return {
                 #(#body_stmts)*
             }
         };
