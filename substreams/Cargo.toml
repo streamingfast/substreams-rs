@@ -19,26 +19,26 @@ quick-protobuf = ["dep:quick-protobuf"]
 anyhow = "1"
 bigdecimal = "0.4"
 hex = "0.4"
-hex-literal = "0.3"
+hex-literal = "1.1"
 num-bigint = "0.4"
 num-traits = "0.2"
 num-integer = "0.1.45"
 pad = "0.1"
-prost = "0.13.3"
-prost-types = "0.13.3"
+prost = "0.14.3"
+prost-types = "0.14.3"
 quick-protobuf = { version = "0.8", optional = true }
 substreams-macro = { workspace = true }
-thiserror = "1"
-pest = "2.7.10"
-pest_derive = "2.7.10"
+thiserror = "2"
+pest = "2.8.6"
+pest_derive = "2.8.6"
 
 [dev-dependencies]
-rstest = "0.19.0"
-criterion = { version = "0.5", features = ["html_reports"] }
+rstest = "0.26.1"
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "expr_parser_bench"
 harness = false
 
 [build-dependencies]
-prost-build = "0.13.3"
+prost-build = "0.14.3"
