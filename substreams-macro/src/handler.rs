@@ -122,7 +122,15 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         quote! {}
                     };
                     original_args.push(quote! { #mutability #var_name: #argument_type });
-                    impl_call_args.push(quote! { #var_name });
+                    // The lazy-view arm binds `#var_name` to the view itself while
+                    // the handler's argument is `&FooLazyView<'_>`, so that call
+                    // passes a reference. Every other arm binds a value of the
+                    // declared type and passes it directly.
+                    if options.buffa_lazy && !input_obj.is_deltas && !input_obj.is_string {
+                        impl_call_args.push(quote! { &#var_name });
+                    } else {
+                        impl_call_args.push(quote! { #var_name });
+                    }
 
                     if input_obj.is_deltas {
                         // Deltas are always decoded using prost since they're internal substreams types
@@ -133,6 +141,45 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                             })
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
+                    } else if options.buffa_lazy {
+                        // buffa LAZY VIEW: one non-recursive scan, nested and
+                        // repeated message fields recorded as undecoded byte
+                        // ranges that decode on access.
+                        //
+                        // The view borrows the input buffer, so the buffer is
+                        // bound here in the export's scope and outlives the
+                        // handler call below -- that is what makes the borrow
+                        // sound. The handler receives `&FooLazyView<'_>`.
+                        //
+                        // `#argument_type` is the view type, named by the
+                        // handler signature: `fn f(block: &BlockLazyView<'_>)`.
+                        let bytes_ident = prefixed_ident("bytes", &var_name);
+                        // The handler declares `&FooLazyView<'_>`; decode the
+                        // view type itself, then pass a reference to it.
+                        let inner_ty: syn::Type = match &*argument_type {
+                            syn::Type::Reference(r) => (*r.elem).clone(),
+                            other => other.clone(),
+                        };
+                        proto_decodings.push(quote! {
+                            let #bytes_ident: &[u8] = unsafe {
+                                std::slice::from_raw_parts(#var_ptr, #var_len)
+                            };
+                            let #var_name = <#inner_ty as substreams::buffa_lazy::LazyDecode>::decode_lazy_slice(#bytes_ident)
+                                .unwrap_or_else(|_| panic!(
+                                    "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                                    #var_len, stringify!(#argument_type)
+                                ));
+                        });
+                    } else if options.buffa {
+                        // Use buffa for decoding (owned api -- see substreams::buffa)
+                        proto_decodings.push(quote! {
+                            let #mutability #var_name: #argument_type = unsafe {
+                                substreams::buffa::decode_ptr(#var_ptr, #var_len)
+                            }.unwrap_or_else(|_| panic!(
+                                "Unable to decode buffa data ({} bytes) to '{}' message's struct",
+                                #var_len, stringify!(#argument_type)
+                            ));
+                        });
                     } else if options.quick_protobuf {
                         // Use quick-protobuf for decoding
                         proto_decodings.push(quote! {
@@ -290,6 +337,10 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             }
             Ok(input)
         }
+        // `&FooLazyView<'_>` -- the shape a buffa lazy-view handler declares.
+        // The view borrows the input buffer, so the argument is a reference;
+        // classify it by the type behind the reference.
+        syn::Type::Reference(r) => parse_input_type(&r.elem),
         _ => Err(errors::SubstreamMacroError::UnknownInputType(
             "unable to parse input type".to_owned(),
         )),
@@ -364,15 +415,25 @@ fn build_map_handler(
         quote! { substreams::skip_empty_output(); }
     };
 
-    // Choose output function based on quick_protobuf option
-    let output_handler = if options.quick_protobuf {
+    // Choose the output function by codec. The four OutputType arms are
+    // identical apart from which `output` they call, so the codec path is
+    // selected once here rather than duplicating the match per library.
+    let output_fn = if options.buffa {
+        quote! { substreams::buffa::output }
+    } else if options.quick_protobuf {
+        quote! { substreams::quick::output }
+    } else {
+        quote! { substreams::output }
+    };
+
+    let output_handler = if options.quick_protobuf || options.buffa {
         match output_type {
             OutputType::Result => {
                 quote! {
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
-                    substreams::quick::output(&result.expect("already checked that result is not an error"));
+                    #output_fn(&result.expect("already checked that result is not an error"));
                 }
             }
             OutputType::ResultOption => {
@@ -381,20 +442,20 @@ fn build_map_handler(
                         panic!("{:?}", result.unwrap_err())
                     }
                     if let Some(ref inner) = result.expect("already checked that result is not an error") {
-                        substreams::quick::output(inner);
+                        #output_fn(inner);
                     }
                 }
             }
             OutputType::Option => {
                 quote! {
                     if let Some(ref value) = result {
-                        substreams::quick::output(value);
+                        #output_fn(value);
                     }
                 }
             }
             OutputType::Value => {
                 quote! {
-                    substreams::quick::output(&result);
+                    #output_fn(&result);
                 }
             }
             OutputType::Void => {

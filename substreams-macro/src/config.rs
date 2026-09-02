@@ -15,6 +15,23 @@ pub struct HandlerOptions {
     /// When true, use quick-protobuf instead of prost for encoding/decoding.
     /// Requires the `quick-protobuf` feature to be enabled on the substreams crate.
     pub quick_protobuf: bool,
+    /// When true, use buffa instead of prost for encoding/decoding.
+    /// Requires the `buffa` feature to be enabled on the substreams crate.
+    ///
+    /// This selects buffa's OWNED api. buffa's own docs rate that path at
+    /// "within roughly +/-10% of prost"; the fast paths are the borrowed ones,
+    /// selected with `buffa_lazy` below.
+    pub buffa: bool,
+    /// When true, decode with buffa's LAZY VIEW -- one non-recursive scan that
+    /// records nested/repeated message fields as undecoded byte ranges, decoded
+    /// on access. This is buffa's fastest decode path (measured 2.9-4.9x prost
+    /// natively, 2.5-14x in wasm fuel, versus 1.4x for the owned api).
+    ///
+    /// It changes the handler signature: the view borrows from the input
+    /// buffer, so the handler takes `&FooLazyView<'_>` rather than an owned
+    /// `Foo`. The generated export keeps the buffer alive for the whole call,
+    /// so the borrow is valid for the handler's entire body.
+    pub buffa_lazy: bool,
 }
 
 impl HandlerOptions {
@@ -26,6 +43,8 @@ impl HandlerOptions {
     /// - `"no_testable"` -> disable testable function generation
     /// - `"keep_empty_output"` -> keep_empty_output = true
     /// - `"quick_protobuf"` -> use quick-protobuf instead of prost
+    /// - `"buffa"` -> use buffa's owned api instead of prost
+    /// - `"buffa_lazy"` -> use buffa's lazy view (handler takes &FooLazyView<'_>)
     /// - `"no_testable, keep_empty_output"` -> both options set
     pub fn parse(args: &str) -> Result<Self, String> {
         let mut options = Self::default();
@@ -39,9 +58,11 @@ impl HandlerOptions {
                 "no_testable" => options.no_testable = true,
                 "keep_empty_output" => options.keep_empty_output = true,
                 "quick_protobuf" => options.quick_protobuf = true,
+                "buffa" => options.buffa = true,
+                "buffa_lazy" => options.buffa_lazy = true,
                 other => {
                     return Err(format!(
-                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, quick_protobuf",
+                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, quick_protobuf, buffa, buffa_lazy",
                         other
                     ))
                 }
