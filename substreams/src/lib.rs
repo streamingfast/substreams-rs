@@ -264,6 +264,93 @@ pub mod quick {
     }
 }
 
+/// buffa support module.
+///
+/// Mirrors the `quick` module above, for buffa's owned `Message` API.
+///
+/// # Why the OWNED api, and not the lazy view
+///
+/// buffa's fastest decode is `FooLazyView::decode_lazy`, which records nested
+/// message fields as undecoded byte ranges. It cannot be used here. The macro
+/// hands the handler a value it owns, and a view borrows from the input buffer
+/// -- `FooView<'a>` / `FooLazyView<'a>` carry a lifetime tied to those bytes,
+/// so they cannot cross the `fn map_transfers(block: Block)` boundary the
+/// handler signature defines.
+///
+/// Exposing the lazy path to module authors is a larger change: the handler
+/// signature would have to take `BlockLazyView<'_>`, which changes every
+/// module's source and every generated `pb` tree. That is a real option, and
+/// the benchmarks say it is where the win is, but it is not a drop-in.
+///
+/// What this module gives is the drop-in half: the same `Block` the handler
+/// already receives, decoded by buffa instead of prost.
+#[cfg(feature = "buffa")]
+pub mod buffa {
+    /// Output a buffa message.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+    pub fn output<M: ::buffa::Message>(msg: &M) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let buffer = ::buffa::Message::encode_to_vec(msg);
+            let ptr = buffer.as_ptr();
+            let len = buffer.len();
+            std::mem::forget(buffer);
+            unsafe { crate::externs::output(ptr, len as u32) }
+        }
+    }
+
+    /// Decode a buffa message from a byte slice.
+    pub fn decode<T: ::buffa::Message>(bytes: &[u8]) -> Result<T, ::buffa::DecodeError> {
+        <T as ::buffa::Message>::decode_from_slice(bytes)
+    }
+
+    /// Decode a buffa message from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `ptr` is valid for `size` bytes.
+    pub unsafe fn decode_ptr<T: ::buffa::Message>(
+        ptr: *mut u8,
+        size: usize,
+    ) -> Result<T, ::buffa::DecodeError> {
+        let bytes = std::slice::from_raw_parts(ptr, size);
+        <T as ::buffa::Message>::decode_from_slice(bytes)
+    }
+}
+
+/// buffa lazy-view decoding for handler inputs.
+///
+/// buffa's lazy view is its fastest decode: `decode_lazy` does one
+/// non-recursive scan over the message's own fields and records each nested or
+/// repeated message field as an undecoded byte range, decoded on access. A
+/// module that reads a few fields out of a large block never pays for the rest.
+///
+/// The view borrows from the input buffer, so a handler using it takes
+/// `&FooLazyView<'_>` rather than an owned `Foo`. The generated export binds
+/// the input bytes in its own scope and passes a reference, so the borrow is
+/// live for the whole handler body.
+///
+/// This trait exists so the macro can name one call for an argument written as
+/// `&FooLazyView<'_>`: the impl below strips the reference and forwards to
+/// buffa's `LazyMessageView::decode_lazy`.
+#[cfg(feature = "buffa")]
+pub mod buffa_lazy {
+    /// Decode `Self` (a `&FooLazyView<'a>`) from a byte slice.
+    pub trait LazyDecode<'a>: Sized {
+        fn decode_lazy_slice(bytes: &'a [u8]) -> Result<Self, ::buffa::DecodeError>;
+    }
+
+    impl<'a, V> LazyDecode<'a> for V
+    where
+        V: ::buffa::view::LazyMessageView<'a>,
+    {
+        #[inline]
+        fn decode_lazy_slice(bytes: &'a [u8]) -> Result<Self, ::buffa::DecodeError> {
+            <V as ::buffa::view::LazyMessageView<'a>>::decode_lazy(bytes)
+        }
+    }
+}
+
 /// Registers a Substreams custom panic hook. The panic hook is invoked when then handler panics
 
 pub fn register_panic_hook() {
