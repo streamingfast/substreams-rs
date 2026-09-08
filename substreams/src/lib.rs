@@ -17,11 +17,10 @@
 //! use substreams::prelude::{StoreGet, StoreNew};
 //! use substreams::{errors::Error, store};
 //! use substreams::store::{DeltaBigDecimal, StoreGetProto};
-//! # mod eth { pub type Block = (); }
+//! # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
 //! # mod pb { // holding all codegen'd protobuf structs
-//! #   pub type Custom = ();
-//! #   #[derive(Clone, PartialEq, ::prost::Message)]
-//! #   pub struct Pairs {}
+//! #   pub type Custom = substreams::testing::DocExampleMessage;
+//! #   pub type Pairs = substreams::testing::DocExampleMessage;
 //! # }
 //!
 //! /// Map handler which takes a source as input
@@ -81,14 +80,11 @@
 //! #   use std::todo;
 //! #   use substreams::pb::substreams::StoreDelta;
 //! #   use substreams::store::Delta;
-//! #   pub type Custom = ();
+//! #   pub type Custom = substreams::testing::DocExampleMessage;
 //! #
-//! #   #[derive(Clone, PartialEq, ::prost::Message)]
-//! #   pub struct Pairs {}
-//! #   #[derive(Clone, PartialEq, ::prost::Message)]
-//! #   pub struct Tokens {}
-//! #   #[derive(Clone, PartialEq, ::prost::Message)]
-//! #   pub struct Others {}
+//! #   pub type Pairs = substreams::testing::DocExampleMessage;
+//! #   pub type Tokens = substreams::testing::DocExampleMessage;
+//! #   pub type Others = ();
 //! # }
 //!
 //! #[substreams::handlers::store]
@@ -170,23 +166,17 @@ pub mod prelude {
 }
 
 pub use crate::hex::Hex;
-// pub use crate::store::FoundationalStore;
 pub use hex_literal::hex;
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-pub fn output<M: prost::Message>(msg: M) {
+pub fn output<M: ::buffa::Message>(msg: M) {
     #[cfg(target_arch = "wasm32")]
     {
         // Need to return the buffer and forget about it issue occurred when trying to write large data
         // wasm was "dropping" the data before we could write to it, which causes us to have garbage
         // value. By forgetting the data we can properly call external output function to write the
         // msg to heap.
-        let (ptr, len, buffer) = proto::encode_to_ptr(&msg).unwrap_or_else(|_| {
-            panic!(
-                "Unable to encode '{}' message's struct to Protobuf data",
-                stringify!(M)
-            )
-        });
+        let (ptr, len, buffer) = proto::encode_to_ptr(&msg);
         std::mem::forget(buffer);
         unsafe { externs::output(ptr, len as u32) }
     }
@@ -208,85 +198,15 @@ pub fn output_raw(data: Vec<u8>) {
     }
 }
 
-/// Quick-protobuf support module.
-///
-/// This module provides helpers for encoding and decoding quick-protobuf messages.
-/// Only available when the `quick-protobuf` feature is enabled.
-#[cfg(feature = "quick-protobuf")]
-pub mod quick {
-    use quick_protobuf::{BytesReader, MessageRead, MessageWrite, Result as QpResult};
-
-    /// Output a quick-protobuf message.
-    ///
-    /// This function serializes the message using quick-protobuf and outputs it via the WASM host.
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    pub fn output<M: MessageWrite>(msg: &M) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            use quick_protobuf::Writer;
-            let size = msg.get_size();
-            let mut buffer = Vec::with_capacity(size);
-            {
-                let mut writer = Writer::new(&mut buffer);
-                msg.write_message(&mut writer).unwrap_or_else(|_| {
-                    panic!(
-                        "Unable to encode '{}' message's struct to Protobuf data",
-                        std::any::type_name::<M>()
-                    )
-                });
-            }
-            let ptr = buffer.as_ptr();
-            let len = buffer.len();
-            std::mem::forget(buffer);
-            unsafe { crate::externs::output(ptr, len as u32) }
-        }
-    }
-
-    /// Decode a quick-protobuf message from a byte slice.
-    pub fn decode<'a, T: MessageRead<'a>>(bytes: &'a [u8]) -> QpResult<T> {
-        let mut reader = BytesReader::from_bytes(bytes);
-        T::from_reader(&mut reader, bytes)
-    }
-
-    /// Decode a quick-protobuf message from a raw pointer.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that `ptr` is valid for `size` bytes and that
-    /// the memory remains valid for the lifetime of the returned message.
-    pub unsafe fn decode_ptr<T: for<'a> MessageRead<'a>>(
-        ptr: *mut u8,
-        size: usize,
-    ) -> QpResult<T> {
-        let bytes = std::slice::from_raw_parts(ptr, size);
-        let mut reader = BytesReader::from_bytes(bytes);
-        T::from_reader(&mut reader, bytes)
-    }
-}
-
 /// buffa support module.
 ///
-/// Mirrors the `quick` module above, for buffa's owned `Message` API.
+/// Decoding uses buffa's lazy views: `decode_lazy` does one non-recursive scan and records
+/// nested and repeated message fields as undecoded byte ranges that decode on access, so a
+/// handler that reads a few fields out of a large block never pays for the rest.
 ///
-/// # Why the OWNED api, and not the lazy view
-///
-/// buffa's fastest decode is `FooLazyView::decode_lazy`, which records nested
-/// message fields as undecoded byte ranges. It cannot be used here. The macro
-/// hands the handler a value it owns, and a view borrows from the input buffer
-/// -- `FooView<'a>` / `FooLazyView<'a>` carry a lifetime tied to those bytes,
-/// so they cannot cross the `fn map_transfers(block: Block)` boundary the
-/// handler signature defines.
-///
-/// Exposing the lazy path to module authors is a larger change: the handler
-/// signature would have to take `BlockLazyView<'_>`, which changes every
-/// module's source and every generated `pb` tree. That is a real option, and
-/// the benchmarks say it is where the win is, but it is not a drop-in.
-///
-/// What this module gives is the drop-in half: the same `Block` the handler
-/// already receives, decoded by buffa instead of prost.
-#[cfg(feature = "buffa")]
+/// A view borrows from the input buffer, so a handler takes `&FooLazyView<'_>` rather than an
+/// owned `Foo`. Encoding is unaffected: module output is a normal owned message.
 pub mod buffa {
-    /// Output a buffa message.
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
     pub fn output<M: ::buffa::Message>(msg: &M) {
         #[cfg(target_arch = "wasm32")]
@@ -299,43 +219,8 @@ pub mod buffa {
         }
     }
 
-    /// Decode a buffa message from a byte slice.
-    pub fn decode<T: ::buffa::Message>(bytes: &[u8]) -> Result<T, ::buffa::DecodeError> {
-        <T as ::buffa::Message>::decode_from_slice(bytes)
-    }
-
-    /// Decode a buffa message from a raw pointer.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that `ptr` is valid for `size` bytes.
-    pub unsafe fn decode_ptr<T: ::buffa::Message>(
-        ptr: *mut u8,
-        size: usize,
-    ) -> Result<T, ::buffa::DecodeError> {
-        let bytes = std::slice::from_raw_parts(ptr, size);
-        <T as ::buffa::Message>::decode_from_slice(bytes)
-    }
-}
-
-/// buffa lazy-view decoding for handler inputs.
-///
-/// buffa's lazy view is its fastest decode: `decode_lazy` does one
-/// non-recursive scan over the message's own fields and records each nested or
-/// repeated message field as an undecoded byte range, decoded on access. A
-/// module that reads a few fields out of a large block never pays for the rest.
-///
-/// The view borrows from the input buffer, so a handler using it takes
-/// `&FooLazyView<'_>` rather than an owned `Foo`. The generated export binds
-/// the input bytes in its own scope and passes a reference, so the borrow is
-/// live for the whole handler body.
-///
-/// This trait exists so the macro can name one call for an argument written as
-/// `&FooLazyView<'_>`: the impl below strips the reference and forwards to
-/// buffa's `LazyMessageView::decode_lazy`.
-#[cfg(feature = "buffa")]
-pub mod buffa_lazy {
-    /// Decode `Self` (a `&FooLazyView<'a>`) from a byte slice.
+    /// Lets the macro name a single decode call for a handler argument written as
+    /// `&FooLazyView<'_>`; the impl strips the reference and forwards to buffa.
     pub trait LazyDecode<'a>: Sized {
         fn decode_lazy_slice(bytes: &'a [u8]) -> Result<Self, ::buffa::DecodeError>;
     }
@@ -348,6 +233,89 @@ pub mod buffa_lazy {
         fn decode_lazy_slice(bytes: &'a [u8]) -> Result<Self, ::buffa::DecodeError> {
             <V as ::buffa::view::LazyMessageView<'a>>::decode_lazy(bytes)
         }
+    }
+}
+
+#[cfg(test)]
+mod buffa_tests {
+    use crate::buffa::LazyDecode;
+
+    #[derive(Clone, Default, PartialEq)]
+    struct Block;
+
+    impl buffa::DefaultInstance for Block {
+        fn default_instance() -> &'static Self {
+            static DEFAULT: Block = Block;
+            &DEFAULT
+        }
+    }
+
+    impl buffa::Message for Block {
+        fn compute_size(&self, _cache: &mut buffa::SizeCache) -> u32 {
+            0
+        }
+
+        fn write_to(&self, _cache: &mut buffa::SizeCache, _buf: &mut impl buffa::EncodeSink) {}
+
+        fn merge_field(
+            &mut self,
+            tag: buffa::encoding::Tag,
+            buf: &mut impl bytes::Buf,
+            _ctx: buffa::DecodeContext<'_>,
+        ) -> Result<(), buffa::DecodeError> {
+            buffa::encoding::skip_field(tag, buf)
+        }
+
+        fn clear(&mut self) {
+            *self = Self;
+        }
+    }
+
+    /// Stand-in for a generated `BlockLazyView<'a>`, so the blanket `LazyDecode` impl is
+    /// exercised against the real `LazyMessageView` bound rather than only asserted as tokens
+    /// in the macro's expected output.
+    struct BlockLazyView<'a> {
+        buf: &'a [u8],
+    }
+
+    impl<'a> buffa::view::LazyMessageView<'a> for BlockLazyView<'a> {
+        type Owned = Block;
+
+        fn decode_lazy(buf: &'a [u8]) -> Result<Self, buffa::DecodeError> {
+            if buf.first() == Some(&0xff) {
+                return Err(buffa::DecodeError::InvalidFieldNumber);
+            }
+
+            Ok(Self { buf })
+        }
+
+        fn merge_lazy(
+            &mut self,
+            _buf: &'a [u8],
+            _ctx: buffa::DecodeContext<'_>,
+        ) -> Result<(), buffa::DecodeError> {
+            unimplemented!("not exercised by these tests")
+        }
+
+        fn to_owned_message(&self) -> Result<Self::Owned, buffa::DecodeError> {
+            Ok(Block)
+        }
+    }
+
+    #[test]
+    fn it_decodes_a_lazy_view_borrowing_the_input() {
+        let bytes = vec![0x01, 0x02, 0x03];
+
+        let view = BlockLazyView::decode_lazy_slice(&bytes).expect("valid input");
+
+        assert_eq!(view.buf, &bytes[..], "the view borrows the input buffer");
+    }
+
+    #[test]
+    fn it_propagates_decode_errors() {
+        let bytes = vec![0xff];
+
+        assert!(BlockLazyView::decode_lazy_slice(&bytes).is_err());
     }
 }
 

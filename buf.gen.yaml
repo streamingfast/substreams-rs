@@ -1,4 +1,20 @@
-version: v1
+version: v2
 plugins:
-  - plugin: buf.build/community/neoeinstein-prost:v0.4.0
+  - remote: buf.build/anthropics/buffa
     out: substreams/src/pb
+    opt:
+      - lazy_views=true
+      - unknown_fields=false
+
+inputs:
+  - module: buf.build/streamingfast/substreams
+    paths:
+      - sf/substreams/v1/clock.proto
+      - sf/substreams/v1/deltas.proto
+      - sf/substreams/v1/modules.proto
+      - sf/substreams/index/v1
+  - module: buf.build/streamingfast/substreams-foundational-store
+    paths:
+      - sf/substreams/foundational-store/model/v2
+      - sf/substreams/foundational-store/service/v1
+      - sf/substreams/foundational-store/service/v2

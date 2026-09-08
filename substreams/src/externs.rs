@@ -19,49 +19,6 @@ extern "C" {
     pub fn println(ptr: *const u8, len: usize);
 }
 
-// #[no_mangle]
-// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
-//     let func = || -> Option<Custom> {
-//         let blk: eth::Block = substreams::proto::decode_ptr(blk_ptr, blk_len).unwrap();
-//         {
-//             unimplemented!("do something");
-//         }
-//     };
-//     let result = func();
-//     if result.is_none() {
-//         panic!("None returned from map function")
-//     }
-//     substreams::output(result.unwrap());
-// }
-// #[derive(Debug)]
-// pub struct Custom(u8);
-// impl prost::Message for Custom {
-//     fn encode_raw(&self, _: &mut impl prost::bytes::BufMut)
-//     where
-//         Self: Sized,
-//     {
-//         todo!()
-//     }
-//     fn merge_field(
-//         &mut self,
-//         _: u32,
-//         _: prost::encoding::WireType,
-//         _: &mut impl prost::bytes::Buf,
-//         _: prost::encoding::DecodeContext,
-//     ) -> Result<(), prost::DecodeError>
-//     where
-//         Self: Sized,
-//     {
-//         todo!()
-//     }
-//     fn encoded_len(&self) -> usize {
-//         todo!()
-//     }
-//     fn clear(&mut self) {
-//         todo!()
-//     }
-// }
-
 pub mod state {
     #[cfg(target_arch = "wasm32")]
     #[link(wasm_import_module = "state")]

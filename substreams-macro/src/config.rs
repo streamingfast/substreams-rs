@@ -5,46 +5,28 @@ pub enum ModuleType {
 }
 
 /// Configuration options parsed from macro attributes.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct HandlerOptions {
     /// When true, skip calling `substreams::skip_empty_output()`.
     pub keep_empty_output: bool,
     /// When true, disable generation of the testable `__impl_<name>` function.
     /// By default (false), the macro generates both the testable function and the WASM export.
     pub no_testable: bool,
-    /// When true, use quick-protobuf instead of prost for encoding/decoding.
-    /// Requires the `quick-protobuf` feature to be enabled on the substreams crate.
-    pub quick_protobuf: bool,
-    /// When true, use buffa instead of prost for encoding/decoding.
-    /// Requires the `buffa` feature to be enabled on the substreams crate.
-    ///
-    /// This selects buffa's OWNED api. buffa's own docs rate that path at
-    /// "within roughly +/-10% of prost"; the fast paths are the borrowed ones,
-    /// selected with `buffa_lazy` below.
-    pub buffa: bool,
-    /// When true, decode with buffa's LAZY VIEW -- one non-recursive scan that
-    /// records nested/repeated message fields as undecoded byte ranges, decoded
-    /// on access. This is buffa's fastest decode path (measured 2.9-4.9x prost
-    /// natively, 2.5-14x in wasm fuel, versus 1.4x for the owned api).
-    ///
-    /// It changes the handler signature: the view borrows from the input
-    /// buffer, so the handler takes `&FooLazyView<'_>` rather than an owned
-    /// `Foo`. The generated export keeps the buffer alive for the whole call,
-    /// so the borrow is valid for the handler's entire body.
-    pub buffa_lazy: bool,
+    /// When true, decode with buffa's lazy views: one non-recursive scan, with nested and
+    /// repeated message fields decoded on access. The handler takes `&FooLazyView<'_>` rather
+    /// than an owned message, so a module that reads a few fields of a large block never pays
+    /// for the rest.
+    pub lazy: bool,
 }
 
 impl HandlerOptions {
     /// Parse options from a comma-separated attribute string.
-    /// Supported options: `no_testable`, `keep_empty_output`, `quick_protobuf`
     ///
     /// Examples:
-    /// - `""` -> defaults (testable enabled, prost)
+    /// - `""` -> defaults (testable enabled, owned message)
     /// - `"no_testable"` -> disable testable function generation
     /// - `"keep_empty_output"` -> keep_empty_output = true
-    /// - `"quick_protobuf"` -> use quick-protobuf instead of prost
-    /// - `"buffa"` -> use buffa's owned api instead of prost
-    /// - `"buffa_lazy"` -> use buffa's lazy view (handler takes &FooLazyView<'_>)
+    /// - `"lazy"` -> decode with lazy views (handler takes `&FooLazyView<'_>`)
     /// - `"no_testable, keep_empty_output"` -> both options set
     pub fn parse(args: &str) -> Result<Self, String> {
         let mut options = Self::default();
@@ -57,14 +39,12 @@ impl HandlerOptions {
             match part.trim() {
                 "no_testable" => options.no_testable = true,
                 "keep_empty_output" => options.keep_empty_output = true,
-                "quick_protobuf" => options.quick_protobuf = true,
-                "buffa" => options.buffa = true,
-                "buffa_lazy" => options.buffa_lazy = true,
+                "lazy" => options.lazy = true,
                 other => {
                     return Err(format!(
-                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, quick_protobuf, buffa, buffa_lazy",
-                        other
-                    ))
+                    "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, lazy",
+                    other
+                ))
                 }
             }
         }
@@ -162,3 +142,60 @@ pub struct FinalConfiguration {
 //     }
 //     config.build()
 // }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::HandlerOptions;
+
+    #[test]
+    fn it_defaults_to_owned_decode_with_testable_enabled() {
+        let options = HandlerOptions::parse("").expect("empty args are valid");
+
+        assert!(!options.lazy);
+        assert!(!options.no_testable);
+        assert!(!options.keep_empty_output);
+    }
+
+    #[test]
+    fn it_parses_each_option() {
+        assert!(HandlerOptions::parse("lazy").unwrap().lazy);
+        assert!(HandlerOptions::parse("no_testable").unwrap().no_testable);
+        assert!(
+            HandlerOptions::parse("keep_empty_output")
+                .unwrap()
+                .keep_empty_output
+        );
+    }
+
+    #[test]
+    fn it_parses_combined_options_ignoring_whitespace() {
+        let options = HandlerOptions::parse(" lazy , no_testable ").expect("valid options");
+
+        assert!(options.lazy);
+        assert!(options.no_testable);
+        assert!(!options.keep_empty_output);
+    }
+
+    #[test]
+    fn it_rejects_unknown_options() {
+        let err = HandlerOptions::parse("nope").expect_err("not a valid option");
+
+        assert!(err.contains("Unknown option 'nope'"), "got: {}", err);
+        assert!(
+            err.contains("no_testable, keep_empty_output, lazy"),
+            "got: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn it_rejects_removed_quick_protobuf_option() {
+        let err = HandlerOptions::parse("quick_protobuf").expect_err("option was removed");
+
+        assert!(
+            err.contains("Unknown option 'quick_protobuf'"),
+            "got: {}",
+            err
+        );
+    }
+}

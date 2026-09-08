@@ -22,6 +22,7 @@ mod store;
 /// |--------|-------------|
 /// | `no_testable` | Disables generation of the testable `__impl_<name>` function |
 /// | `keep_empty_output` | Prevents calling `substreams::skip_empty_output()` |
+/// | `lazy` | Decodes with a buffa lazy view; the handler takes `&FooLazyView<'_>` |
 ///
 /// # Basic Usage
 ///
@@ -149,6 +150,7 @@ pub fn map(args: TokenStream, item: TokenStream) -> TokenStream {
 /// | Option | Description |
 /// |--------|-------------|
 /// | `keep_empty_output` | Prevents calling `substreams::skip_empty_output()` |
+/// | `lazy` | Decodes with a buffa lazy view; the handler takes `&FooLazyView<'_>` |
 ///
 /// **Note**: The `testable` option is not currently supported for store handlers.
 ///
@@ -248,15 +250,15 @@ mod test {
         HandlerOptions {
             keep_empty_output,
             no_testable,
-            quick_protobuf: false,
+            lazy: false,
         }
     }
 
-    fn opts_quick_protobuf(keep_empty_output: bool, no_testable: bool) -> HandlerOptions {
+    fn opts_lazy(keep_empty_output: bool, no_testable: bool) -> HandlerOptions {
         HandlerOptions {
             keep_empty_output,
             no_testable,
-            quick_protobuf: true,
+            lazy: true,
         }
     }
 
@@ -610,32 +612,35 @@ mod test {
         );
     }
 
-    // Tests for quick_protobuf option
+    // Tests for the buffa option. The handler takes a lazy view, so the export binds the
+    // input bytes in its own scope and passes a reference; the view borrows from them.
     #[test]
-    fn test_map_quick_protobuf_plain() {
+    fn test_map_lazy_plain() {
         let item = quote! {
-            fn map_transfers(blk: eth::Block) -> pb::Custom {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>) -> pb::Custom {
                 unimplemented!("do something");
             }
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
-                    }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
-                    ));
-                    let result = __impl_map_transfers(blk);
-                    substreams::quick::output(&result);
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let result = __impl_map_transfers(&blk);
+                    substreams::buffa::output(&result);
                 }
 
-                pub fn __impl_map_transfers(blk: eth::Block) -> pb::Custom {
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>) -> pb::Custom {
                     unimplemented!("do something");
                 }
             },
@@ -643,33 +648,35 @@ mod test {
     }
 
     #[test]
-    fn test_map_quick_protobuf_result() {
+    fn test_map_lazy_result() {
         let item = quote! {
-            fn map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>) -> Result<pb::Custom, Error> {
                 unimplemented!("do something");
             }
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
-                    }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
-                    ));
-                    let result = __impl_map_transfers(blk);
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let result = __impl_map_transfers(&blk);
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
-                    substreams::quick::output(&result.expect("already checked that result is not an error"));
+                    substreams::buffa::output(&result.expect("already checked that result is not an error"));
                 }
 
-                pub fn __impl_map_transfers(blk: eth::Block) -> Result<pb::Custom, Error> {
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>) -> Result<pb::Custom, Error> {
                     unimplemented!("do something");
                 }
             },
@@ -677,32 +684,34 @@ mod test {
     }
 
     #[test]
-    fn test_map_quick_protobuf_option() {
+    fn test_map_lazy_option() {
         let item = quote! {
-            fn map_transfers(blk: eth::Block) -> Option<pb::Custom> {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>) -> Option<pb::Custom> {
                 unimplemented!("do something");
             }
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
-                    }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
-                    ));
-                    let result = __impl_map_transfers(blk);
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let result = __impl_map_transfers(&blk);
                     if let Some(ref value) = result {
-                        substreams::quick::output(value);
+                        substreams::buffa::output(value);
                     }
                 }
 
-                pub fn __impl_map_transfers(blk: eth::Block) -> Option<pb::Custom> {
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>) -> Option<pb::Custom> {
                     unimplemented!("do something");
                 }
             },
@@ -710,67 +719,178 @@ mod test {
     }
 
     #[test]
-    fn test_map_quick_protobuf_result_option() {
+    fn test_map_lazy_no_testable() {
         let item = quote! {
-            fn map_transfers(blk: eth::Block) -> Result<Option<pb::Custom> > {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>) -> pb::Custom {
                 unimplemented!("do something");
             }
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_quick_protobuf(true, false)).into(),
-            quote! {
-                #[no_mangle]
-                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
-                    substreams::register_panic_hook();
-                    let blk: eth::Block = unsafe {
-                        substreams::quick::decode_ptr(blk_ptr, blk_len)
-                    }.unwrap_or_else(|_| panic!(
-                        "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                        blk_len, stringify!(eth::Block)
-                    ));
-                    let result = __impl_map_transfers(blk);
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    if let Some(ref inner) = result.expect("already checked that result is not an error") {
-                        substreams::quick::output(inner);
-                    }
-                }
-
-                pub fn __impl_map_transfers(blk: eth::Block) -> Result<Option<pb::Custom> > {
-                    unimplemented!("do something");
-                }
-            },
-        );
-    }
-
-    #[test]
-    fn test_map_quick_protobuf_no_testable() {
-        let item = quote! {
-            fn map_transfers(blk: eth::Block) -> pb::Custom {
-                unimplemented!("do something");
-            }
-        };
-
-        assert_ast_eq(
-            main(item, ModuleType::Map, opts_quick_protobuf(true, true)).into(),
+            main(item, ModuleType::Map, opts_lazy(true, true)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
                     substreams::register_panic_hook();
                     let func = || -> pb::Custom {
-                        let blk: eth::Block = unsafe {
-                            substreams::quick::decode_ptr(blk_ptr, blk_len)
-                        }.unwrap_or_else(|_| panic!(
-                            "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                            blk_len, stringify!(eth::Block)
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
-                        let result = { unimplemented!("do something"); };
+                        let result = {
+                            unimplemented!("do something");
+                        };
                         result
                     };
                     let result = func();
-                    substreams::quick::output(&result);
+                    substreams::buffa::output(&result);
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_lazy_with_string_param() {
+        let item = quote! {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>, name: String) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, name_ptr: *mut u8, name_len: usize) {
+                    substreams::register_panic_hook();
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let name: String = std::mem::ManuallyDrop::new(unsafe {
+                        String::from_raw_parts(name_ptr, name_len, name_len)
+                    }).to_string();
+                    let result = __impl_map_transfers(&blk, name);
+                    substreams::buffa::output(&result);
+                }
+
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, name: String) -> pb::Custom {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    /// `StoreDeltas` is a substreams type carried over the host boundary, not module schema,
+    /// so the deltas argument is decoded separately from the handler's own input.
+    #[test]
+    fn test_map_lazy_with_deltas() {
+        let item = quote! {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>, deltas: Deltas<DeltaInt64>) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, deltas_ptr: *mut u8, deltas_len: usize) {
+                    substreams::register_panic_hook();
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let raw_deltas = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(deltas_ptr, deltas_len)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct",
+                            deltas_len
+                        )).store_deltas;
+                    let deltas: Deltas<DeltaInt64> = substreams::store::Deltas::new(raw_deltas);
+                    let result = __impl_map_transfers(&blk, deltas);
+                    substreams::buffa::output(&result);
+                }
+
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, deltas: Deltas<DeltaInt64>) -> pb::Custom {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_map_lazy_with_readable_store() {
+        let item = quote! {
+            fn map_transfers(blk: &eth::BlockLazyView<'_>, store: StoreGetInt64) -> pb::Custom {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, store_idx: u32) {
+                    substreams::register_panic_hook();
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let store: StoreGetInt64 = StoreGetInt64::new(store_idx);
+                    let result = __impl_map_transfers(&blk, store);
+                    substreams::buffa::output(&result);
+                }
+
+                pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, store: StoreGetInt64) -> pb::Custom {
+                    unimplemented!("do something");
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_store_lazy_handler() {
+        let item = quote! {
+            fn store_values(blk: &eth::BlockLazyView<'_>, store: StoreAddInt64) {
+                unimplemented!("do something");
+            }
+        };
+
+        assert_ast_eq(
+            main(item, ModuleType::Store, opts_lazy(true, false)).into(),
+            quote! {
+                #[no_mangle]
+                pub extern "C" fn store_values(blk_ptr: *mut u8, blk_len: usize) {
+                    substreams::register_panic_hook();
+                    let bytes_blk: &[u8] = unsafe {
+                        std::slice::from_raw_parts(blk_ptr, blk_len)
+                    };
+                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                        .unwrap_or_else(|_| panic!(
+                            "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                            blk_len, stringify!(&eth::BlockLazyView<'_>)
+                        ));
+                    let store: StoreAddInt64 = StoreAddInt64::new();
+                    let result = {
+                        unimplemented!("do something");
+                    };
+                    result
                 }
             },
         );
