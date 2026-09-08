@@ -12,11 +12,6 @@ pub struct HandlerOptions {
     /// When true, disable generation of the testable `__impl_<name>` function.
     /// By default (false), the macro generates both the testable function and the WASM export.
     pub no_testable: bool,
-    /// When true, decode with buffa's lazy views: one non-recursive scan, with nested and
-    /// repeated message fields decoded on access. The handler takes `&FooLazyView<'_>` rather
-    /// than an owned message, so a module that reads a few fields of a large block never pays
-    /// for the rest.
-    pub lazy: bool,
 }
 
 impl HandlerOptions {
@@ -26,7 +21,6 @@ impl HandlerOptions {
     /// - `""` -> defaults (testable enabled, owned message)
     /// - `"no_testable"` -> disable testable function generation
     /// - `"keep_empty_output"` -> keep_empty_output = true
-    /// - `"lazy"` -> decode with lazy views (handler takes `&FooLazyView<'_>`)
     /// - `"no_testable, keep_empty_output"` -> both options set
     pub fn parse(args: &str) -> Result<Self, String> {
         let mut options = Self::default();
@@ -39,12 +33,11 @@ impl HandlerOptions {
             match part.trim() {
                 "no_testable" => options.no_testable = true,
                 "keep_empty_output" => options.keep_empty_output = true,
-                "lazy" => options.lazy = true,
                 other => {
                     return Err(format!(
-                    "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, lazy",
-                    other
-                ))
+                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output",
+                        other
+                    ))
                 }
             }
         }
@@ -148,17 +141,15 @@ mod tests {
     use crate::config::HandlerOptions;
 
     #[test]
-    fn it_defaults_to_owned_decode_with_testable_enabled() {
+    fn it_defaults_to_testable_enabled() {
         let options = HandlerOptions::parse("").expect("empty args are valid");
 
-        assert!(!options.lazy);
         assert!(!options.no_testable);
         assert!(!options.keep_empty_output);
     }
 
     #[test]
     fn it_parses_each_option() {
-        assert!(HandlerOptions::parse("lazy").unwrap().lazy);
         assert!(HandlerOptions::parse("no_testable").unwrap().no_testable);
         assert!(
             HandlerOptions::parse("keep_empty_output")
@@ -169,11 +160,11 @@ mod tests {
 
     #[test]
     fn it_parses_combined_options_ignoring_whitespace() {
-        let options = HandlerOptions::parse(" lazy , no_testable ").expect("valid options");
+        let options =
+            HandlerOptions::parse(" keep_empty_output , no_testable ").expect("valid options");
 
-        assert!(options.lazy);
+        assert!(options.keep_empty_output);
         assert!(options.no_testable);
-        assert!(!options.keep_empty_output);
     }
 
     #[test]
@@ -182,7 +173,7 @@ mod tests {
 
         assert!(err.contains("Unknown option 'nope'"), "got: {}", err);
         assert!(
-            err.contains("no_testable, keep_empty_output, lazy"),
+            err.contains("no_testable, keep_empty_output"),
             "got: {}",
             err
         );

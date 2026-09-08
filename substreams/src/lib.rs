@@ -199,26 +199,7 @@ pub fn output_raw(data: Vec<u8>) {
 }
 
 /// buffa support module.
-///
-/// Decoding uses buffa's lazy views: `decode_lazy` does one non-recursive scan and records
-/// nested and repeated message fields as undecoded byte ranges that decode on access, so a
-/// handler that reads a few fields out of a large block never pays for the rest.
-///
-/// A view borrows from the input buffer, so a handler takes `&FooLazyView<'_>` rather than an
-/// owned `Foo`. Encoding is unaffected: module output is a normal owned message.
 pub mod buffa {
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    pub fn output<M: ::buffa::Message>(msg: &M) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let buffer = ::buffa::Message::encode_to_vec(msg);
-            let ptr = buffer.as_ptr();
-            let len = buffer.len();
-            std::mem::forget(buffer);
-            unsafe { crate::externs::output(ptr, len as u32) }
-        }
-    }
-
     /// Lets the macro name a single decode call for a handler argument written as
     /// `&FooLazyView<'_>`; the impl strips the reference and forwards to buffa.
     pub trait LazyDecode<'a>: Sized {

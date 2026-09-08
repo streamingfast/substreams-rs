@@ -122,8 +122,8 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         quote! {}
                     };
                     original_args.push(quote! { #mutability #var_name: #argument_type });
-                    // buffa binds the view itself; the handler declares `&FooLazyView<'_>`.
-                    if options.lazy && !input_obj.is_deltas && !input_obj.is_string {
+                    let is_lazy = matches!(&*argument_type, syn::Type::Reference(_));
+                    if is_lazy && !input_obj.is_deltas && !input_obj.is_string {
                         impl_call_args.push(quote! { &#var_name });
                     } else {
                         impl_call_args.push(quote! { #var_name });
@@ -138,7 +138,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                             })
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
-                    } else if options.lazy {
+                    } else if is_lazy {
                         // The view borrows the input buffer, so bind the bytes in the export's
                         // scope: they must outlive the handler call below.
                         let bytes_ident = prefixed_ident("bytes", &var_name);
@@ -380,83 +380,39 @@ fn build_map_handler(
         quote! { substreams::skip_empty_output(); }
     };
 
-    let output_fn = if options.lazy {
-        quote! { substreams::buffa::output }
-    } else {
-        quote! { substreams::output }
-    };
-
-    let output_handler = if options.lazy {
-        match output_type {
-            OutputType::Result => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    #output_fn(&result.expect("already checked that result is not an error"));
+    let output_handler = match output_type {
+        OutputType::Result => {
+            quote! {
+                if result.is_err() {
+                    panic!("{:?}", result.unwrap_err())
                 }
-            }
-            OutputType::ResultOption => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    if let Some(ref inner) = result.expect("already checked that result is not an error") {
-                        #output_fn(inner);
-                    }
-                }
-            }
-            OutputType::Option => {
-                quote! {
-                    if let Some(ref value) = result {
-                        #output_fn(value);
-                    }
-                }
-            }
-            OutputType::Value => {
-                quote! {
-                    #output_fn(&result);
-                }
-            }
-            OutputType::Void => {
-                quote! {}
+                substreams::output(result.expect("already checked that result is not an error"));
             }
         }
-    } else {
-        match output_type {
-            OutputType::Result => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    substreams::output(result.expect("already checked that result is not an error"));
+        OutputType::ResultOption => {
+            quote! {
+                if result.is_err() {
+                    panic!("{:?}", result.unwrap_err())
+                }
+                if let Some(inner) = result.expect("already checked that result is not an error") {
+                    substreams::output(inner);
                 }
             }
-            OutputType::ResultOption => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    if let Some(inner) = result.expect("already checked that result is not an error") {
-                        substreams::output(inner);
-                    }
+        }
+        OutputType::Option => {
+            quote! {
+                if let Some(value) = result {
+                    substreams::output(value);
                 }
             }
-            OutputType::Option => {
-                quote! {
-                    if let Some(value) = result {
-                        substreams::output(value);
-                    }
-                }
+        }
+        OutputType::Value => {
+            quote! {
+                substreams::output(result);
             }
-            OutputType::Value => {
-                quote! {
-                    substreams::output(result);
-                }
-            }
-            OutputType::Void => {
-                quote! {}
-            }
+        }
+        OutputType::Void => {
+            quote! {}
         }
     };
 

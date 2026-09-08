@@ -16,13 +16,15 @@ mod store;
 ///
 /// # Options
 ///
+/// A handler declaring `&FooLazyView<'_>` decodes with a buffa lazy view; one declaring an
+/// owned message decodes eagerly.
+///
 /// The macro accepts the following comma-separated options:
 ///
 /// | Option | Description |
 /// |--------|-------------|
 /// | `no_testable` | Disables generation of the testable `__impl_<name>` function |
 /// | `keep_empty_output` | Prevents calling `substreams::skip_empty_output()` |
-/// | `lazy` | Decodes with a buffa lazy view; the handler takes `&FooLazyView<'_>` |
 ///
 /// # Basic Usage
 ///
@@ -145,12 +147,14 @@ pub fn map(args: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// # Options
 ///
+/// A handler declaring `&FooLazyView<'_>` decodes with a buffa lazy view; one declaring an
+/// owned message decodes eagerly.
+///
 /// The macro accepts the following comma-separated options:
 ///
 /// | Option | Description |
 /// |--------|-------------|
 /// | `keep_empty_output` | Prevents calling `substreams::skip_empty_output()` |
-/// | `lazy` | Decodes with a buffa lazy view; the handler takes `&FooLazyView<'_>` |
 ///
 /// **Note**: The `testable` option is not currently supported for store handlers.
 ///
@@ -250,7 +254,6 @@ mod test {
         HandlerOptions {
             keep_empty_output,
             no_testable,
-            lazy: false,
         }
     }
 
@@ -258,7 +261,6 @@ mod test {
         HandlerOptions {
             keep_empty_output,
             no_testable,
-            lazy: true,
         }
     }
 
@@ -637,7 +639,7 @@ mod test {
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
                     let result = __impl_map_transfers(&blk);
-                    substreams::buffa::output(&result);
+                    substreams::output(result);
                 }
 
                 pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>) -> pb::Custom {
@@ -673,7 +675,7 @@ mod test {
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
-                    substreams::buffa::output(&result.expect("already checked that result is not an error"));
+                    substreams::output(result.expect("already checked that result is not an error"));
                 }
 
                 pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>) -> Result<pb::Custom, Error> {
@@ -706,8 +708,8 @@ mod test {
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
                     let result = __impl_map_transfers(&blk);
-                    if let Some(ref value) = result {
-                        substreams::buffa::output(value);
+                    if let Some(value) = result {
+                        substreams::output(value);
                     }
                 }
 
@@ -747,7 +749,7 @@ mod test {
                         result
                     };
                     let result = func();
-                    substreams::buffa::output(&result);
+                    substreams::output(result);
                 }
             },
         );
@@ -779,7 +781,7 @@ mod test {
                         String::from_raw_parts(name_ptr, name_len, name_len)
                     }).to_string();
                     let result = __impl_map_transfers(&blk, name);
-                    substreams::buffa::output(&result);
+                    substreams::output(result);
                 }
 
                 pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, name: String) -> pb::Custom {
@@ -820,7 +822,7 @@ mod test {
                         )).store_deltas;
                     let deltas: Deltas<DeltaInt64> = substreams::store::Deltas::new(raw_deltas);
                     let result = __impl_map_transfers(&blk, deltas);
-                    substreams::buffa::output(&result);
+                    substreams::output(result);
                 }
 
                 pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, deltas: Deltas<DeltaInt64>) -> pb::Custom {
@@ -854,7 +856,7 @@ mod test {
                         ));
                     let store: StoreGetInt64 = StoreGetInt64::new(store_idx);
                     let result = __impl_map_transfers(&blk, store);
-                    substreams::buffa::output(&result);
+                    substreams::output(result);
                 }
 
                 pub fn __impl_map_transfers(blk: &eth::BlockLazyView<'_>, store: StoreGetInt64) -> pb::Custom {
