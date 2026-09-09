@@ -122,7 +122,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         quote! {}
                     };
                     original_args.push(quote! { #mutability #var_name: #argument_type });
-                    let is_lazy = matches!(&*argument_type, syn::Type::Reference(_));
+                    let is_lazy = matches!(argument_type, syn::Type::Reference(_));
                     impl_call_args.push(quote! { #var_name });
 
                     if input_obj.is_deltas {
@@ -137,7 +137,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         // The view borrows these bytes, so they must live in the export's scope.
                         let bytes_ident = prefixed_ident("bytes", &var_name);
                         let owned_ident = prefixed_ident("owned", &var_name);
-                        let mut inner_ty: syn::Type = match &*argument_type {
+                        let mut inner_ty: syn::Type = match argument_type {
                             syn::Type::Reference(r) => (*r.elem).clone(),
                             other => other.clone(),
                         };
