@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Breaking**: `StoreDelta::operation` is an `EnumValue<Operation>` and `Clock::timestamp` is a
   `MessageField`.
 
+- Added `BlockRef` to the generated `sf.substreams.v1` types.
+
 - **Breaking**: `StoreDeltas::deltas` is now `store_deltas`, matching the schema. The field number
   is unchanged, so the wire format is too; the old name came from generated code that had fallen
   behind the `.proto`.
@@ -48,6 +50,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   }
   ```
 
+  Validation moves with the decoding. An eager handler rejects a malformed payload at entry and
+  the module aborts before the body runs. A lazy handler only validates a nested or repeated
+  message field when it reads it, so the body runs on a payload the eager path would have
+  refused, and the corruption surfaces as an `Err` from the accessor. Handler code that discards
+  that error, with `unwrap_or_default()` for instance, turns what was an abort into silently
+  wrong output.
+
 - Changed `pb` generation to pin the plugin at `buf.build/anthropics/buffa:v0.9.2` in
   `buf.gen.yaml`. The generated code is checked in and hand-wired through `src/pb/mod.rs`, so an
   unpinned plugin could change type shapes or module layout on the next `buf generate` with nothing
@@ -57,9 +66,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - **Breaking**: the RPC service-plane messages `Request`, `Response`, `BlockScopedData`,
   `ModuleOutput`, `ModuleProgress`, `ModulesProgress`, `BlockRange`, `InitialSnapshotData`,
-  `InitialSnapshotComplete` and `ForkStep`. They are the client/server protocol and are unused by
-  WASM modules. `Modules`, `Module`, `Binary` and `Output` are still generated, as they describe a
-  package's own manifest.
+  `InitialSnapshotComplete`, `ForkStep` and the top-level `Output`. They are the client/server
+  protocol and are unused by WASM modules. `Modules`, `Module`, `Binary` and `module::Output` are
+  still generated, as they describe a package's own manifest; note that only the nested
+  `module::Output` survives, so code naming `pb::substreams::Output` must be updated.
 
 - **Breaking**: the experimental quick-protobuf support added in this release cycle: the
   `quick-protobuf` feature, the `quick_protobuf` handler option and the `substreams::quick` module.
@@ -78,10 +88,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   a store) was treated as a lazy view and bound by value, producing a type error pointing at the
   handler body. The macro now rejects it and names the argument.
 
-- `cargo test`, which built a WASM test binary and then tried to run it as a native executable.
-  `.cargo/config.toml` set `wasm32-unknown-unknown` as the default target for every cargo command;
-  CI already named its targets explicitly and was unaffected, which is why 39 doc tests and the
-  integration tests had gone unrun for some time.
+- `cargo test` with no `--target`, which failed to compile `criterion` (`Rayon cannot be used when
+  targeting wasi32`). `.cargo/config.toml` set `wasm32-unknown-unknown` as the default target for
+  every cargo command, so the dev-dependencies were resolved for WASM. The file is removed and
+  `criterion` is now a `cfg(not(target_arch = "wasm32"))` dev-dependency; the target is named
+  explicitly where it is needed. CI named its target already and was unaffected.
 
 ## 0.7.6
 

@@ -134,14 +134,15 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
                     } else if is_lazy {
-                        // The view borrows the input buffer, so bind the bytes in the export's
-                        // scope: they must outlive the handler call below.
+                        // The view borrows these bytes, so they must live in the export's scope.
                         let bytes_ident = prefixed_ident("bytes", &var_name);
                         let owned_ident = prefixed_ident("owned", &var_name);
-                        let inner_ty: syn::Type = match &*argument_type {
+                        let mut inner_ty: syn::Type = match &*argument_type {
                             syn::Type::Reference(r) => (*r.elem).clone(),
                             other => other.clone(),
                         };
+                        // A lifetime the handler names is not in scope inside the export.
+                        elide_lifetimes(&mut inner_ty);
                         proto_decodings.push(quote! {
                             let #bytes_ident: &[u8] = unsafe {
                                 std::slice::from_raw_parts(#var_ptr, #var_len)
@@ -258,6 +259,33 @@ struct Input {
     store_type: String,
 }
 
+/// Rewrites every named lifetime in `ty` to `'_`.
+fn elide_lifetimes(ty: &mut syn::Type) {
+    use syn::{GenericArgument, PathArguments, Type};
+    match ty {
+        Type::Reference(r) => {
+            r.lifetime = None;
+            elide_lifetimes(&mut r.elem);
+        }
+        Type::Path(p) => {
+            for seg in p.path.segments.iter_mut() {
+                if let PathArguments::AngleBracketed(a) = &mut seg.arguments {
+                    for arg in a.args.iter_mut() {
+                        match arg {
+                            GenericArgument::Lifetime(l) => {
+                                *l = syn::Lifetime::new("'_", l.apostrophe);
+                            }
+                            GenericArgument::Type(t) => elide_lifetimes(t),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError> {
     match ty {
         syn::Type::Path(p) => {
@@ -299,8 +327,7 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             }
             Ok(input)
         }
-        // `&FooLazyView<'_>`: classify by the type behind the reference. Every other
-        // input kind is taken by value, so a reference to one is an error.
+        // `&FooLazyView<'_>`: classify by the type behind the reference.
         syn::Type::Reference(r) => {
             let inner = parse_input_type(&r.elem)?;
             if inner.is_string
@@ -383,6 +410,8 @@ fn build_map_handler(
     let body = &input.block;
     let func_name = input.sig.ident.clone();
     let lambda_return = input.sig.output.clone();
+    let generics = input.sig.generics.clone();
+    let where_clause = input.sig.generics.where_clause.clone();
 
     let skip_empty_output = if options.keep_empty_output {
         quote! {}
@@ -445,7 +474,7 @@ fn build_map_handler(
             }
 
             // Testable function with original signature (always generated)
-            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
+            pub fn #impl_func_name #generics (#(#original_args),*) #lambda_return #where_clause {
                 #(#body_stmts)*
             }
         };

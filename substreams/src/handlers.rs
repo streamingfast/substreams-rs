@@ -126,6 +126,17 @@
 /// }
 /// ```
 ///
+/// An explicit lifetime works too:
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map]
+/// fn map_handler<'a>(blk: &'a ClockLazyView<'a>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
 /// The same signature works with `no_testable`, which inlines the body into the export:
 ///
 /// ```rust
