@@ -1341,7 +1341,7 @@ pub struct DeltaBigDecimal {
 impl From<StoreDelta> for DeltaBigDecimal {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: BigDecimal::from_store_bytes(&d.old_value),
@@ -1362,7 +1362,7 @@ pub struct DeltaBigInt {
 impl From<StoreDelta> for DeltaBigInt {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: BigInt::from_store_bytes(&d.old_value),
@@ -1383,7 +1383,7 @@ pub struct DeltaInt32 {
 impl From<StoreDelta> for DeltaInt32 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_i32(&d.old_value),
@@ -1404,7 +1404,7 @@ pub struct DeltaInt64 {
 impl From<StoreDelta> for DeltaInt64 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_i64(&d.old_value),
@@ -1425,7 +1425,7 @@ pub struct DeltaFloat64 {
 impl From<StoreDelta> for DeltaFloat64 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_f64(&d.old_value),
@@ -1446,7 +1446,7 @@ pub struct DeltaBool {
 impl From<StoreDelta> for DeltaBool {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: !d.old_value.contains(&0),
@@ -1467,7 +1467,7 @@ pub struct DeltaBytes {
 impl From<StoreDelta> for DeltaBytes {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: d.old_value,
@@ -1488,7 +1488,7 @@ pub struct DeltaString {
 impl From<StoreDelta> for DeltaString {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: String::from_utf8(d.old_value).unwrap_or_else(|_| {
@@ -1518,7 +1518,7 @@ impl<T: Default + buffa::Message + PartialEq> From<StoreDelta> for DeltaProto<T>
             .unwrap_or_else(|_| panic!("Unable to decode Store DeltaProto for old value"));
 
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: ov,
@@ -1560,7 +1560,7 @@ impl<T: Into<String> + From<String> + PartialEq> From<StoreDelta> for DeltaArray
         let new = split_array::<T>(d.new_value).unwrap_or_default();
 
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: old,
@@ -1718,7 +1718,7 @@ impl_delta_ref!(&DeltaBool);
 impl_delta_ref!(&DeltaBytes);
 impl_delta_ref!(&DeltaString);
 
-fn convert_i32_to_operation(
+fn convert_enum_to_operation(
     operation: ::buffa::EnumValue<pb::substreams::store_delta::Operation>,
 ) -> pb::substreams::store_delta::Operation {
     operation

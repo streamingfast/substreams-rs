@@ -111,9 +111,48 @@
 ///     substreams::output(result);
 /// }
 /// ```
+///
+/// ## Usage with a lazy view
+///
+/// Declaring the argument as a reference to a generated `FooLazyView<'_>` selects buffa's
+/// lazy decoding: fields are decoded on access rather than up front.
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map]
+/// fn map_handler(blk: &ClockLazyView<'_>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
+/// The same signature works with `no_testable`, which inlines the body into the export:
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map(no_testable)]
+/// fn map_handler(blk: &ClockLazyView<'_>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
 pub use substreams_macro::map;
 
 /// Marks function to setup substreams store handler WASM boilerplate
+///
+/// ## Usage with a lazy view
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::ClockLazyView;
+/// use substreams::prelude::StoreNew;
+/// use substreams::store::StoreAddInt64;
+///
+/// #[substreams::handlers::store]
+/// fn store_handler(blk: &ClockLazyView<'_>, s: StoreAddInt64) {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
 /// ## Usage
 ///
 ///

@@ -257,13 +257,6 @@ mod test {
         }
     }
 
-    fn opts_lazy(keep_empty_output: bool, no_testable: bool) -> HandlerOptions {
-        HandlerOptions {
-            keep_empty_output,
-            no_testable,
-        }
-    }
-
     // Tests for default behavior (testable enabled)
     #[test]
     fn test_map_default_plain() {
@@ -625,7 +618,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
@@ -633,12 +626,13 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
-                    let result = __impl_map_transfers(&blk);
+                    let blk = &owned_blk;
+                    let result = __impl_map_transfers(blk);
                     substreams::output(result);
                 }
 
@@ -658,7 +652,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
@@ -666,12 +660,13 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
-                    let result = __impl_map_transfers(&blk);
+                    let blk = &owned_blk;
+                    let result = __impl_map_transfers(blk);
                     if result.is_err() {
                         panic!("{:?}", result.unwrap_err())
                     }
@@ -694,7 +689,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
@@ -702,12 +697,13 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
-                    let result = __impl_map_transfers(&blk);
+                    let blk = &owned_blk;
+                    let result = __impl_map_transfers(blk);
                     if let Some(value) = result {
                         substreams::output(value);
                     }
@@ -729,7 +725,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, true)).into(),
+            main(item, ModuleType::Map, opts(true, true)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize) {
@@ -738,11 +734,12 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
+                    let blk = &owned_blk;
                         let result = {
                             unimplemented!("do something");
                         };
@@ -764,7 +761,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, name_ptr: *mut u8, name_len: usize) {
@@ -772,15 +769,16 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
+                    let blk = &owned_blk;
                     let name: String = std::mem::ManuallyDrop::new(unsafe {
                         String::from_raw_parts(name_ptr, name_len, name_len)
                     }).to_string();
-                    let result = __impl_map_transfers(&blk, name);
+                    let result = __impl_map_transfers(blk, name);
                     substreams::output(result);
                 }
 
@@ -802,7 +800,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, deltas_ptr: *mut u8, deltas_len: usize) {
@@ -810,18 +808,19 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
+                    let blk = &owned_blk;
                     let raw_deltas = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(deltas_ptr, deltas_len)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct",
                             deltas_len
                         )).store_deltas;
                     let deltas: Deltas<DeltaInt64> = substreams::store::Deltas::new(raw_deltas);
-                    let result = __impl_map_transfers(&blk, deltas);
+                    let result = __impl_map_transfers(blk, deltas);
                     substreams::output(result);
                 }
 
@@ -841,7 +840,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Map, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Map, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn map_transfers(blk_ptr: *mut u8, blk_len: usize, store_idx: u32) {
@@ -849,13 +848,14 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
+                    let blk = &owned_blk;
                     let store: StoreGetInt64 = StoreGetInt64::new(store_idx);
-                    let result = __impl_map_transfers(&blk, store);
+                    let result = __impl_map_transfers(blk, store);
                     substreams::output(result);
                 }
 
@@ -875,7 +875,7 @@ mod test {
         };
 
         assert_ast_eq(
-            main(item, ModuleType::Store, opts_lazy(true, false)).into(),
+            main(item, ModuleType::Store, opts(true, false)).into(),
             quote! {
                 #[no_mangle]
                 pub extern "C" fn store_values(blk_ptr: *mut u8, blk_len: usize) {
@@ -883,11 +883,12 @@ mod test {
                     let bytes_blk: &[u8] = unsafe {
                         std::slice::from_raw_parts(blk_ptr, blk_len)
                     };
-                    let blk = <eth::BlockLazyView<'_> as substreams::buffa::LazyDecode>::decode_lazy_slice(bytes_blk)
+                    let owned_blk = <eth::BlockLazyView<'_> as substreams::lazy::LazyDecode>::decode_lazy_slice(bytes_blk)
                         .unwrap_or_else(|_| panic!(
                             "Unable to decode buffa lazy view ({} bytes) for '{}'",
                             blk_len, stringify!(&eth::BlockLazyView<'_>)
                         ));
+                    let blk = &owned_blk;
                     let store: StoreAddInt64 = StoreAddInt64::new();
                     let result = {
                         unimplemented!("do something");

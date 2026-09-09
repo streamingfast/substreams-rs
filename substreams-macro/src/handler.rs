@@ -123,11 +123,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                     };
                     original_args.push(quote! { #mutability #var_name: #argument_type });
                     let is_lazy = matches!(&*argument_type, syn::Type::Reference(_));
-                    if is_lazy && !input_obj.is_deltas && !input_obj.is_string {
-                        impl_call_args.push(quote! { &#var_name });
-                    } else {
-                        impl_call_args.push(quote! { #var_name });
-                    }
+                    impl_call_args.push(quote! { #var_name });
 
                     if input_obj.is_deltas {
                         // StoreDeltas is a substreams type carried over the host boundary, not module schema.
@@ -142,6 +138,7 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         // The view borrows the input buffer, so bind the bytes in the export's
                         // scope: they must outlive the handler call below.
                         let bytes_ident = prefixed_ident("bytes", &var_name);
+                        let owned_ident = prefixed_ident("owned", &var_name);
                         let inner_ty: syn::Type = match &*argument_type {
                             syn::Type::Reference(r) => (*r.elem).clone(),
                             other => other.clone(),
@@ -150,11 +147,12 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                             let #bytes_ident: &[u8] = unsafe {
                                 std::slice::from_raw_parts(#var_ptr, #var_len)
                             };
-                            let #var_name = <#inner_ty as substreams::buffa::LazyDecode>::decode_lazy_slice(#bytes_ident)
+                            let #owned_ident = <#inner_ty as substreams::lazy::LazyDecode>::decode_lazy_slice(#bytes_ident)
                                 .unwrap_or_else(|_| panic!(
                                     "Unable to decode buffa lazy view ({} bytes) for '{}'",
                                     #var_len, stringify!(#argument_type)
                                 ));
+                            let #var_name = &#owned_ident;
                         });
                     } else {
                         proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
@@ -304,8 +302,23 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
         }
         // `&FooLazyView<'_>` -- the shape a buffa lazy-view handler declares.
         // The view borrows the input buffer, so the argument is a reference;
-        // classify it by the type behind the reference.
-        syn::Type::Reference(r) => parse_input_type(&r.elem),
+        // classify it by the type behind the reference. Every other input kind is
+        // taken by value, so a reference to one is a mistake worth naming.
+        syn::Type::Reference(r) => {
+            let inner = parse_input_type(&r.elem)?;
+            if inner.is_string
+                || inner.is_deltas
+                || inner.is_writable_store
+                || inner.is_readable_store
+                || inner.is_foundational_store
+            {
+                return Err(errors::SubstreamMacroError::UnknownInputType(format!(
+                    "'{}' must be taken by value, not by reference",
+                    inner.resolved_ty
+                )));
+            }
+            Ok(inner)
+        }
         _ => Err(errors::SubstreamMacroError::UnknownInputType(
             "unable to parse input type".to_owned(),
         )),

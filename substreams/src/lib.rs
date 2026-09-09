@@ -198,8 +198,13 @@ pub fn output_raw(data: Vec<u8>) {
     }
 }
 
+/// Re-exported so downstream crates name `MessageField`, `EnumValue` and the
+/// well-known types from the same buffa version this crate was built against.
+pub use buffa;
+pub use buffa_types;
+
 /// buffa support module.
-pub mod buffa {
+pub mod lazy {
     /// Lets the macro name a single decode call for a handler argument written as
     /// `&FooLazyView<'_>`; the impl strips the reference and forwards to buffa.
     pub trait LazyDecode<'a>: Sized {
@@ -219,7 +224,7 @@ pub mod buffa {
 
 #[cfg(test)]
 mod buffa_tests {
-    use crate::buffa::LazyDecode;
+    use crate::lazy::LazyDecode;
 
     #[derive(Clone, Default, PartialEq)]
     struct Block;

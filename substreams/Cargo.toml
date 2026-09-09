@@ -14,7 +14,7 @@ rust-version.workspace = true
 [dependencies]
 anyhow = "1"
 bytes = "1"
-buffa-types = "0.9"
+buffa-types = { version = "0.9", default-features = false, features = ["std"] }
 bigdecimal = "0.4"
 hex = "0.4"
 hex-literal = "0.3"
