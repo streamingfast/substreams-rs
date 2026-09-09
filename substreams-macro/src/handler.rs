@@ -126,7 +126,6 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                     impl_call_args.push(quote! { #var_name });
 
                     if input_obj.is_deltas {
-                        // StoreDeltas is a substreams type carried over the host boundary, not module schema.
                         let raw = prefixed_ident("raw", &var_name);
                         proto_decodings.push(quote! {
                                 let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).store_deltas;
@@ -300,10 +299,8 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
             }
             Ok(input)
         }
-        // `&FooLazyView<'_>` -- the shape a buffa lazy-view handler declares.
-        // The view borrows the input buffer, so the argument is a reference;
-        // classify it by the type behind the reference. Every other input kind is
-        // taken by value, so a reference to one is a mistake worth naming.
+        // `&FooLazyView<'_>`: classify by the type behind the reference. Every other
+        // input kind is taken by value, so a reference to one is an error.
         syn::Type::Reference(r) => {
             let inner = parse_input_type(&r.elem)?;
             if inner.is_string

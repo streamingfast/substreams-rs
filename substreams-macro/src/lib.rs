@@ -607,8 +607,6 @@ mod test {
         );
     }
 
-    // Tests for the buffa option. The handler takes a lazy view, so the export binds the
-    // input bytes in its own scope and passes a reference; the view borrows from them.
     #[test]
     fn test_map_lazy_plain() {
         let item = quote! {
@@ -789,8 +787,6 @@ mod test {
         );
     }
 
-    /// `StoreDeltas` is a substreams type carried over the host boundary, not module schema,
-    /// so the deltas argument is decoded separately from the handler's own input.
     #[test]
     fn test_map_lazy_with_deltas() {
         let item = quote! {

@@ -206,7 +206,7 @@ pub use buffa_types;
 /// buffa support module.
 pub mod lazy {
     /// Lets the macro name a single decode call for a handler argument written as
-    /// `&FooLazyView<'_>`; the impl strips the reference and forwards to buffa.
+    /// `&FooLazyView<'_>`, forwarding to buffa's `LazyMessageView`.
     pub trait LazyDecode<'a>: Sized {
         fn decode_lazy_slice(bytes: &'a [u8]) -> Result<Self, ::buffa::DecodeError>;
     }
@@ -257,9 +257,7 @@ mod buffa_tests {
         }
     }
 
-    /// Stand-in for a generated `BlockLazyView<'a>`, so the blanket `LazyDecode` impl is
-    /// exercised against the real `LazyMessageView` bound rather than only asserted as tokens
-    /// in the macro's expected output.
+    /// Stand-in for a generated `BlockLazyView<'a>`.
     struct BlockLazyView<'a> {
         buf: &'a [u8],
     }
