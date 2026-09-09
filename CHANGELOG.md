@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   Generated types differ from `prost` in three ways: enum fields are `EnumValue<E>` rather than
   `i32` (compare against the variant directly), singular message fields are `MessageField<T>` rather
-  than `Option<Box<T>>` and deref to a default instance, and encoding is infallible, so
+  than `Option<T>` and deref to a default instance, and encoding is infallible, so
   `proto::encode` and `proto::encode_to_ptr` no longer return a `Result`.
 
   Reading a singular message field that is unset now yields a default instead of panicking. Use
