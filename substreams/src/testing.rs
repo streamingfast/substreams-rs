@@ -92,7 +92,8 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("12345");
 /// assert_eq!(c.number, 12345);
 /// assert_eq!(c.id, "12345");
-/// assert_eq!(c.timestamp.as_option().unwrap().seconds, 12345);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 12345);
 ///
 /// // Block number 100, ID "100abc", timestamp from block number
 /// let c = clock("100abc");
@@ -103,8 +104,9 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("50@1609459200000");
 /// assert_eq!(c.number, 50);
 /// assert_eq!(c.id, "50");
-/// assert_eq!(c.timestamp.as_option().unwrap().seconds, 1609459200);
-/// assert_eq!(c.timestamp.as_option().unwrap().nanos, 0);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 1609459200);
+/// assert_eq!(c.timestamp.nanos, 0);
 ///
 /// // Non-numeric ID, block number defaults to 0
 /// let c = clock("genesis");
@@ -115,8 +117,9 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("blockhash@1609459200500");
 /// assert_eq!(c.number, 0);
 /// assert_eq!(c.id, "blockhash");
-/// assert_eq!(c.timestamp.as_option().unwrap().seconds, 1609459200);
-/// assert_eq!(c.timestamp.as_option().unwrap().nanos, 500_000_000);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 1609459200);
+/// assert_eq!(c.timestamp.nanos, 500_000_000);
 /// ```
 pub fn clock(input: impl AsRef<str>) -> Clock {
     let input = input.as_ref();
@@ -190,8 +193,9 @@ mod tests {
         let c = clock("12345");
         assert_eq!(c.number, 12345);
         assert_eq!(c.id, "12345");
-        assert_eq!(c.timestamp.as_option().unwrap().seconds, 12345);
-        assert_eq!(c.timestamp.as_option().unwrap().nanos, 0);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 12345);
+        assert_eq!(c.timestamp.nanos, 0);
     }
 
     #[test]
@@ -220,16 +224,18 @@ mod tests {
         let c = clock("50@1609459200000");
         assert_eq!(c.number, 50);
         assert_eq!(c.id, "50");
-        assert_eq!(c.timestamp.as_option().unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.as_option().unwrap().nanos, 0);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 0);
     }
 
     #[test]
     fn test_clock_with_timestamp_millis() {
         let c = clock("1@1609459200500");
         assert_eq!(c.number, 1);
-        assert_eq!(c.timestamp.as_option().unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.as_option().unwrap().nanos, 500_000_000);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 500_000_000);
     }
 
     #[test]
@@ -237,7 +243,8 @@ mod tests {
         let c = clock("100@");
         assert_eq!(c.number, 100);
         assert_eq!(c.id, "100");
-        assert_eq!(c.timestamp.as_option().unwrap().seconds, 100);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 100);
     }
 
     #[test]
@@ -245,8 +252,9 @@ mod tests {
         let c = clock("blockhash@1609459200500");
         assert_eq!(c.number, 0);
         assert_eq!(c.id, "blockhash");
-        assert_eq!(c.timestamp.as_option().unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.as_option().unwrap().nanos, 500_000_000);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 500_000_000);
     }
 }
 

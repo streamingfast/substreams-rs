@@ -57,6 +57,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   that error, with `unwrap_or_default()` for instance, turns what was an abort into silently
   wrong output.
 
+- A handler argument taking a reference to an input type the macro passes by value (`&String`,
+  `&Deltas<_>`, or a reference to a store) is rejected by name (`'String' must be taken by value,
+  not by reference`) rather than with the generic `unable to parse input type`.
+
 - Changed `pb` generation to pin the plugin at `buf.build/anthropics/buffa:v0.9.2` in
   `buf.gen.yaml`. The generated code is checked in and hand-wired through `src/pb/mod.rs`, so an
   unpinned plugin could change type shapes or module layout on the next `buf generate` with nothing
@@ -76,17 +80,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   buffa supersedes it.
 
 ### Fixed
-
-- Lazy views did not compile in store handlers or in maps declared `no_testable`. Both inline the
-  handler body into the WASM export, and the macro bound the decoded view by value while the
-  signature declared a reference, so a body written against the documented `&FooLazyView<'_>` was
-  rejected. Only the plain map path, which calls through a generated inner function, worked. The
-  macro tests compare emitted tokens, so all of them passed; doc examples now cover the lazy
-  signature for a plain map, a `no_testable` map and a store handler, and those compile.
-
-- A reference to an input type the macro takes by value (`&String`, `&Deltas<_>`, or a reference to
-  a store) was treated as a lazy view and bound by value, producing a type error pointing at the
-  handler body. The macro now rejects it and names the argument.
 
 - `cargo test` with no `--target`, which failed to compile `criterion` (`Rayon cannot be used when
   targeting wasi32`). `.cargo/config.toml` set `wasm32-unknown-unknown` as the default target for
