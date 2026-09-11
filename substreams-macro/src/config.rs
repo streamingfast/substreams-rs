@@ -5,27 +5,22 @@ pub enum ModuleType {
 }
 
 /// Configuration options parsed from macro attributes.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct HandlerOptions {
     /// When true, skip calling `substreams::skip_empty_output()`.
     pub keep_empty_output: bool,
     /// When true, disable generation of the testable `__impl_<name>` function.
     /// By default (false), the macro generates both the testable function and the WASM export.
     pub no_testable: bool,
-    /// When true, use quick-protobuf instead of prost for encoding/decoding.
-    /// Requires the `quick-protobuf` feature to be enabled on the substreams crate.
-    pub quick_protobuf: bool,
 }
 
 impl HandlerOptions {
     /// Parse options from a comma-separated attribute string.
-    /// Supported options: `no_testable`, `keep_empty_output`, `quick_protobuf`
     ///
     /// Examples:
-    /// - `""` -> defaults (testable enabled, prost)
+    /// - `""` -> defaults (testable enabled, owned message)
     /// - `"no_testable"` -> disable testable function generation
     /// - `"keep_empty_output"` -> keep_empty_output = true
-    /// - `"quick_protobuf"` -> use quick-protobuf instead of prost
     /// - `"no_testable, keep_empty_output"` -> both options set
     pub fn parse(args: &str) -> Result<Self, String> {
         let mut options = Self::default();
@@ -38,10 +33,9 @@ impl HandlerOptions {
             match part.trim() {
                 "no_testable" => options.no_testable = true,
                 "keep_empty_output" => options.keep_empty_output = true,
-                "quick_protobuf" => options.quick_protobuf = true,
                 other => {
                     return Err(format!(
-                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output, quick_protobuf",
+                        "Unknown option '{}'. Valid options are: no_testable, keep_empty_output",
                         other
                     ))
                 }
@@ -141,3 +135,58 @@ pub struct FinalConfiguration {
 //     }
 //     config.build()
 // }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::HandlerOptions;
+
+    #[test]
+    fn it_defaults_to_testable_enabled() {
+        let options = HandlerOptions::parse("").expect("empty args are valid");
+
+        assert!(!options.no_testable);
+        assert!(!options.keep_empty_output);
+    }
+
+    #[test]
+    fn it_parses_each_option() {
+        assert!(HandlerOptions::parse("no_testable").unwrap().no_testable);
+        assert!(
+            HandlerOptions::parse("keep_empty_output")
+                .unwrap()
+                .keep_empty_output
+        );
+    }
+
+    #[test]
+    fn it_parses_combined_options_ignoring_whitespace() {
+        let options =
+            HandlerOptions::parse(" keep_empty_output , no_testable ").expect("valid options");
+
+        assert!(options.keep_empty_output);
+        assert!(options.no_testable);
+    }
+
+    #[test]
+    fn it_rejects_unknown_options() {
+        let err = HandlerOptions::parse("nope").expect_err("not a valid option");
+
+        assert!(err.contains("Unknown option 'nope'"), "got: {}", err);
+        assert!(
+            err.contains("no_testable, keep_empty_output"),
+            "got: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn it_rejects_removed_quick_protobuf_option() {
+        let err = HandlerOptions::parse("quick_protobuf").expect_err("option was removed");
+
+        assert!(
+            err.contains("Unknown option 'quick_protobuf'"),
+            "got: {}",
+            err
+        );
+    }
+}

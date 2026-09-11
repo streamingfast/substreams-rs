@@ -4,32 +4,90 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.7.6
+## Unreleased
 
-### Added
+### Changed
 
-- **Experimental**: Added support for [quick-protobuf](https://github.com/tafia/quick-protobuf) as an alternative protobuf library. This is useful for projects that prefer quick-protobuf over prost for code generation.
+- **Breaking**: protobuf encoding and decoding moved from [prost](https://github.com/tokio-rs/prost)
+  to [buffa](https://github.com/anthropics/buffa). `prost` is no longer a dependency.
 
-  To use quick-protobuf, enable the feature in your `Cargo.toml`:
-  ```toml
-  [dependencies]
-  substreams = { version = "0.7", features = ["quick-protobuf"] }
-  ```
+  This is a lockstep change for every crate that generates Substreams types, not just this one.
+  `proto::decode`, `proto::decode_ptr`, `output`, `StoreSetProto`, `StoreSetIfNotExistsProto`,
+  `StoreGetProto` and `DeltaProto` are now bound on `buffa::Message`, so a prost-generated type can
+  no longer be a handler input or a store value. A prost-generated `substreams-ethereum`,
+  `substreams-solana` or `substreams-antelope` will not compile against this version: each must
+  regenerate its `pb` with the `buf.build/anthropics/buffa` plugin and depend on `buffa` 0.9.
 
-  Then use the `quick_protobuf` option in your handler macros:
+  `buffa` and `buffa_types` are re-exported, so downstream code names `MessageField`, `EnumValue`
+  and the well-known types through `substreams` without adding either dependency itself, and
+  without the risk of two incompatible copies in one tree.
+
+  Generated types differ from `prost` in three ways: enum fields are `EnumValue<E>` rather than
+  `i32` (compare against the variant directly), singular message fields are `MessageField<T>` rather
+  than `Option<T>` and deref to a default instance, and encoding is infallible, so
+  `proto::encode` and `proto::encode_to_ptr` no longer return a `Result`.
+
+  Reading a singular message field that is unset now yields a default instead of panicking. Use
+  `.as_option()` where an `Option` is still wanted and `.is_set()` / `.is_unset()` for presence.
+
+- **Breaking**: `StoreDelta::operation` is an `EnumValue<Operation>` and `Clock::timestamp` is a
+  `MessageField`.
+
+- Added `BlockRef` to the generated `sf.substreams.v1` types.
+
+- **Breaking**: `StoreDeltas::deltas` is now `store_deltas`, matching the schema. The field number
+  is unchanged, so the wire format is too; the old name came from generated code that had fallen
+  behind the `.proto`.
+
+- Handlers can use buffa's lazy views, which decode nested and repeated message fields only when
+  they are read, so a module that touches a few fields of a large block no longer pays for the rest.
+  A handler opts in through its own signature; there is no macro option.
+
   ```rust
-  #[substreams::handlers::map(quick_protobuf)]
-  fn map_transfers(blk: eth::Block) -> Result<MyOutput, Error> {
-      // Your handler logic using quick-protobuf generated types
+  #[substreams::handlers::map]
+  fn map_transfers(blk: &eth::BlockLazyView<'_>) -> Result<MyOutput, Error> {
+      // `blk` borrows the input buffer; nested fields decode on access
   }
   ```
 
-  New APIs added (all in the `substreams::quick` module):
-  - `substreams::quick::output()` - Output a quick-protobuf message
-  - `substreams::quick::decode()` - Decode quick-protobuf message from bytes
-  - `substreams::quick::decode_ptr()` - Decode quick-protobuf message from raw pointer (for WASM interop)
+  Validation moves with the decoding. An eager handler rejects a malformed payload at entry and
+  the module aborts before the body runs. A lazy handler only validates a nested or repeated
+  message field when it reads it, so the body runs on a payload the eager path would have
+  refused, and the corruption surfaces as an `Err` from the accessor. Handler code that discards
+  that error, with `unwrap_or_default()` for instance, turns what was an abort into silently
+  wrong output.
 
-  **Note**: This feature is experimental. The API may change in future releases based on user feedback.
+- A handler argument taking a reference to an input type the macro passes by value (`&String`,
+  `&Deltas<_>`, or a reference to a store) is rejected by name (`'String' must be taken by value,
+  not by reference`) rather than with the generic `unable to parse input type`.
+
+- Changed `pb` generation to pin the plugin at `buf.build/anthropics/buffa:v0.9.2` in
+  `buf.gen.yaml`. The generated code is checked in and hand-wired through `src/pb/mod.rs`, so an
+  unpinned plugin could change type shapes or module layout on the next `buf generate` with nothing
+  recording why.
+
+### Removed
+
+- **Breaking**: the RPC service-plane messages `Request`, `Response`, `BlockScopedData`,
+  `ModuleOutput`, `ModuleProgress`, `ModulesProgress`, `BlockRange`, `InitialSnapshotData`,
+  `InitialSnapshotComplete`, `ForkStep` and the top-level `Output`. They are the client/server
+  protocol and are unused by WASM modules. `Modules`, `Module`, `Binary` and `module::Output` are
+  still generated, as they describe a package's own manifest; note that only the nested
+  `module::Output` survives, so code naming `pb::substreams::Output` must be updated.
+
+- **Breaking**: the experimental quick-protobuf support added in this release cycle: the
+  `quick-protobuf` feature, the `quick_protobuf` handler option and the `substreams::quick` module.
+  buffa supersedes it.
+
+### Fixed
+
+- `cargo test` with no `--target`, which failed to compile `criterion` (`Rayon cannot be used when
+  targeting wasi32`). `.cargo/config.toml` set `wasm32-unknown-unknown` as the default target for
+  every cargo command, so the dev-dependencies were resolved for WASM. The file is removed and
+  `criterion` is now a `cfg(not(target_arch = "wasm32"))` dev-dependency; the target is named
+  explicitly where it is needed. CI named its target already and was unaffected.
+
+## 0.7.6
 
 ### Changed
 

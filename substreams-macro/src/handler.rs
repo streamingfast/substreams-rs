@@ -122,29 +122,39 @@ pub fn main(item: TokenStream, module_type: ModuleType, options: HandlerOptions)
                         quote! {}
                     };
                     original_args.push(quote! { #mutability #var_name: #argument_type });
+                    let is_lazy = matches!(argument_type, syn::Type::Reference(_));
                     impl_call_args.push(quote! { #var_name });
 
                     if input_obj.is_deltas {
-                        // Deltas are always decoded using prost since they're internal substreams types
                         let raw = prefixed_ident("raw", &var_name);
                         proto_decodings.push(quote! {
-                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).deltas;
+                                let #raw = substreams::proto::decode_ptr::<substreams::pb::substreams::StoreDeltas>(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to 'substreams::pb::substreams::StoreDeltas' message's struct", #var_len)).store_deltas;
                                 let #var_name: #argument_type = substreams::store::Deltas::new(#raw);
                             })
                     } else if input_obj.is_string {
                         proto_decodings.push(quote! { let #var_name: String = std::mem::ManuallyDrop::new(unsafe {String::from_raw_parts(#var_ptr, #var_len, #var_len)}).to_string(); });
-                    } else if options.quick_protobuf {
-                        // Use quick-protobuf for decoding
+                    } else if is_lazy {
+                        // The view borrows these bytes, so they must live in the export's scope.
+                        let bytes_ident = prefixed_ident("bytes", &var_name);
+                        let owned_ident = prefixed_ident("owned", &var_name);
+                        let mut inner_ty: syn::Type = match argument_type {
+                            syn::Type::Reference(r) => (*r.elem).clone(),
+                            other => other.clone(),
+                        };
+                        // A lifetime the handler names is not in scope inside the export.
+                        elide_lifetimes(&mut inner_ty);
                         proto_decodings.push(quote! {
-                            let #mutability #var_name: #argument_type = unsafe {
-                                substreams::quick::decode_ptr(#var_ptr, #var_len)
-                            }.unwrap_or_else(|_| panic!(
-                                "Unable to decode quick-protobuf data ({} bytes) to '{}' message's struct",
-                                #var_len, stringify!(#argument_type)
-                            ));
+                            let #bytes_ident: &[u8] = unsafe {
+                                std::slice::from_raw_parts(#var_ptr, #var_len)
+                            };
+                            let #owned_ident = <#inner_ty as substreams::lazy::LazyDecode>::decode_lazy_slice(#bytes_ident)
+                                .unwrap_or_else(|_| panic!(
+                                    "Unable to decode buffa lazy view ({} bytes) for '{}'",
+                                    #var_len, stringify!(#argument_type)
+                                ));
+                            let #var_name = &#owned_ident;
                         });
                     } else {
-                        // Default: use prost for decoding
                         proto_decodings.push(quote! { let #mutability #var_name: #argument_type = substreams::proto::decode_ptr(#var_ptr, #var_len).unwrap_or_else(|_| panic!("Unable to decode Protobuf data ({} bytes) to '{}' message's struct", #var_len, stringify!(#argument_type))); })
                     }
                 }
@@ -249,6 +259,33 @@ struct Input {
     store_type: String,
 }
 
+/// Rewrites every named lifetime in `ty` to `'_`.
+fn elide_lifetimes(ty: &mut syn::Type) {
+    use syn::{GenericArgument, PathArguments, Type};
+    match ty {
+        Type::Reference(r) => {
+            r.lifetime = None;
+            elide_lifetimes(&mut r.elem);
+        }
+        Type::Path(p) => {
+            for seg in p.path.segments.iter_mut() {
+                if let PathArguments::AngleBracketed(a) = &mut seg.arguments {
+                    for arg in a.args.iter_mut() {
+                        match arg {
+                            GenericArgument::Lifetime(l) => {
+                                *l = syn::Lifetime::new("'_", l.apostrophe);
+                            }
+                            GenericArgument::Type(t) => elide_lifetimes(t),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError> {
     match ty {
         syn::Type::Path(p) => {
@@ -289,6 +326,22 @@ fn parse_input_type(ty: &syn::Type) -> Result<Input, errors::SubstreamMacroError
                 input.is_foundational_store = true;
             }
             Ok(input)
+        }
+        // `&FooLazyView<'_>`: classify by the type behind the reference.
+        syn::Type::Reference(r) => {
+            let inner = parse_input_type(&r.elem)?;
+            if inner.is_string
+                || inner.is_deltas
+                || inner.is_writable_store
+                || inner.is_readable_store
+                || inner.is_foundational_store
+            {
+                return Err(errors::SubstreamMacroError::UnknownInputType(format!(
+                    "'{}' must be taken by value, not by reference",
+                    inner.resolved_ty
+                )));
+            }
+            Ok(inner)
         }
         _ => Err(errors::SubstreamMacroError::UnknownInputType(
             "unable to parse input type".to_owned(),
@@ -357,6 +410,8 @@ fn build_map_handler(
     let body = &input.block;
     let func_name = input.sig.ident.clone();
     let lambda_return = input.sig.output.clone();
+    let generics = input.sig.generics.clone();
+    let where_clause = input.sig.generics.where_clause.clone();
 
     let skip_empty_output = if options.keep_empty_output {
         quote! {}
@@ -364,78 +419,39 @@ fn build_map_handler(
         quote! { substreams::skip_empty_output(); }
     };
 
-    // Choose output function based on quick_protobuf option
-    let output_handler = if options.quick_protobuf {
-        match output_type {
-            OutputType::Result => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    substreams::quick::output(&result.expect("already checked that result is not an error"));
+    let output_handler = match output_type {
+        OutputType::Result => {
+            quote! {
+                if result.is_err() {
+                    panic!("{:?}", result.unwrap_err())
                 }
-            }
-            OutputType::ResultOption => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    if let Some(ref inner) = result.expect("already checked that result is not an error") {
-                        substreams::quick::output(inner);
-                    }
-                }
-            }
-            OutputType::Option => {
-                quote! {
-                    if let Some(ref value) = result {
-                        substreams::quick::output(value);
-                    }
-                }
-            }
-            OutputType::Value => {
-                quote! {
-                    substreams::quick::output(&result);
-                }
-            }
-            OutputType::Void => {
-                quote! {}
+                substreams::output(result.expect("already checked that result is not an error"));
             }
         }
-    } else {
-        match output_type {
-            OutputType::Result => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    substreams::output(result.expect("already checked that result is not an error"));
+        OutputType::ResultOption => {
+            quote! {
+                if result.is_err() {
+                    panic!("{:?}", result.unwrap_err())
+                }
+                if let Some(inner) = result.expect("already checked that result is not an error") {
+                    substreams::output(inner);
                 }
             }
-            OutputType::ResultOption => {
-                quote! {
-                    if result.is_err() {
-                        panic!("{:?}", result.unwrap_err())
-                    }
-                    if let Some(inner) = result.expect("already checked that result is not an error") {
-                        substreams::output(inner);
-                    }
+        }
+        OutputType::Option => {
+            quote! {
+                if let Some(value) = result {
+                    substreams::output(value);
                 }
             }
-            OutputType::Option => {
-                quote! {
-                    if let Some(value) = result {
-                        substreams::output(value);
-                    }
-                }
+        }
+        OutputType::Value => {
+            quote! {
+                substreams::output(result);
             }
-            OutputType::Value => {
-                quote! {
-                    substreams::output(result);
-                }
-            }
-            OutputType::Void => {
-                quote! {}
-            }
+        }
+        OutputType::Void => {
+            quote! {}
         }
     };
 
@@ -458,7 +474,7 @@ fn build_map_handler(
             }
 
             // Testable function with original signature (always generated)
-            pub fn #impl_func_name(#(#original_args),*) #lambda_return {
+            pub fn #impl_func_name #generics (#(#original_args),*) #lambda_return #where_clause {
                 #(#body_stmts)*
             }
         };

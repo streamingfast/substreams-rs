@@ -10,8 +10,8 @@
 ///
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto { pub type Custom = (); }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[substreams::handlers::map]
 /// fn map_handler(blk: eth::Block) -> Result<proto::Custom, substreams::errors::Error> {
@@ -22,18 +22,8 @@
 /// Equivalent code not using `#[substreams::handlers::map]`
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto {
-/// #  use std::todo;
-/// #  #[derive(Debug)]
-/// #  pub struct Custom(u8);
-/// #    impl prost::Message for Custom {
-/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
-/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
-/// #  fn encoded_len(&self) -> usize { todo!() }
-/// #  fn clear(&mut self) { todo!() }
-/// #  }
-/// # }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[no_mangle]
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
@@ -48,7 +38,7 @@
 ///     if result.is_err() {
 ///         panic!(result.err().unwrap())
 ///     }
-///     substreams::output(substreams::proto::encode(&result.unwrap()).unwrap());
+///     substreams::output(result.unwrap());
 /// }
 ///
 /// ```
@@ -57,8 +47,8 @@
 ///
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto { pub type Custom = (); }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[substreams::handlers::map]
 /// fn map_handler(blk: eth::Block) -> Option<proto::Custom> {
@@ -69,18 +59,8 @@
 /// Equivalent code not using `#[substreams::handlers::map]`
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto {
-/// #  use std::todo;
-/// #  #[derive(Debug)]
-/// #  pub struct Custom(u8);
-/// #    impl prost::Message for Custom {
-/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
-/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
-/// #  fn encoded_len(&self) -> usize { todo!() }
-/// #  fn clear(&mut self) { todo!() }
-/// #  }
-/// # }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[no_mangle]
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
@@ -103,8 +83,8 @@
 ///
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto { pub type Custom = (); }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[substreams::handlers::map]
 /// fn map_handler(blk: eth::Block) -> proto::Custom {
@@ -115,18 +95,8 @@
 /// Equivalent code not using `#[substreams::handlers::map]`
 ///
 /// ```rust
-/// # mod eth { pub type Block = (); }
-/// # mod proto {
-/// #  use std::todo;
-/// #  #[derive(Debug)]
-/// #  pub struct Custom(u8);
-/// #    impl prost::Message for Custom {
-/// #  fn encode_raw(&self, _: &mut impl prost::bytes::BufMut) where Self: Sized { todo!() }
-/// #  fn merge_field(&mut self, _: u32, _: prost::encoding::WireType, _: &mut impl prost::bytes::Buf, _: prost::encoding::DecodeContext) -> Result<(), prost::DecodeError> where Self: Sized { todo!() }
-/// #  fn encoded_len(&self) -> usize { todo!() }
-/// #  fn clear(&mut self) { todo!() }
-/// #  }
-/// # }
+/// # mod eth { pub type Block = substreams::testing::DocExampleMessage; }
+/// # mod proto { pub type Custom = substreams::testing::DocExampleMessage; }
 ///
 /// #[no_mangle]
 /// pub extern "C" fn map_handler(blk_ptr: *mut u8, blk_len: usize) {
@@ -141,9 +111,59 @@
 ///     substreams::output(result);
 /// }
 /// ```
+///
+/// ## Usage with a lazy view
+///
+/// Declaring the argument as a reference to a generated `FooLazyView<'_>` selects buffa's
+/// lazy decoding: fields are decoded on access rather than up front.
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map]
+/// fn map_handler(blk: &ClockLazyView<'_>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
+/// An explicit lifetime works too:
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map]
+/// fn map_handler<'a>(blk: &'a ClockLazyView<'a>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
+/// The same signature works with `no_testable`, which inlines the body into the export:
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::{Clock, ClockLazyView};
+///
+/// #[substreams::handlers::map(no_testable)]
+/// fn map_handler(blk: &ClockLazyView<'_>) -> Result<Clock, substreams::errors::Error> {
+///     unimplemented!("do something");
+/// }
+/// ```
 pub use substreams_macro::map;
 
 /// Marks function to setup substreams store handler WASM boilerplate
+///
+/// ## Usage with a lazy view
+///
+/// ```rust
+/// use substreams::pb::sf::substreams::ClockLazyView;
+/// use substreams::prelude::StoreNew;
+/// use substreams::store::StoreAddInt64;
+///
+/// #[substreams::handlers::store]
+/// fn store_handler(blk: &ClockLazyView<'_>, s: StoreAddInt64) {
+///     unimplemented!("do something");
+/// }
+/// ```
+///
 /// ## Usage
 ///
 ///
@@ -152,11 +172,9 @@ pub use substreams_macro::map;
 /// use substreams::{log, store};
 /// use substreams::store::{StoreGetProto, StoreAddInt64};
 /// # mod proto {
-/// #   pub type Custom = ();
-/// #   #[derive(Clone, PartialEq, ::prost::Message)]
-/// #   pub struct Pairs {}
-/// #   #[derive(Clone, PartialEq, ::prost::Message)]
-/// #   pub struct Tokens {}
+/// #   pub type Custom = substreams::testing::DocExampleMessage;
+/// #   pub type Pairs = substreams::testing::DocExampleMessage;
+/// #   pub type Tokens = substreams::testing::DocExampleMessage;
 /// # }
 ///
 /// #[substreams::handlers::store]
@@ -172,11 +190,9 @@ pub use substreams_macro::map;
 /// use substreams::{log, store};
 /// use substreams::store::StoreGetProto;
 /// # mod proto {
-/// #   pub type Custom = ();
-/// #   #[derive(Clone, PartialEq, ::prost::Message)]
-/// #   pub struct Pairs {}
-/// #   #[derive(Clone, PartialEq, ::prost::Message)]
-/// #   pub struct Tokens {}
+/// #   pub type Custom = substreams::testing::DocExampleMessage;
+/// #   pub type Pairs = substreams::testing::DocExampleMessage;
+/// #   pub type Tokens = substreams::testing::DocExampleMessage;
 /// # }
 ///
 /// #[no_mangle]

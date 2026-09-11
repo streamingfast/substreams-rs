@@ -92,7 +92,8 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("12345");
 /// assert_eq!(c.number, 12345);
 /// assert_eq!(c.id, "12345");
-/// assert_eq!(c.timestamp.unwrap().seconds, 12345);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 12345);
 ///
 /// // Block number 100, ID "100abc", timestamp from block number
 /// let c = clock("100abc");
@@ -103,8 +104,9 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("50@1609459200000");
 /// assert_eq!(c.number, 50);
 /// assert_eq!(c.id, "50");
-/// assert_eq!(c.timestamp.unwrap().seconds, 1609459200);
-/// assert_eq!(c.timestamp.unwrap().nanos, 0);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 1609459200);
+/// assert_eq!(c.timestamp.nanos, 0);
 ///
 /// // Non-numeric ID, block number defaults to 0
 /// let c = clock("genesis");
@@ -115,8 +117,9 @@ pub use substreams_macro::test_map as map;
 /// let c = clock("blockhash@1609459200500");
 /// assert_eq!(c.number, 0);
 /// assert_eq!(c.id, "blockhash");
-/// assert_eq!(c.timestamp.unwrap().seconds, 1609459200);
-/// assert_eq!(c.timestamp.unwrap().nanos, 500_000_000);
+/// assert!(c.timestamp.is_set());
+/// assert_eq!(c.timestamp.seconds, 1609459200);
+/// assert_eq!(c.timestamp.nanos, 500_000_000);
 /// ```
 pub fn clock(input: impl AsRef<str>) -> Clock {
     let input = input.as_ref();
@@ -142,38 +145,42 @@ pub fn clock(input: impl AsRef<str>) -> Clock {
     let timestamp = if let Some(ts_str) = timestamp_str {
         if ts_str.is_empty() {
             // Empty timestamp after @, use block number as seconds
-            Some(prost_types::Timestamp {
+            Some(buffa_types::Timestamp {
                 seconds: number as i64,
                 nanos: 0,
+                ..Default::default()
             })
         } else {
             // Parse milliseconds since epoch
             match ts_str.parse::<i64>() {
-                Ok(millis) => Some(prost_types::Timestamp {
+                Ok(millis) => Some(buffa_types::Timestamp {
                     seconds: millis / 1000,
                     nanos: ((millis % 1000) * 1_000_000) as i32,
+                    ..Default::default()
                 }),
                 Err(_) => {
                     // Invalid timestamp, fall back to block number
-                    Some(prost_types::Timestamp {
+                    Some(buffa_types::Timestamp {
                         seconds: number as i64,
                         nanos: 0,
+                        ..Default::default()
                     })
                 }
             }
         }
     } else {
         // No @ in string, use block number as timestamp (seconds)
-        Some(prost_types::Timestamp {
+        Some(buffa_types::Timestamp {
             seconds: number as i64,
             nanos: 0,
+            ..Default::default()
         })
     };
 
     Clock {
         id,
         number,
-        timestamp,
+        timestamp: timestamp.into(),
     }
 }
 
@@ -186,8 +193,9 @@ mod tests {
         let c = clock("12345");
         assert_eq!(c.number, 12345);
         assert_eq!(c.id, "12345");
-        assert_eq!(c.timestamp.unwrap().seconds, 12345);
-        assert_eq!(c.timestamp.unwrap().nanos, 0);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 12345);
+        assert_eq!(c.timestamp.nanos, 0);
     }
 
     #[test]
@@ -216,16 +224,18 @@ mod tests {
         let c = clock("50@1609459200000");
         assert_eq!(c.number, 50);
         assert_eq!(c.id, "50");
-        assert_eq!(c.timestamp.unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.unwrap().nanos, 0);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 0);
     }
 
     #[test]
     fn test_clock_with_timestamp_millis() {
         let c = clock("1@1609459200500");
         assert_eq!(c.number, 1);
-        assert_eq!(c.timestamp.unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.unwrap().nanos, 500_000_000);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 500_000_000);
     }
 
     #[test]
@@ -233,7 +243,8 @@ mod tests {
         let c = clock("100@");
         assert_eq!(c.number, 100);
         assert_eq!(c.id, "100");
-        assert_eq!(c.timestamp.unwrap().seconds, 100);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 100);
     }
 
     #[test]
@@ -241,7 +252,42 @@ mod tests {
         let c = clock("blockhash@1609459200500");
         assert_eq!(c.number, 0);
         assert_eq!(c.id, "blockhash");
-        assert_eq!(c.timestamp.unwrap().seconds, 1609459200);
-        assert_eq!(c.timestamp.unwrap().nanos, 500_000_000);
+        assert!(c.timestamp.is_set());
+        assert_eq!(c.timestamp.seconds, 1609459200);
+        assert_eq!(c.timestamp.nanos, 500_000_000);
+    }
+}
+
+/// A minimal [`buffa::Message`] for documentation examples, so a doc example can name a
+/// message type without pulling in generated code.
+#[doc(hidden)]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DocExampleMessage;
+
+impl ::buffa::DefaultInstance for DocExampleMessage {
+    fn default_instance() -> &'static Self {
+        static DEFAULT: DocExampleMessage = DocExampleMessage;
+        &DEFAULT
+    }
+}
+
+impl ::buffa::Message for DocExampleMessage {
+    fn compute_size(&self, _cache: &mut ::buffa::SizeCache) -> u32 {
+        0
+    }
+
+    fn write_to(&self, _cache: &mut ::buffa::SizeCache, _buf: &mut impl ::buffa::EncodeSink) {}
+
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl bytes::Buf,
+        _ctx: ::buffa::DecodeContext<'_>,
+    ) -> Result<(), ::buffa::DecodeError> {
+        ::buffa::encoding::skip_field(tag, buf)
+    }
+
+    fn clear(&mut self) {
+        *self = Self;
     }
 }

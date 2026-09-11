@@ -24,7 +24,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --target=x86_64-unknown-linux-gnu
 
       - name: Build target
         uses: actions-rs/cargo@v1
@@ -34,5 +33,5 @@ jobs:
           CARGO_BUILD_RUSTFLAGS: '-D warnings'
         with:
           command: build
-          args: --release
+          args: --release --target=wasm32-unknown-unknown
 

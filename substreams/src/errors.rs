@@ -11,8 +11,8 @@
 //! in context the input data that failed to decode. You can do it like this:
 //!
 //! ```rust
-//! # pub type Block = ();
-//! # mod pb { pub type Custom = (); };
+//! # pub type Block = substreams::testing::DocExampleMessage;
+//! # mod pb { pub type Custom = substreams::testing::DocExampleMessage; };
 //! // **Important** Brings in scope `.context` and `.with_context` methods.
 //! use anyhow::Context;
 //!
@@ -26,8 +26,8 @@
 //! If you want to return a plain error, you can use the `anyhow::anyhow!` macro:
 //!
 //! ```rust
-//! # pub type Block = ();
-//! # mod pb { pub type Custom = (); };
+//! # pub type Block = substreams::testing::DocExampleMessage;
+//! # mod pb { pub type Custom = substreams::testing::DocExampleMessage; };
 //! use anyhow::anyhow;
 //!
 //! fn map_handler(params: String, block: Block) -> Result<pb::Custom, substreams::errors::Error> {

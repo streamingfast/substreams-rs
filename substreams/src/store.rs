@@ -56,7 +56,7 @@
 //!     }
 //! }
 //! ```
-use std::{convert::TryFrom, io::BufRead, str};
+use std::{io::BufRead, str};
 
 use crate::pb::sf::substreams::foundational_store::model::v2::{Key, Keys, QueriedEntries};
 use crate::{key, operation, pb::substreams::store_delta::Operation};
@@ -66,7 +66,6 @@ use {
         scalar::{BigDecimal, BigInt},
         state, {pb, proto},
     },
-    prost,
     std::i64,
     std::marker::PhantomData,
     std::str::FromStr,
@@ -246,13 +245,13 @@ impl StoreSet<BigInt> for StoreSetBigInt {
 
 /// `StoreSetProto` is a struct representing a `store` with `updatePolicy` equal to `set` and a `valueType` equal to `proto:{your_proto_type}`
 #[allow(dead_code)]
-pub struct StoreSetProto<V: Default + prost::Message> {
+pub struct StoreSetProto<V: Default + buffa::Message> {
     casper: PhantomData<V>,
 }
 
-impl<V: Default + prost::Message> StoreDelete for StoreSetProto<V> {}
+impl<V: Default + buffa::Message> StoreDelete for StoreSetProto<V> {}
 
-impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
+impl<V: Default + buffa::Message> StoreNew for StoreSetProto<V> {
     fn new() -> Self {
         Self {
             // Adding a PhantomData<T> field to your type tells the compiler that
@@ -265,17 +264,15 @@ impl<V: Default + prost::Message> StoreNew for StoreSetProto<V> {
     }
 }
 
-impl<V: Default + prost::Message> StoreSet<V> for StoreSetProto<V> {
+impl<V: Default + buffa::Message> StoreSet<V> for StoreSetProto<V> {
     fn set<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        let bytes = proto::encode(value)
-            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
+        let bytes = proto::encode(value);
 
         state::set(ord as i64, key, &bytes)
     }
 
     fn set_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
-        let bytes = proto::encode(value)
-            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
+        let bytes = proto::encode(value);
 
         for key in keys {
             state::set(ord as i64, key, &bytes)
@@ -446,7 +443,7 @@ pub struct StoreSetIfNotExistsProto<T> {
     casper: PhantomData<T>,
 }
 
-impl<V: Default + prost::Message> StoreNew for StoreSetIfNotExistsProto<V> {
+impl<V: Default + buffa::Message> StoreNew for StoreSetIfNotExistsProto<V> {
     fn new() -> Self {
         StoreSetIfNotExistsProto {
             store: StoreSetIfNotExistsRaw {},
@@ -460,19 +457,17 @@ impl<V: Default + prost::Message> StoreNew for StoreSetIfNotExistsProto<V> {
     }
 }
 
-impl<V: Default + prost::Message> StoreDelete for StoreSetIfNotExistsProto<V> {}
+impl<V: Default + buffa::Message> StoreDelete for StoreSetIfNotExistsProto<V> {}
 
-impl<V: Default + prost::Message> StoreSetIfNotExists<V> for StoreSetIfNotExistsProto<V> {
+impl<V: Default + buffa::Message> StoreSetIfNotExists<V> for StoreSetIfNotExistsProto<V> {
     fn set_if_not_exists<K: AsRef<str>>(&self, ord: u64, key: K, value: &V) {
-        let bytes = proto::encode(value)
-            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
+        let bytes = proto::encode(value);
 
         self.store.set_if_not_exists(ord, key, &bytes)
     }
 
     fn set_if_not_exists_many<K: AsRef<str>>(&self, ord: u64, keys: &Vec<K>, value: &V) {
-        let bytes = proto::encode(value)
-            .unwrap_or_else(|_| panic!("Unable to encode store message's struct to Protobuf data"));
+        let bytes = proto::encode(value);
 
         for key in keys {
             self.store.set_if_not_exists(ord, key, &bytes)
@@ -1183,7 +1178,7 @@ pub struct StoreGetProto<T> {
     casper: PhantomData<T>,
 }
 
-impl<T: Default + prost::Message> StoreGetProto<T> {
+impl<T: Default + buffa::Message> StoreGetProto<T> {
     pub fn must_get_last<K: AsRef<str>>(&self, key: K) -> T {
         self.get_last(&key)
             .unwrap_or_else(|| panic!("cannot get_last value: key {} not found", key.as_ref()))
@@ -1192,7 +1187,7 @@ impl<T: Default + prost::Message> StoreGetProto<T> {
 
 impl<T> StoreGet<T> for StoreGetProto<T>
 where
-    T: Default + prost::Message,
+    T: Default + buffa::Message,
 {
     /// Return a StoreGet object with a store index set
     fn new(idx: u32) -> StoreGetProto<T> {
@@ -1346,7 +1341,7 @@ pub struct DeltaBigDecimal {
 impl From<StoreDelta> for DeltaBigDecimal {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: BigDecimal::from_store_bytes(&d.old_value),
@@ -1367,7 +1362,7 @@ pub struct DeltaBigInt {
 impl From<StoreDelta> for DeltaBigInt {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: BigInt::from_store_bytes(&d.old_value),
@@ -1388,7 +1383,7 @@ pub struct DeltaInt32 {
 impl From<StoreDelta> for DeltaInt32 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_i32(&d.old_value),
@@ -1409,7 +1404,7 @@ pub struct DeltaInt64 {
 impl From<StoreDelta> for DeltaInt64 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_i64(&d.old_value),
@@ -1430,7 +1425,7 @@ pub struct DeltaFloat64 {
 impl From<StoreDelta> for DeltaFloat64 {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: decode_bytes_to_f64(&d.old_value),
@@ -1451,7 +1446,7 @@ pub struct DeltaBool {
 impl From<StoreDelta> for DeltaBool {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: !d.old_value.contains(&0),
@@ -1472,7 +1467,7 @@ pub struct DeltaBytes {
 impl From<StoreDelta> for DeltaBytes {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: d.old_value,
@@ -1493,7 +1488,7 @@ pub struct DeltaString {
 impl From<StoreDelta> for DeltaString {
     fn from(d: StoreDelta) -> Self {
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: String::from_utf8(d.old_value).unwrap_or_else(|_| {
@@ -1515,15 +1510,15 @@ pub struct DeltaProto<T> {
     pub new_value: T,
 }
 
-impl<T: Default + prost::Message + PartialEq> From<StoreDelta> for DeltaProto<T> {
+impl<T: Default + buffa::Message + PartialEq> From<StoreDelta> for DeltaProto<T> {
     fn from(d: StoreDelta) -> Self {
-        let nv: T = prost::Message::decode(d.new_value.as_ref())
+        let nv: T = buffa::Message::decode_from_slice(d.new_value.as_ref())
             .unwrap_or_else(|_| panic!("Unable to decode Store DeltaProto for new value"));
-        let ov: T = prost::Message::decode(d.old_value.as_ref())
+        let ov: T = buffa::Message::decode_from_slice(d.old_value.as_ref())
             .unwrap_or_else(|_| panic!("Unable to decode Store DeltaProto for old value"));
 
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: ov,
@@ -1532,7 +1527,7 @@ impl<T: Default + prost::Message + PartialEq> From<StoreDelta> for DeltaProto<T>
     }
 }
 
-impl<T: Default + prost::Message + PartialEq> Delta for DeltaProto<T> {
+impl<T: Default + buffa::Message + PartialEq> Delta for DeltaProto<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
@@ -1541,7 +1536,7 @@ impl<T: Default + prost::Message + PartialEq> Delta for DeltaProto<T> {
     }
 }
 
-impl<T: Default + prost::Message + PartialEq> Delta for &DeltaProto<T> {
+impl<T: Default + buffa::Message + PartialEq> Delta for &DeltaProto<T> {
     fn get_key(&self) -> &String {
         &self.key
     }
@@ -1565,7 +1560,7 @@ impl<T: Into<String> + From<String> + PartialEq> From<StoreDelta> for DeltaArray
         let new = split_array::<T>(d.new_value).unwrap_or_default();
 
         Self {
-            operation: convert_i32_to_operation(d.operation),
+            operation: convert_enum_to_operation(d.operation),
             ordinal: d.ordinal,
             key: d.key,
             old_value: old,
@@ -1661,7 +1656,7 @@ impl FoundationalStore {
                 .collect(),
         };
 
-        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys).unwrap();
+        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys);
 
         // Call host function to query multiple keys at once
         let packed = state::foundational_store_get(self.store_index, ptr as u32, len as u32);
@@ -1691,7 +1686,7 @@ impl FoundationalStore {
                 .collect(),
         };
 
-        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys).unwrap();
+        let (ptr, len, _buf) = proto::encode_to_ptr(&pb_keys);
 
         // Call host function to query multiple keys at once
         let packed = state::foundational_store_get_first(self.store_index, ptr as u32, len as u32);
@@ -1723,8 +1718,12 @@ impl_delta_ref!(&DeltaBool);
 impl_delta_ref!(&DeltaBytes);
 impl_delta_ref!(&DeltaString);
 
-fn convert_i32_to_operation(operation: i32) -> pb::substreams::store_delta::Operation {
-    Operation::try_from(operation).unwrap_or_else(|_| panic!("unhandled operation: {}", operation))
+fn convert_enum_to_operation(
+    operation: ::buffa::EnumValue<pb::substreams::store_delta::Operation>,
+) -> pb::substreams::store_delta::Operation {
+    operation
+        .as_known()
+        .unwrap_or_else(|| panic!("unhandled operation: {}", operation.to_i32()))
 }
 
 // We accept &Vec<u8> instead of &[u8] because use internally and makes it easier to chain
@@ -1876,7 +1875,7 @@ mod tests {
     #[test]
     fn delta_array_strring() {
         let deltas = Deltas::<DeltaArray<String>>::new(vec![StoreDelta {
-            operation: 1,
+            operation: Operation::Create.into(),
             ordinal: 0,
             key: "".to_string(),
             old_value: ";".as_bytes().to_vec(),
