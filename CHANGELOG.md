@@ -24,11 +24,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   Generated types differ from `prost` in three ways: enum fields are `EnumValue<E>` rather than
   `i32` (compare against the variant directly), singular message fields are `MessageField<T>` rather
-  than `Option<T>` and deref to a default instance, and encoding is infallible, so
-  `proto::encode` and `proto::encode_to_ptr` no longer return a `Result`.
+  than `Option<T>` and deref to a default instance, and encoding returns no `Result`, so
+  `proto::encode` and `proto::encode_to_ptr` no longer return one (they panic above the 2 GiB
+  Protobuf limit; buffa's `try_*` methods return that as an error).
 
   Reading a singular message field that is unset now yields a default instead of panicking. Use
   `.as_option()` where an `Option` is still wanted and `.is_set()` / `.is_unset()` for presence.
+
+  `buffa` validates a `Timestamp` where `prost` normalized one. `nanos` outside `0..=999_999_999`,
+  or `seconds` outside year 1 to 9999, is rejected rather than carried into `seconds`, so
+  `{ seconds: 1700000000, nanos: -1 }` no longer formats as `2023-11-14T22:13:19.999999999Z`. A
+  timestamp a chain produces is unaffected — a block timestamp carries `nanos: 0` — but one derived
+  by arithmetic has to be normalized first, since `%` in Rust keeps the sign of its left operand and
+  a negative milliseconds value yields a negative `nanos`.
 
 - **Breaking**: `StoreDelta::operation` is an `EnumValue<Operation>` and `Clock::timestamp` is a
   `MessageField`.
