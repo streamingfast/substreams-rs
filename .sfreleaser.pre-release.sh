@@ -3,7 +3,7 @@
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 force=false
-repository="github.com/streamingfast/substreams-ethereum"
+repository="github.com/streamingfast/substreams-rs"
 
 main() {
   pushd "$ROOT" &> /dev/null
