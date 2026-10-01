@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
-- Stable release of `0.8.0-beta`, unchanged.
+- Stable release of [`0.8.0-beta`](https://github.com/streamingfast/substreams-rs/releases/tag/v0.8.0-beta),
+  unchanged. The  entry covers the `prost` to `buffa` migration.
 
 ## [0.8.0-beta](https://github.com/streamingfast/substreams-rs/releases/tag/v0.8.0-beta)
 
