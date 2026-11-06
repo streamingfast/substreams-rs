@@ -16,13 +16,14 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: publish-release
   cancel-in-progress: false
 
 env:
-  SFRELEASER_VERSION: "v0.17.1-rc.5"
+  SFRELEASER_VERSION: "v0.17.1-rc.7"
 
 jobs:
   publish:
@@ -48,10 +49,15 @@ jobs:
         if: github.event_name == 'pull_request'
         run: sfreleaser release detect
 
+      - name: Authenticate with crates.io
+        id: crates-io
+        if: steps.detect.outputs.is_release_pr || github.event_name == 'workflow_dispatch'
+        uses: rust-lang/crates-io-auth-action@v1
+
       - name: Publish release
         if: steps.detect.outputs.is_release_pr || github.event_name == 'workflow_dispatch'
         env:
           VERSION: ${{ steps.detect.outputs.version || inputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates-io.outputs.token }}
         run: sfreleaser release publish "$VERSION"
